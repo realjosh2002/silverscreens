@@ -1,0 +1,785 @@
+
+> silverscreens@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.5:3000
+- Environments: .env.local
+✓ Ready in 618ms
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+
+✓ Compiled in 3ms
+ GET /agency/dashboard 200 in 794ms (next.js: 534ms, proxy.ts: 26ms, application-code: 234ms)
+ GET / 200 in 209ms (next.js: 36ms, proxy.ts: 12ms, application-code: 161ms)
+ GET /agency/dashboard 200 in 108ms (next.js: 8ms, proxy.ts: 9ms, application-code: 91ms)
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerLayoutRouter url="/agency/da..." tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} segmentPath={[...]} ...>
+      <SegmentViewNode type="page" pagePath="agency/das...">
+        <SegmentTrieNode>
+        <ClientPageRoot Component={function AgencyDashboardPage} serverProvidedParams={{...}}>
+          <AgencyDashboardPage params={Promise} searchParams={Promise}>
+            <div style={{display:"flex", ...}}>
+              <aside>
+              <div style={{flex:1, ...}}>
+                <header>
+                <div style={{flex:1, ...}}>
+                  <div>
+                  <div>
+                  <div>
+                  <div style={{display:"flex", ...}}>
+                    <div>
+                    <div style={{flex:1,minWidth:0, ...}}>
+                      <div>
+                      <div style={{display:"flex", ...}}>
+                        <DonutChart>
+                          <svg viewBox="0 0 160 160" style={{width:160, ...}}>
+                            <path>
+                            <path>
+                            <path
++                             d="M 16.11676452970768 76.13577616497366 A 64 64 0 0 1 39.026378210400765 30.83535500542..."
+-                             d="M 16.11676452970768 76.13577616497366 A 64 64 0 0 1 39.02637821040076 30.835355005422..."
+                              fill="#9B59B6"
+                            >
+                            <path
++                             d="M 39.026378210400765 30.835355005422052 A 64 64 0 0 1 66.56760946784978 17.4254773522..."
+-                             d="M 39.02637821040076 30.835355005422052 A 64 64 0 0 1 66.56760946784978 17.42547735226..."
+                              fill="#C8202A"
+                            >
+                            ...
+                            ...
+                        ...
+                      ...
+                    ...
+                  ...
+      ...
+ 
+ GET /agency/dashboard 200 in 181ms (next.js: 5ms, proxy.ts: 8ms, application-code: 167ms)
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerLayoutRouter url="/agency/da..." tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} segmentPath={[...]} ...>
+      <SegmentViewNode type="page" pagePath="agency/das...">
+        <SegmentTrieNode>
+        <ClientPageRoot Component={function AgencyDashboardPage} serverProvidedParams={{...}}>
+          <AgencyDashboardPage params={Promise} searchParams={Promise}>
+            <div style={{display:"flex", ...}}>
+              <aside>
+              <div style={{flex:1, ...}}>
+                <header>
+                <div style={{flex:1, ...}}>
+                  <div>
+                  <div>
+                  <div>
+                  <div style={{display:"flex", ...}}>
+                    <div>
+                    <div style={{flex:1,minWidth:0, ...}}>
+                      <div>
+                      <div style={{display:"flex", ...}}>
+                        <DonutChart>
+                          <svg viewBox="0 0 160 160" style={{width:160, ...}}>
+                            <path>
+                            <path>
+                            <path
++                             d="M 16.11676452970768 76.13577616497366 A 64 64 0 0 1 39.026378210400765 30.83535500542..."
+-                             d="M 16.11676452970768 76.13577616497366 A 64 64 0 0 1 39.02637821040076 30.835355005422..."
+                              fill="#9B59B6"
+                            >
+                            <path
++                             d="M 39.026378210400765 30.835355005422052 A 64 64 0 0 1 66.56760946784978 17.4254773522..."
+-                             d="M 39.02637821040076 30.835355005422052 A 64 64 0 0 1 66.56760946784978 17.42547735226..."
+                              fill="#C8202A"
+                            >
+                            ...
+                            ...
+                        ...
+                      ...
+                    ...
+                  ...
+      ...
+ 
+ GET /agency/dashboard 200 in 125ms (next.js: 7ms, proxy.ts: 10ms, application-code: 108ms)
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerLayoutRouter url="/agency/da..." tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} segmentPath={[...]} ...>
+      <SegmentViewNode type="page" pagePath="agency/das...">
+        <SegmentTrieNode>
+        <ClientPageRoot Component={function AgencyDashboardPage} serverProvidedParams={{...}}>
+          <AgencyDashboardPage params={Promise} searchParams={Promise}>
+            <div style={{display:"flex", ...}}>
+              <aside>
+              <div style={{flex:1, ...}}>
+                <header>
+                <div style={{flex:1, ...}}>
+                  <div>
+                  <div>
+                  <div>
+                  <div style={{display:"flex", ...}}>
+                    <div>
+                    <div style={{flex:1,minWidth:0, ...}}>
+                      <div>
+                      <div style={{display:"flex", ...}}>
+                        <DonutChart>
+                          <svg viewBox="0 0 160 160" style={{width:160, ...}}>
+                            <path>
+                            <path>
+                            <path
++                             d="M 16.11676452970768 76.13577616497366 A 64 64 0 0 1 39.026378210400765 30.83535500542..."
+-                             d="M 16.11676452970768 76.13577616497366 A 64 64 0 0 1 39.02637821040076 30.835355005422..."
+                              fill="#9B59B6"
+                            >
+                            <path
++                             d="M 39.026378210400765 30.835355005422052 A 64 64 0 0 1 66.56760946784978 17.4254773522..."
+-                             d="M 39.02637821040076 30.835355005422052 A 64 64 0 0 1 66.56760946784978 17.42547735226..."
+                              fill="#C8202A"
+                            >
+                            ...
+                            ...
+                        ...
+                      ...
+                    ...
+                  ...
+      ...
+ 
+ GET /agency/dashboard 200 in 113ms (next.js: 8ms, proxy.ts: 10ms, application-code: 94ms)
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerLayoutRouter url="/agency/da..." tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} segmentPath={[...]} ...>
+      <SegmentViewNode type="page" pagePath="agency/das...">
+        <SegmentTrieNode>
+        <ClientPageRoot Component={function AgencyDashboardPage} serverProvidedParams={{...}}>
+          <AgencyDashboardPage params={Promise} searchParams={Promise}>
+            <div style={{display:"flex", ...}}>
+              <aside>
+              <div style={{flex:1, ...}}>
+                <header>
+                <div style={{flex:1, ...}}>
+                  <div>
+                  <div>
+                  <div>
+                  <div style={{display:"flex", ...}}>
+                    <div>
+                    <div style={{flex:1,minWidth:0, ...}}>
+                      <div>
+                      <div style={{display:"flex", ...}}>
+                        <DonutChart>
+                          <svg viewBox="0 0 160 160" style={{width:160, ...}}>
+                            <path>
+                            <path>
+                            <path
++                             d="M 16.11676452970768 76.13577616497366 A 64 64 0 0 1 39.026378210400765 30.83535500542..."
+-                             d="M 16.11676452970768 76.13577616497366 A 64 64 0 0 1 39.02637821040076 30.835355005422..."
+                              fill="#9B59B6"
+                            >
+                            <path
++                             d="M 39.026378210400765 30.835355005422052 A 64 64 0 0 1 66.56760946784978 17.4254773522..."
+-                             d="M 39.02637821040076 30.835355005422052 A 64 64 0 0 1 66.56760946784978 17.42547735226..."
+                              fill="#C8202A"
+                            >
+                            ...
+                            ...
+                        ...
+                      ...
+                    ...
+                  ...
+      ...
+ 
+ GET /dashboard 200 in 148ms (next.js: 32ms, proxy.ts: 8ms, application-code: 108ms)
+ GET /agency-profile 200 in 118ms (next.js: 38ms, proxy.ts: 10ms, application-code: 70ms)
+ GET /agency/dashboard 200 in 146ms (next.js: 8ms, proxy.ts: 11ms, application-code: 128ms)
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerLayoutRouter url="/agency/da..." tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} segmentPath={[...]} ...>
+      <SegmentViewNode type="page" pagePath="agency/das...">
+        <SegmentTrieNode>
+        <ClientPageRoot Component={function AgencyDashboardPage} serverProvidedParams={{...}}>
+          <AgencyDashboardPage params={Promise} searchParams={Promise}>
+            <div style={{display:"flex", ...}}>
+              <aside>
+              <div style={{flex:1, ...}}>
+                <header>
+                <div style={{flex:1, ...}}>
+                  <div>
+                  <div>
+                  <div>
+                  <div style={{display:"flex", ...}}>
+                    <div>
+                    <div style={{flex:1,minWidth:0, ...}}>
+                      <div>
+                      <div style={{display:"flex", ...}}>
+                        <DonutChart>
+                          <svg viewBox="0 0 160 160" style={{width:160, ...}}>
+                            <path>
+                            <path>
+                            <path
++                             d="M 16.11676452970768 76.13577616497366 A 64 64 0 0 1 39.026378210400765 30.83535500542..."
+-                             d="M 16.11676452970768 76.13577616497366 A 64 64 0 0 1 39.02637821040076 30.835355005422..."
+                              fill="#9B59B6"
+                            >
+                            <path
++                             d="M 39.026378210400765 30.835355005422052 A 64 64 0 0 1 66.56760946784978 17.4254773522..."
+-                             d="M 39.02637821040076 30.835355005422052 A 64 64 0 0 1 66.56760946784978 17.42547735226..."
+                              fill="#C8202A"
+                            >
+                            ...
+                            ...
+                        ...
+                      ...
+                    ...
+                  ...
+      ...
+ 
+✓ Compiled in 86ms
+ GET /dashboard 200 in 375ms (next.js: 230ms, proxy.ts: 93ms, application-code: 52ms)
+ GET /agency/dashboard 200 in 383ms (next.js: 106ms, proxy.ts: 97ms, application-code: 180ms)
+ GET /dashboard 200 in 151ms (next.js: 4ms, proxy.ts: 4ms, application-code: 143ms)
+✓ Compiled in 86ms
+ GET /agency/dashboard 200 in 315ms (next.js: 107ms, proxy.ts: 47ms, application-code: 161ms)
+ GET /dashboard 200 in 259ms (next.js: 214ms, proxy.ts: 6ms, application-code: 38ms)
+⨯ ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant).
+
+ GET /agency/dashboard 500 in 734ms (next.js: 293ms, proxy.ts: 11ms, application-code: 430ms)
+⨯ ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant).
+
+⨯ ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant).
+
+ GET /agency/dashboard 500 in 72ms (next.js: 17ms, proxy.ts: 33ms, application-code: 22ms)
+ GET /agency/dashboard 500 in 70ms (next.js: 24ms, proxy.ts: 34ms, application-code: 12ms)
+[browser] Uncaught Error: ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant).
+
+⨯ ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant).
+
+ GET /agency/dashboard 500 in 28ms (next.js: 8ms, proxy.ts: 6ms, application-code: 13ms)
+[browser] Uncaught Error: ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant).
+
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+⨯ ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant).
+
+ GET /agency/dashboard 500 in 22ms (next.js: 7ms, proxy.ts: 4ms, application-code: 12ms)
+[browser] Uncaught Error: ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant).
+
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+⨯ ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant).
+
+ GET /agency/dashboard 500 in 23ms (next.js: 8ms, proxy.ts: 6ms, application-code: 8ms)
+[browser] Uncaught Error: ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant).
+
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+⨯ ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant).
+
+ GET /agency/dashboard 500 in 23ms (next.js: 9ms, proxy.ts: 4ms, application-code: 9ms)
+[browser] Uncaught Error: ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant).
+
+✓ Compiled in 172ms
+ GET /agency/dashboard 500 in 371ms (next.js: 301ms, proxy.ts: 56ms, application-code: 14ms)
+[browser] Uncaught Error: ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant).
+
+    at Array.map (<anonymous>)
+✓ Compiled in 71ms
+⨯ ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant).
+
+⨯ ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant).
+
+ GET /agency/dashboard 500 in 49ms (next.js: 9ms, proxy.ts: 25ms, application-code: 15ms)
+[browser] Uncaught Error: ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant).
+
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+⨯ ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant).
+
+ GET /agency/dashboard 500 in 23ms (next.js: 6ms, proxy.ts: 3ms, application-code: 13ms)
+[browser] Uncaught Error: ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant).
+
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+[browser] ./app/(aspirant)
+You cannot have two parallel pages that resolve to the same path. Please check /(agency)/dashboard and /(aspirant). 
+✓ Compiled in 287ms
+ GET /agency/dashboard 200 in 294ms (next.js: 79ms, proxy.ts: 28ms, application-code: 187ms)
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerLayoutRouter url="/agency/da..." tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} segmentPath={[...]} ...>
+      <SegmentViewNode type="page" pagePath="agency/das...">
+        <SegmentTrieNode>
+        <ClientPageRoot Component={function AgencyDashboardPage} serverProvidedParams={{...}}>
+          <AgencyDashboardPage params={Promise} searchParams={Promise}>
+            <div style={{display:"flex", ...}}>
+              <header>
+              <div style={{display:"flex", ...}}>
+                <aside>
+                <div style={{flex:1, ...}}>
+                  <div>
+                  <div>
+                  <div>
+                  <div style={{display:"flex", ...}}>
+                    <div>
+                    <div style={{flex:1,minWidth:0, ...}}>
+                      <div>
+                      <div style={{display:"flex", ...}}>
+                        <DonutChart>
+                          <svg viewBox="0 0 160 160" style={{width:160, ...}}>
+                            <path>
+                            <path>
+                            <path
++                             d="M 16.11676452970768 76.13577616497366 A 64 64 0 0 1 39.026378210400765 30.83535500542..."
+-                             d="M 16.11676452970768 76.13577616497366 A 64 64 0 0 1 39.02637821040076 30.835355005422..."
+                              fill="#9B59B6"
+                            >
+                            <path
++                             d="M 39.026378210400765 30.835355005422052 A 64 64 0 0 1 66.56760946784978 17.4254773522..."
+-                             d="M 39.02637821040076 30.835355005422052 A 64 64 0 0 1 66.56760946784978 17.42547735226..."
+                              fill="#C8202A"
+                            >
+                            ...
+                            ...
+                        ...
+                      ...
+                    ...
+                  ...
+      ...
+ 
+✓ Compiled in 176ms
+ GET /agency/dashboard 200 in 392ms (next.js: 148ms, proxy.ts: 51ms, application-code: 193ms)
+ GET /agency/dashboard 200 in 155ms (next.js: 14ms, proxy.ts: 13ms, application-code: 128ms)
+ GET /agency/dashboard 200 in 55ms (next.js: 9ms, proxy.ts: 5ms, application-code: 41ms)
+✓ Compiled in 146ms
+ GET /agency/dashboard 200 in 450ms (next.js: 139ms, proxy.ts: 45ms, application-code: 266ms)
+ GET /agency/dashboard 200 in 219ms (next.js: 8ms, proxy.ts: 8ms, application-code: 202ms)
+ GET /agency/dashboard 200 in 167ms (next.js: 29ms, proxy.ts: 25ms, application-code: 114ms)
+ GET /agency/dashboard 200 in 195ms (next.js: 6ms, proxy.ts: 7ms, application-code: 182ms)
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerLayoutRouter url="/agency/da..." tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} segmentPath={[...]} ...>
+      <SegmentViewNode type="page" pagePath="agency/das...">
+        <SegmentTrieNode>
+        <ClientPageRoot Component={function AgencyDashboardPage} serverProvidedParams={{...}}>
+          <AgencyDashboardPage params={Promise} searchParams={Promise}>
+            <div style={{display:"flex", ...}}>
+              <header>
+              <div style={{display:"flex", ...}}>
+                <aside>
+                <div style={{flex:1, ...}}>
+                  <div>
+                  <div>
+                  <div>
+                  <div style={{display:"flex", ...}}>
+                    <div>
+                    <div style={{flex:1,minWidth:0, ...}}>
+                      <div>
+                      <div style={{display:"flex", ...}}>
+                        <DonutChart>
+                          <svg viewBox="0 0 160 160" style={{width:160, ...}}>
+                            <path>
+                            <path>
+                            <path
++                             d="M 16.11676452970768 76.13577616497366 A 64 64 0 0 1 39.026378210400765 30.83535500542..."
+-                             d="M 16.11676452970768 76.13577616497366 A 64 64 0 0 1 39.02637821040076 30.835355005422..."
+                              fill="#9B59B6"
+                            >
+                            <path
++                             d="M 39.026378210400765 30.835355005422052 A 64 64 0 0 1 66.56760946784978 17.4254773522..."
+-                             d="M 39.02637821040076 30.835355005422052 A 64 64 0 0 1 66.56760946784978 17.42547735226..."
+                              fill="#C8202A"
+                            >
+                            ...
+                            ...
+                        ...
+                      ...
+                    ...
+      ...
+ 
+✓ Compiled in 54ms
+ GET /agency/dashboard 200 in 322ms (next.js: 112ms, proxy.ts: 139ms, application-code: 71ms)
+✓ Compiled in 172ms
+ GET /agency/dashboard 200 in 425ms (next.js: 101ms, proxy.ts: 71ms, application-code: 253ms)
+ GET /agency/dashboard 200 in 204ms (next.js: 15ms, proxy.ts: 9ms, application-code: 180ms)
+ GET /agency/dashboard 200 in 188ms (next.js: 20ms, proxy.ts: 9ms, application-code: 159ms)
+ GET /agency/dashboard 200 in 187ms (next.js: 49ms, proxy.ts: 10ms, application-code: 129ms)
+ GET /agency/dashboard 200 in 217ms (next.js: 75ms, proxy.ts: 11ms, application-code: 130ms)
+ GET /agency/dashboard 200 in 217ms (next.js: 98ms, proxy.ts: 6ms, application-code: 112ms)
+ GET /agency/dashboard 200 in 203ms (next.js: 7ms, proxy.ts: 4ms, application-code: 191ms)
+ GET /agency/dashboard 200 in 187ms (next.js: 7ms, proxy.ts: 8ms, application-code: 171ms)
+ GET /agency/dashboard 200 in 212ms (next.js: 17ms, proxy.ts: 11ms, application-code: 184ms)
+ GET /agency/dashboard 200 in 208ms (next.js: 40ms, proxy.ts: 8ms, application-code: 160ms)
+ GET /agency/dashboard 200 in 229ms (next.js: 64ms, proxy.ts: 5ms, application-code: 160ms)
+ GET /agency/dashboard 200 in 229ms (next.js: 32ms, proxy.ts: 55ms, application-code: 142ms)
+ GET /agency/dashboard 200 in 223ms (next.js: 10ms, proxy.ts: 8ms, application-code: 206ms)
+ GET /agency/dashboard 200 in 185ms (next.js: 11ms, proxy.ts: 23ms, application-code: 150ms)
+ GET /agency/dashboard 200 in 187ms (next.js: 17ms, proxy.ts: 27ms, application-code: 143ms)
+ GET /agency/dashboard 200 in 188ms (next.js: 43ms, proxy.ts: 29ms, application-code: 116ms)
+ GET /agency/dashboard 200 in 200ms (next.js: 59ms, proxy.ts: 7ms, application-code: 135ms)
+ GET /agency/dashboard 200 in 173ms (next.js: 51ms, proxy.ts: 4ms, application-code: 118ms)
+ GET /agency/dashboard 200 in 209ms (next.js: 11ms, proxy.ts: 4ms, application-code: 194ms)
+ GET /agency/dashboard 200 in 209ms (next.js: 21ms, proxy.ts: 25ms, application-code: 163ms)
+ GET /agency/dashboard 200 in 205ms (next.js: 45ms, proxy.ts: 6ms, application-code: 154ms)
+ GET /agency/dashboard 200 in 203ms (next.js: 39ms, proxy.ts: 34ms, application-code: 130ms)
+ GET /agency/dashboard 200 in 207ms (next.js: 38ms, proxy.ts: 30ms, application-code: 138ms)
+ GET /agency/dashboard 200 in 178ms (next.js: 34ms, proxy.ts: 30ms, application-code: 113ms)
+ GET /agency/dashboard 200 in 203ms (next.js: 11ms, proxy.ts: 9ms, application-code: 184ms)
+ GET /agency/dashboard 200 in 201ms (next.js: 38ms, proxy.ts: 5ms, application-code: 159ms)
+ GET /agency/dashboard 200 in 199ms (next.js: 12ms, proxy.ts: 34ms, application-code: 153ms)
+ GET /agency/dashboard 200 in 198ms (next.js: 38ms, proxy.ts: 35ms, application-code: 125ms)
+ GET /agency/dashboard 200 in 193ms (next.js: 34ms, proxy.ts: 30ms, application-code: 129ms)
+ GET /agency/dashboard 200 in 148ms (next.js: 31ms, proxy.ts: 8ms, application-code: 109ms)
+ GET /agency/dashboard 200 in 200ms (next.js: 11ms, proxy.ts: 8ms, application-code: 182ms)
+ GET /agency/dashboard 200 in 204ms (next.js: 35ms, proxy.ts: 5ms, application-code: 164ms)
+ GET /agency/dashboard 200 in 201ms (next.js: 14ms, proxy.ts: 30ms, application-code: 158ms)
+ GET /agency/dashboard 200 in 200ms (next.js: 36ms, proxy.ts: 31ms, application-code: 133ms)
+ GET /agency/dashboard 200 in 202ms (next.js: 62ms, proxy.ts: 5ms, application-code: 135ms)
+ GET /agency/dashboard 200 in 201ms (next.js: 31ms, proxy.ts: 7ms, application-code: 164ms)
+ GET /agency/dashboard 200 in 196ms (next.js: 10ms, proxy.ts: 11ms, application-code: 175ms)
+ GET /agency/dashboard 200 in 192ms (next.js: 36ms, proxy.ts: 5ms, application-code: 151ms)
+ GET /agency/dashboard 200 in 190ms (next.js: 35ms, proxy.ts: 5ms, application-code: 150ms)
+ GET /agency/dashboard 200 in 191ms (next.js: 35ms, proxy.ts: 31ms, application-code: 125ms)
+ GET /agency/dashboard 200 in 182ms (next.js: 36ms, proxy.ts: 29ms, application-code: 117ms)
+ GET /agency/dashboard 200 in 127ms (next.js: 30ms, proxy.ts: 7ms, application-code: 91ms)
+ GET /agency/dashboard 200 in 67ms (next.js: 8ms, proxy.ts: 4ms, application-code: 55ms)
+ GET /agency/dashboard 200 in 60ms (next.js: 6ms, proxy.ts: 28ms, application-code: 26ms)
+✓ Compiled in 37ms
+ GET /agency/dashboard 200 in 156ms (next.js: 82ms, proxy.ts: 29ms, application-code: 45ms)
+ GET /admin/dashboard 200 in 621ms (next.js: 406ms, proxy.ts: 6ms, application-code: 210ms)
+ GET /admin/dashboard 200 in 135ms (next.js: 7ms, proxy.ts: 9ms, application-code: 119ms)
+ GET /admin/dashboard 200 in 135ms (next.js: 7ms, proxy.ts: 13ms, application-code: 115ms)
+✓ Compiled in 154ms
+ GET /agency/dashboard 200 in 803ms (next.js: 154ms, proxy.ts: 53ms, application-code: 597ms)
+ GET /admin/dashboard 200 in 803ms (next.js: 458ms, proxy.ts: 54ms, application-code: 291ms)
+ GET /agency/dashboard 200 in 303ms (next.js: 22ms, proxy.ts: 12ms, application-code: 269ms)
+ GET /admin/dashboard 200 in 294ms (next.js: 60ms, proxy.ts: 6ms, application-code: 228ms)
+ GET /agency/dashboard 200 in 183ms (next.js: 16ms, proxy.ts: 10ms, application-code: 157ms)
+ GET /admin/dashboard 200 in 106ms (next.js: 21ms, proxy.ts: 15ms, application-code: 69ms)
+✓ Compiled in 454ms
+ GET /admin/dashboard 200 in 552ms (next.js: 221ms, proxy.ts: 46ms, application-code: 285ms)
+ GET /admin/dashboard 200 in 226ms (next.js: 13ms, proxy.ts: 15ms, application-code: 197ms)
+ GET /admin/dashboard 200 in 111ms (next.js: 23ms, proxy.ts: 8ms, application-code: 80ms)
+✓ Compiled in 173ms
+ GET /admin/dashboard 200 in 572ms (next.js: 174ms, proxy.ts: 43ms, application-code: 355ms)
+ GET /admin/dashboard 200 in 284ms (next.js: 11ms, proxy.ts: 13ms, application-code: 260ms)
+ GET /admin/dashboard 200 in 202ms (next.js: 24ms, proxy.ts: 16ms, application-code: 162ms)
+ GET / 200 in 271ms (next.js: 27ms, proxy.ts: 11ms, application-code: 233ms)
+ GET / 200 in 217ms (next.js: 82ms, proxy.ts: 92ms, application-code: 43ms)
+ GET /admin/dashboard 200 in 225ms (next.js: 26ms, proxy.ts: 8ms, application-code: 192ms)
+ GET /admin/dashboard 200 in 142ms (next.js: 9ms, proxy.ts: 7ms, application-code: 126ms)
+ GET /agency/dashboard 200 in 147ms (next.js: 24ms, proxy.ts: 10ms, application-code: 113ms)
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerLayoutRouter url="/agency/da..." tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} segmentPath={[...]} ...>
+      <SegmentViewNode type="page" pagePath="agency/das...">
+        <SegmentTrieNode>
+        <ClientPageRoot Component={function AgencyDashboardPage} serverProvidedParams={{...}}>
+          <AgencyDashboardPage params={Promise} searchParams={Promise}>
+            <div style={{display:"flex", ...}}>
+              <header>
+              <div style={{display:"flex", ...}}>
+                <aside>
+                <div style={{flex:1, ...}}>
+                  <div>
+                  <div>
+                  <div>
+                  <div style={{display:"flex", ...}}>
+                    <div>
+                    <div style={{flex:1,minWidth:0, ...}}>
+                      <div>
+                      <div style={{display:"flex", ...}}>
+                        <DonutChart>
+                          <svg viewBox="0 0 160 160" style={{width:160, ...}}>
+                            <path>
+                            <path>
+                            <path
++                             d="M 16.11676452970768 76.13577616497366 A 64 64 0 0 1 39.026378210400765 30.83535500542..."
+-                             d="M 16.11676452970768 76.13577616497366 A 64 64 0 0 1 39.02637821040076 30.835355005422..."
+                              fill="#9B59B6"
+                            >
+                            <path
++                             d="M 39.026378210400765 30.835355005422052 A 64 64 0 0 1 66.56760946784978 17.4254773522..."
+-                             d="M 39.02637821040076 30.835355005422052 A 64 64 0 0 1 66.56760946784978 17.42547735226..."
+                              fill="#C8202A"
+                            >
+                            ...
+                            ...
+                        ...
+                      ...
+                    ...
+      ...
+ 
+ GET /admin/dashboard 200 in 136ms (next.js: 11ms, proxy.ts: 10ms, application-code: 115ms)
+ GET /dashboard 200 in 172ms (next.js: 25ms, proxy.ts: 9ms, application-code: 138ms)
+✓ Compiled in 182ms
+ GET / 200 in 357ms (next.js: 104ms, proxy.ts: 35ms, application-code: 218ms)
+ GET /agency/dashboard 200 in 323ms (next.js: 153ms, proxy.ts: 6ms, application-code: 164ms)
+ GET /admin/dashboard 200 in 316ms (next.js: 224ms, proxy.ts: 7ms, application-code: 84ms)
+ GET /dashboard 200 in 315ms (next.js: 261ms, proxy.ts: 10ms, application-code: 43ms)
+ GET / 200 in 281ms (next.js: 6ms, proxy.ts: 11ms, application-code: 264ms)
+ GET / 200 in 144ms (next.js: 9ms, proxy.ts: 5ms, application-code: 130ms)
+ GET / 200 in 139ms (next.js: 9ms, proxy.ts: 8ms, application-code: 122ms)
+✓ Compiled in 177ms
+✓ Compiled in 181ms
+ GET / 200 in 442ms (next.js: 372ms, proxy.ts: 10ms, application-code: 59ms)
+ GET /agency/dashboard 200 in 555ms (next.js: 142ms, proxy.ts: 104ms, application-code: 308ms)
+ GET /admin/dashboard 200 in 548ms (next.js: 306ms, proxy.ts: 105ms, application-code: 136ms)
+ GET /dashboard 200 in 554ms (next.js: 218ms, proxy.ts: 103ms, application-code: 233ms)
+ GET / 200 in 182ms (next.js: 6ms, proxy.ts: 6ms, application-code: 170ms)
+ GET / 200 in 91ms (next.js: 10ms, proxy.ts: 5ms, application-code: 77ms)
+ GET /agency/dashboard 200 in 549ms (next.js: 272ms, proxy.ts: 72ms, application-code: 205ms)
+ GET /dashboard 200 in 541ms (next.js: 328ms, proxy.ts: 66ms, application-code: 147ms)
+ GET / 200 in 462ms (next.js: 381ms, proxy.ts: 35ms, application-code: 45ms)
+ GET /admin/dashboard 200 in 473ms (next.js: 347ms, proxy.ts: 32ms, application-code: 94ms)
+ GET / 200 in 327ms (next.js: 8ms, proxy.ts: 13ms, application-code: 306ms)
+✓ Compiled in 104ms
+ GET / 200 in 421ms (next.js: 328ms, proxy.ts: 42ms, application-code: 51ms)
+ GET /dashboard 200 in 433ms (next.js: 109ms, proxy.ts: 36ms, application-code: 288ms)
+ GET /admin/dashboard 200 in 428ms (next.js: 204ms, proxy.ts: 41ms, application-code: 183ms)
+ GET /agency/dashboard 200 in 434ms (next.js: 165ms, proxy.ts: 37ms, application-code: 232ms)
+ GET /dashboard 200 in 367ms (next.js: 113ms, proxy.ts: 47ms, application-code: 207ms)
+ GET /admin/dashboard 200 in 364ms (next.js: 169ms, proxy.ts: 47ms, application-code: 149ms)
+ GET /agency/dashboard 200 in 359ms (next.js: 210ms, proxy.ts: 44ms, application-code: 105ms)
+ GET / 200 in 313ms (next.js: 260ms, proxy.ts: 4ms, application-code: 48ms)
+ GET / 200 in 208ms (next.js: 5ms, proxy.ts: 10ms, application-code: 192ms)
+✓ Compiled in 91ms
+ GET /admin/dashboard 200 in 468ms (next.js: 157ms, proxy.ts: 39ms, application-code: 272ms)
+ GET /agency/dashboard 200 in 463ms (next.js: 254ms, proxy.ts: 41ms, application-code: 168ms)
+ GET /dashboard 200 in 468ms (next.js: 211ms, proxy.ts: 39ms, application-code: 218ms)
+ GET / 200 in 422ms (next.js: 361ms, proxy.ts: 10ms, application-code: 51ms)
+✓ Compiled in 57ms
+ GET / 200 in 401ms (next.js: 309ms, proxy.ts: 47ms, application-code: 45ms)
+ GET /admin/dashboard 200 in 418ms (next.js: 108ms, proxy.ts: 47ms, application-code: 263ms)
+ GET /agency/dashboard 200 in 412ms (next.js: 157ms, proxy.ts: 47ms, application-code: 209ms)
+ GET /dashboard 200 in 410ms (next.js: 200ms, proxy.ts: 46ms, application-code: 164ms)
+ GET / 200 in 185ms (next.js: 8ms, proxy.ts: 6ms, application-code: 171ms)
+ GET / 200 in 88ms (next.js: 10ms, proxy.ts: 4ms, application-code: 74ms)
+✓ Compiled in 192ms
+⚠ Fast Refresh had to perform a full reload when ./app/page.tsx changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET / 200 in 769ms (next.js: 423ms, proxy.ts: 48ms, application-code: 298ms)
+ GET /dashboard 200 in 824ms (next.js: 123ms, proxy.ts: 41ms, application-code: 659ms)
+ GET /admin/dashboard 200 in 822ms (next.js: 175ms, proxy.ts: 45ms, application-code: 602ms)
+ GET /agency/dashboard 200 in 822ms (next.js: 219ms, proxy.ts: 46ms, application-code: 558ms)
+ GET /dashboard 200 in 340ms (next.js: 185ms, proxy.ts: 7ms, application-code: 148ms)
+ GET / 200 in 826ms (next.js: 477ms, proxy.ts: 13ms, application-code: 336ms)
+ GET /admin/dashboard 200 in 120ms (next.js: 11ms, proxy.ts: 9ms, application-code: 101ms)
+ GET /agency/dashboard 200 in 65ms (next.js: 11ms, proxy.ts: 6ms, application-code: 48ms)
+ GET /admin/dashboard 200 in 118ms (next.js: 4ms, proxy.ts: 4ms, application-code: 109ms)
+ GET /admin/dashboard 200 in 117ms (next.js: 9ms, proxy.ts: 4ms, application-code: 104ms)
+✓ Compiled in 79ms
+⚠ Fast Refresh had to perform a full reload when ./app/page.tsx changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET / 200 in 756ms (next.js: 413ms, proxy.ts: 42ms, application-code: 301ms)
+ GET /dashboard 200 in 807ms (next.js: 117ms, proxy.ts: 43ms, application-code: 647ms)
+ GET /admin/dashboard 200 in 795ms (next.js: 211ms, proxy.ts: 41ms, application-code: 544ms)
+ GET /agency/dashboard 200 in 806ms (next.js: 174ms, proxy.ts: 42ms, application-code: 590ms)
+ GET /dashboard 200 in 315ms (next.js: 184ms, proxy.ts: 12ms, application-code: 119ms)
+ GET / 200 in 804ms (next.js: 454ms, proxy.ts: 16ms, application-code: 334ms)
+ GET /agency/dashboard 200 in 118ms (next.js: 8ms, proxy.ts: 8ms, application-code: 102ms)
+ GET /admin/dashboard 200 in 67ms (next.js: 17ms, proxy.ts: 7ms, application-code: 42ms)
+✓ Compiled in 77ms
+ GET / 200 in 408ms (next.js: 195ms, proxy.ts: 42ms, application-code: 171ms)
+ GET /agency/dashboard 200 in 414ms (next.js: 156ms, proxy.ts: 41ms, application-code: 217ms)
+ GET /dashboard 200 in 421ms (next.js: 105ms, proxy.ts: 39ms, application-code: 277ms)
+ GET /admin/dashboard 200 in 411ms (next.js: 313ms, proxy.ts: 42ms, application-code: 56ms)
+ GET /admin/dashboard 200 in 194ms (next.js: 4ms, proxy.ts: 4ms, application-code: 185ms)
+ GET / 200 in 118ms (next.js: 6ms, proxy.ts: 4ms, application-code: 107ms)
+ GET /dashboard 200 in 154ms (next.js: 6ms, proxy.ts: 6ms, application-code: 143ms)
+ GET /dashboard 200 in 410ms (next.js: 137ms, proxy.ts: 58ms, application-code: 215ms)
+ GET /dashboard 200 in 211ms (next.js: 7ms, proxy.ts: 5ms, application-code: 199ms)
+ GET /dashboard 200 in 216ms (next.js: 45ms, proxy.ts: 11ms, application-code: 161ms)
+ GET /dashboard 200 in 220ms (next.js: 19ms, proxy.ts: 11ms, application-code: 190ms)
+ GET /dashboard 200 in 217ms (next.js: 64ms, proxy.ts: 12ms, application-code: 141ms)
+ GET /dashboard 200 in 217ms (next.js: 88ms, proxy.ts: 13ms, application-code: 115ms)
+ GET /dashboard 200 in 234ms (next.js: 6ms, proxy.ts: 5ms, application-code: 224ms)
+ GET /dashboard 200 in 238ms (next.js: 6ms, proxy.ts: 4ms, application-code: 228ms)
+ GET /dashboard 200 in 195ms (next.js: 45ms, proxy.ts: 11ms, application-code: 139ms)
+ GET /dashboard 200 in 226ms (next.js: 19ms, proxy.ts: 11ms, application-code: 196ms)
+ GET /dashboard 200 in 223ms (next.js: 64ms, proxy.ts: 16ms, application-code: 143ms)
+ GET /dashboard 200 in 221ms (next.js: 91ms, proxy.ts: 16ms, application-code: 114ms)
+ GET /dashboard 200 in 216ms (next.js: 7ms, proxy.ts: 5ms, application-code: 204ms)
+ GET /dashboard 200 in 256ms (next.js: 7ms, proxy.ts: 5ms, application-code: 245ms)
+ GET /dashboard 200 in 236ms (next.js: 22ms, proxy.ts: 8ms, application-code: 206ms)
+ GET /dashboard 200 in 235ms (next.js: 47ms, proxy.ts: 9ms, application-code: 179ms)
+ GET /dashboard 200 in 235ms (next.js: 85ms, proxy.ts: 18ms, application-code: 132ms)
+ GET /dashboard 200 in 238ms (next.js: 62ms, proxy.ts: 15ms, application-code: 160ms)
+ GET /dashboard 200 in 287ms (next.js: 5ms, proxy.ts: 4ms, application-code: 278ms)
+ GET /dashboard 200 in 247ms (next.js: 19ms, proxy.ts: 15ms, application-code: 213ms)
+ GET /dashboard 200 in 229ms (next.js: 47ms, proxy.ts: 46ms, application-code: 136ms)
+ GET /dashboard 200 in 200ms (next.js: 72ms, proxy.ts: 19ms, application-code: 109ms)
+ GET /dashboard 200 in 234ms (next.js: 18ms, proxy.ts: 46ms, application-code: 171ms)
+ GET /dashboard 200 in 201ms (next.js: 98ms, proxy.ts: 20ms, application-code: 84ms)
+ GET /dashboard 200 in 231ms (next.js: 9ms, proxy.ts: 6ms, application-code: 216ms)
+ GET /dashboard 200 in 260ms (next.js: 20ms, proxy.ts: 7ms, application-code: 232ms)
+ GET /dashboard 200 in 255ms (next.js: 73ms, proxy.ts: 8ms, application-code: 173ms)
+ GET /dashboard 200 in 260ms (next.js: 52ms, proxy.ts: 9ms, application-code: 200ms)
+ GET /dashboard 200 in 254ms (next.js: 93ms, proxy.ts: 36ms, application-code: 125ms)
+ GET /dashboard 200 in 264ms (next.js: 67ms, proxy.ts: 41ms, application-code: 156ms)
+ GET /dashboard 200 in 305ms (next.js: 9ms, proxy.ts: 8ms, application-code: 287ms)
+ GET /dashboard 200 in 273ms (next.js: 37ms, proxy.ts: 7ms, application-code: 229ms)
+ GET /dashboard 200 in 263ms (next.js: 99ms, proxy.ts: 15ms, application-code: 149ms)
+ GET /dashboard 200 in 268ms (next.js: 118ms, proxy.ts: 21ms, application-code: 129ms)
+ GET /dashboard 200 in 250ms (next.js: 88ms, proxy.ts: 82ms, application-code: 80ms)
+ GET /dashboard 200 in 253ms (next.js: 64ms, proxy.ts: 82ms, application-code: 107ms)
+ GET /dashboard 200 in 207ms (next.js: 5ms, proxy.ts: 5ms, application-code: 197ms)
+ GET /dashboard 200 in 204ms (next.js: 15ms, proxy.ts: 6ms, application-code: 183ms)
+ GET /dashboard 200 in 205ms (next.js: 51ms, proxy.ts: 8ms, application-code: 147ms)
+ GET /dashboard 200 in 204ms (next.js: 75ms, proxy.ts: 7ms, application-code: 122ms)
+ GET /dashboard 200 in 173ms (next.js: 59ms, proxy.ts: 11ms, application-code: 103ms)
+ GET /dashboard 200 in 169ms (next.js: 82ms, proxy.ts: 7ms, application-code: 79ms)
+ GET /dashboard 200 in 141ms (next.js: 5ms, proxy.ts: 5ms, application-code: 131ms)
+ GET /dashboard 200 in 106ms (next.js: 18ms, proxy.ts: 6ms, application-code: 82ms)
+ GET /dashboard 200 in 100ms (next.js: 43ms, proxy.ts: 5ms, application-code: 52ms)
+ GET /dashboard 200 in 92ms (next.js: 35ms, proxy.ts: 32ms, application-code: 26ms)

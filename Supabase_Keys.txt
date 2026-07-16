@@ -1,0 +1,23 @@
+SUPABASE:
+Project URL: https://uejhdqqgmhzyufatyazx.supabase.co
+Anon Key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVlamhkcXFnbWh6eXVmYXR5YXp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwNjU2MzEsImV4cCI6MjA5NTY0MTYzMX0.h3QRQAUDUlzxKIFjHE7rjIhfM3a98wIiAq4BCGq3Tmc
+Service Role Secret: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVlamhkcXFnbWh6eXVmYXR5YXp4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDA2NTYzMSwiZXhwIjoyMDk1NjQxNjMxfQ.IfRHKHcwursjHNgWW-0cRs51wY99w0RadWYDtkWmqiI
+
+Direct Connection String: postgresql://postgres:[YOUR-PASSWORD]@db.uejhdqqgmhzyufatyazx.supabase.co:5432/postgres
+
+
+SilverScreens2024
+
+
+
+
+
+
+
+$1Pass12312341$
+
+Resend
+Twilio
+OpenAI
+Razorpay
+supabase
