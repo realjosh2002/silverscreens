@@ -23,43 +23,60 @@ const CHEST_SIZES   = Array.from({length: 21}, (_, i) => `${30 + i}"`)
 const WAIST_SIZES   = Array.from({length: 21}, (_, i) => `${24 + i}"`)
 const HIP_SIZES     = Array.from({length: 21}, (_, i) => `${30 + i}"`)
 const SHOE_SIZES    = ['UK 4', 'UK 5', 'UK 6', 'UK 7', 'UK 8', 'UK 9', 'UK 10', 'UK 11', 'UK 12']
-const COUNTRIES = ['India', 'USA', 'UK', 'Australia', 'Canada', 'UAE', 'Other']
 
-// Read admin-configured locations from localStorage
+// ── Permanent location config — no localStorage dependency ──
 function useLocationConfig() {
-  const [countries, setCountries] = useState<string[]>(COUNTRIES)
-  const [stateMap,  setStateMap]  = useState<Record<string, string[]>>({})
-  const [cityMap,   setCityMap]   = useState<Record<string, string[]>>({})
+  const countries = ['India', 'USA', 'UK', 'Australia', 'Canada', 'UAE', 'Other']
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('ss_location_config')
-      if (!raw) return
-      const data = JSON.parse(raw)
-      const activeCountries = data.filter((c: any) => c.active).map((c: any) => c.name)
-      const sm: Record<string, string[]> = {}
-      const cm: Record<string, string[]> = {}
-      data.filter((c: any) => c.active).forEach((c: any) => {
-        sm[c.name] = c.states.filter((s: any) => s.active).map((s: any) => s.name)
-        c.states.filter((s: any) => s.active).forEach((s: any) => {
-          cm[s.name] = s.cities.filter((ci: any) => ci.active).map((ci: any) => ci.name)
-        })
-      })
-      setCountries(activeCountries)
-      setStateMap(sm)
-      setCityMap(cm)
-    } catch {}
-  }, [])
+  const stateMap: Record<string, string[]> = {
+    'India': [
+      'Maharashtra', 'Delhi', 'Karnataka', 'Tamil Nadu', 'Telangana',
+      'Gujarat', 'Rajasthan', 'Uttar Pradesh', 'West Bengal', 'Punjab',
+      'Kerala', 'Bihar', 'Madhya Pradesh', 'Goa',
+    ],
+    'USA':       ['California', 'New York'],
+    'UK':        ['England'],
+    'Australia': ['New South Wales', 'Victoria'],
+    'Canada':    ['Ontario', 'British Columbia'],
+    'UAE':       ['Dubai', 'Abu Dhabi'],
+  }
+
+  const cityMap: Record<string, string[]> = {
+    'Maharashtra':        ['Mumbai', 'Pune', 'Nagpur', 'Nashik', 'Aurangabad'],
+    'Delhi':              ['New Delhi', 'Noida', 'Gurugram', 'Faridabad'],
+    'Karnataka':          ['Bengaluru', 'Mysuru', 'Hubballi'],
+    'Tamil Nadu':         ['Chennai', 'Coimbatore', 'Madurai'],
+    'Telangana':          ['Hyderabad', 'Warangal'],
+    'Gujarat':            ['Ahmedabad', 'Surat', 'Vadodara'],
+    'Rajasthan':          ['Jaipur', 'Jodhpur', 'Udaipur'],
+    'Uttar Pradesh':      ['Lucknow', 'Kanpur', 'Agra', 'Varanasi'],
+    'West Bengal':        ['Kolkata', 'Howrah'],
+    'Punjab':             ['Amritsar', 'Ludhiana', 'Chandigarh'],
+    'Kerala':             ['Thiruvananthapuram', 'Kochi', 'Kozhikode'],
+    'Bihar':              ['Patna', 'Gaya'],
+    'Madhya Pradesh':     ['Bhopal', 'Indore', 'Gwalior'],
+    'Goa':                ['Panaji', 'Margao'],
+    'California':         ['Los Angeles', 'San Francisco'],
+    'New York':           ['New York City'],
+    'England':            ['London', 'Manchester'],
+    'New South Wales':    ['Sydney'],
+    'Victoria':           ['Melbourne'],
+    'Ontario':            ['Toronto'],
+    'British Columbia':   ['Vancouver'],
+    'Dubai':              ['Dubai City'],
+    'Abu Dhabi':          ['Abu Dhabi City'],
+  }
 
   return { countries, stateMap, cityMap }
 }
+
 const LANGUAGES     = ['Hindi', 'English', 'Tamil', 'Telugu', 'Kannada', 'Malayalam', 'Bengali', 'Marathi', 'Gujarati', 'Punjabi', 'Urdu', 'Odia', 'Other']
 const EXPERIENCE_LEVELS = ['Fresher', '1 - 2 Years', '2 - 5 Years', '5 - 10 Years', '10+ Years']
 const PROJECT_TYPES = ['Film', 'Web Series', 'TV Series', 'Ad Film', 'Short Film', 'Theatre', 'Music Video', 'Documentary', 'OTT', 'Other']
 const AVAILABLE_FOR = ['Feature Films', 'Short Films', 'Web Series', 'TV Serials', 'TV Commercials', 'Music Videos', 'Modelling', 'Theatre', 'Documentaries', 'Reality Shows', 'Item Numbers', 'Voice Over', 'Print Media', 'Brand Endorsements']
 const MAX_ROLES     = 5
 
-// ── Departments & Roles (from lib/roles.ts — inlined for self-containment) ──
+// ── Departments & Roles ──
 const DEPARTMENTS_AND_ROLES = [
   { department: 'Acting',           roles: ['Hero', 'Heroine', 'Villain', 'Comedian', 'Character Artist', 'Supporting Roles', 'Child Artist'] },
   { department: 'Direction',        roles: ['Director', 'Assistant Director'] },
@@ -99,40 +116,29 @@ const DEPARTMENTS_AND_ROLES = [
   { department: 'Distributor',      roles: ['Distributors'] },
 ]
 
-// ── RingsNRoses cross-platform mapping ──
-// Only departments/roles relevant to weddings & events
-const RNR_DEPARTMENTS = ['Hair & Make Up', 'Singing', 'Dancing', 'Costume']
-
-// Specific roles within those departments that are RNR-eligible
 const RNR_ELIGIBLE_ROLES = [
-  // Hair & Make Up
   'Make Up Artist', 'Key Make Up Artist', 'Make Up Supervisor', 'Hair Stylist', 'Key Hair',
-  // Singing
-  'Singer', 'Vocalist',
-  // Dancing
-  'Choreographer', 'Dancer',
-  // Costume
+  'Singer', 'Vocalist', 'Choreographer', 'Dancer',
   'Costume Designer', 'Costume Supervisor',
-  // Sound & Music (specific roles only)
   'Music Composer', 'Music Composer / Director',
 ]
 
 const STEPS = [
-  { num: 1, label: 'Basic Info' },
-  { num: 2, label: 'Details'    },
-  { num: 3, label: 'Departments'},
-  { num: 4, label: 'Media'      },
-  { num: 5, label: 'Review'     },
+  { num: 1, label: 'Basic Info'   },
+  { num: 2, label: 'Details'      },
+  { num: 3, label: 'Departments'  },
+  { num: 4, label: 'Media'        },
+  { num: 5, label: 'Review'       },
 ]
 
 const mainMenuLinks = [
   { icon: '🏠', label: 'Dashboard',           href: '/dashboard',            badge: 0 },
-  { icon: '👤', label: 'My Profile',           href: '/profile',              badge: 0 },
+  { icon: '👤', label: 'My Profile',           href: '/my-profile',           badge: 0 },
   { icon: '📄', label: 'My Applications',      href: '/my-applications',      badge: 0 },
   { icon: '💬', label: 'Messages',             href: '/messages',             badge: 0 },
   { icon: '🎭', label: 'Auditions',            href: '/auditions',            badge: 0 },
   { icon: '🔖', label: 'Saved Castings',       href: '/saved-castings',       badge: 0 },
-  { icon: '⭐', label: 'Recommended Castings', href: '/recommended-castings', badge: 0 },
+  { icon: '⭐', label: 'Recommended Castings', href: '/recommended',          badge: 0 },
   { icon: '🔔', label: 'Notifications',        href: '/notifications',        badge: 0 },
 ]
 
@@ -156,15 +162,6 @@ const inp: React.CSSProperties = {
   colorScheme: 'dark',
 }
 
-const sel: React.CSSProperties = {
-  ...inp, cursor: 'pointer',
-  appearance: 'none' as const,
-  colorScheme: 'dark',
-  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%23A8B0BD' d='M5 7L1 3h8z'/%3E%3C/svg%3E")`,
-  backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center',
-  backgroundSize: '10px', paddingRight: 28,
-}
-
 const lbl: React.CSSProperties = {
   fontFamily: M, fontSize: 14, fontWeight: 700,
   color: '#A8B0BD', letterSpacing: 0.5,
@@ -172,8 +169,6 @@ const lbl: React.CSSProperties = {
   textTransform: 'uppercase' as const,
 }
 
-
-// ── Custom dark-themed dropdown — replaces native <select> ──
 function Select({
   value, onChange, options, placeholder,
 }: {
@@ -195,7 +190,6 @@ function Select({
 
   return (
     <div ref={ref} style={{ position: 'relative' as const }}>
-      {/* Trigger */}
       <div
         onClick={() => setOpen(v => !v)}
         style={{
@@ -217,7 +211,6 @@ function Select({
           color: '#A8B0BD', fontSize: 10, pointerEvents: 'none' as const,
         }}>▼</span>
       </div>
-      {/* Dropdown list */}
       {open && (
         <div style={{
           position: 'absolute' as const, top: 'calc(100% + 2px)', left: 0, right: 0,
@@ -293,7 +286,6 @@ function MultiSelect({ options, selected, onChange }: { options: string[]; selec
   )
 }
 
-// ── Department + Role selector — Option D chip layout ──
 interface SelectedRole { department: string; role: string }
 
 function DepartmentRoleSelector({
@@ -355,7 +347,6 @@ function DepartmentRoleSelector({
 
   return (
     <div>
-      {/* Header row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <span style={{ fontFamily: M, fontSize: 15, color: '#A8B0BD', letterSpacing: 0.2 }}>
           Tap a department, then pick your roles.{' '}
@@ -367,76 +358,42 @@ function DepartmentRoleSelector({
         }}>{totalRoles} / {MAX_ROLES} selected</span>
       </div>
 
-      {/* Search bar */}
       <div style={{ position: 'relative' as const, marginBottom: 12 }}>
         <span style={{ position: 'absolute' as const, left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: '#6A7080' }}>🔍</span>
         <input
-          type="text"
-          placeholder="Search departments..."
-          value={search}
+          type="text" placeholder="Search departments..." value={search}
           onChange={e => { setSearch(e.target.value); setActiveDept(null) }}
-          style={{
-            width: '100%', padding: '8px 12px 8px 32px',
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 6, color: '#F5F5F5',
-            fontFamily: M, fontSize: 14, outline: 'none',
-            boxSizing: 'border-box' as const,
-          }}
+          style={{ width: '100%', padding: '8px 12px 8px 32px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#F5F5F5', fontFamily: M, fontSize: 14, outline: 'none', boxSizing: 'border-box' as const }}
           onFocus={e => (e.target.style.borderColor = RED)}
           onBlur={e  => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')}
         />
         {search && (
-          <span onClick={() => setSearch('')}
-            style={{ position: 'absolute' as const, right: 10, top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: '#6A7080', fontSize: 15 }}>
-            ✕
-          </span>
+          <span onClick={() => setSearch('')} style={{ position: 'absolute' as const, right: 10, top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: '#6A7080', fontSize: 15 }}>✕</span>
         )}
       </div>
 
-      {/* Max warning */}
       {totalRoles >= MAX_ROLES && (
         <div style={{ marginBottom: 10, padding: '7px 12px', background: 'rgba(200,32,42,0.08)', border: '1px solid rgba(200,32,42,0.2)', borderRadius: 6, fontFamily: M, fontSize: 14, color: RED }}>
           ⚠️ Maximum {MAX_ROLES} roles reached. Remove a role below to add another.
         </div>
       )}
 
-      {/* Department chips */}
       <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 7, marginBottom: 14 }}>
-        {filteredDepts.length === 0 && (
-          <span style={{ fontFamily: M, fontSize: 14, color: '#6A7080' }}>No departments match "{search}"</span>
-        )}
+        {filteredDepts.length === 0 && <span style={{ fontFamily: M, fontSize: 14, color: '#6A7080' }}>No departments match "{search}"</span>}
         {filteredDepts.map(d => {
           const count = selectedRoles.filter(r => r.department === d.department).length
           return (
-            <span key={d.department}
-              onClick={() => setActiveDept(p => p === d.department ? null : d.department)}
-              style={deptChip(d.department)}
-            >
+            <span key={d.department} onClick={() => setActiveDept(p => p === d.department ? null : d.department)} style={deptChip(d.department)}>
               {d.department}
-              {count > 0 && (
-                <span style={{
-                  background: activeDept === d.department ? 'rgba(255,255,255,0.25)' : RED,
-                  color: '#fff', borderRadius: 10, fontSize: 14, fontFamily: M,
-                  fontWeight: 700, padding: '0px 5px', lineHeight: '16px',
-                }}>{count}</span>
-              )}
+              {count > 0 && <span style={{ background: activeDept === d.department ? 'rgba(255,255,255,0.25)' : RED, color: '#fff', borderRadius: 10, fontSize: 14, fontFamily: M, fontWeight: 700, padding: '0px 5px', lineHeight: '16px' }}>{count}</span>}
             </span>
           )
         })}
       </div>
 
-      {/* Role chips panel */}
       {activeDept && (
-        <div style={{
-          padding: '12px 14px', marginBottom: 14,
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(200,32,42,0.2)',
-          borderRadius: 8,
-        }}>
-          <div style={{ fontFamily: M, fontSize: 14, color: RED, letterSpacing: 1, textTransform: 'uppercase' as const, marginBottom: 10 }}>
-            {activeDept} — select roles:
-          </div>
+        <div style={{ padding: '12px 14px', marginBottom: 14, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(200,32,42,0.2)', borderRadius: 8 }}>
+          <div style={{ fontFamily: M, fontSize: 14, color: RED, letterSpacing: 1, textTransform: 'uppercase' as const, marginBottom: 10 }}>{activeDept} — select roles:</div>
           <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 7 }}>
             {activeRoles.map(role => {
               const isSelected = selectedRoles.some(r => r.department === activeDept && r.role === role)
@@ -451,30 +408,14 @@ function DepartmentRoleSelector({
         </div>
       )}
 
-      {/* Selected roles strip */}
       {selectedRoles.length > 0 && (
-        <div style={{
-          padding: '10px 12px',
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: 8,
-        }}>
-          <div style={{ fontFamily: M, fontSize: 14, color: '#6A7080', letterSpacing: 1, textTransform: 'uppercase' as const, marginBottom: 8 }}>
-            Your selected roles:
-          </div>
+        <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8 }}>
+          <div style={{ fontFamily: M, fontSize: 14, color: '#6A7080', letterSpacing: 1, textTransform: 'uppercase' as const, marginBottom: 8 }}>Your selected roles:</div>
           <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
             {selectedRoles.map(r => (
-              <span key={`${r.department}-${r.role}`} style={{
-                display: 'inline-flex', alignItems: 'center', gap: 5,
-                padding: '4px 10px', borderRadius: 20,
-                fontFamily: M, fontSize: 15,
-                background: 'rgba(200,32,42,0.15)',
-                border: `1px solid ${RED}`,
-                color: RED, userSelect: 'none' as const,
-              }}>
+              <span key={`${r.department}-${r.role}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, fontFamily: M, fontSize: 15, background: 'rgba(200,32,42,0.15)', border: `1px solid ${RED}`, color: RED, userSelect: 'none' as const }}>
                 {r.role}
-                <span onClick={() => removeRole(r.department, r.role)}
-                  style={{ cursor: 'pointer', fontSize: 15, lineHeight: 1, opacity: 0.6 }}>×</span>
+                <span onClick={() => removeRole(r.department, r.role)} style={{ cursor: 'pointer', fontSize: 15, lineHeight: 1, opacity: 0.6 }}>×</span>
               </span>
             ))}
           </div>
@@ -484,11 +425,9 @@ function DepartmentRoleSelector({
   )
 }
 
-// ── RingsNRoses Cross-Platform Prompt ──
 function RingsNRosesPrompt({ selectedRoles, onDismiss }: { selectedRoles: SelectedRole[]; onDismiss: () => void }) {
   const matched = selectedRoles.some(r => RNR_ELIGIBLE_ROLES.includes(r.role))
   if (!matched) return null
-
   return (
     <div style={{ marginTop: 16, padding: '16px', background: 'linear-gradient(135deg, rgba(212,166,74,0.08), rgba(200,32,42,0.06))', border: '1px solid rgba(212,166,74,0.3)', borderRadius: 10 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
@@ -499,18 +438,9 @@ function RingsNRosesPrompt({ selectedRoles, onDismiss }: { selectedRoles: Select
             Your selected roles match categories available on <strong style={{ color: '#D4A64A' }}>RingsNRoses</strong>, our wedding vendor marketplace. Expand your visibility and get hired for weddings, events and celebrations too!
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
-            <button onClick={() => window.open('https://www.ringsnroses.com/vendor/signup', '_blank')}
-              style={{ padding: '7px 16px', background: '#D4A64A', border: 'none', borderRadius: 6, color: '#0a0a0a', fontFamily: B, fontSize: 14, letterSpacing: 1, cursor: 'pointer' }}>
-              💍 CREATE VENDOR PROFILE
-            </button>
-            <button onClick={() => window.open('https://www.ringsnroses.com', '_blank')}
-              style={{ padding: '7px 14px', background: 'transparent', border: '1px solid rgba(212,166,74,0.4)', borderRadius: 6, color: '#D4A64A', fontFamily: M, fontSize: 14, cursor: 'pointer' }}>
-              Learn More
-            </button>
-            <button onClick={onDismiss}
-              style={{ padding: '7px 14px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#6A7080', fontFamily: M, fontSize: 14, cursor: 'pointer' }}>
-              Skip for now
-            </button>
+            <button onClick={() => window.open('https://www.ringsnroses.com/vendor/signup', '_blank')} style={{ padding: '7px 16px', background: '#D4A64A', border: 'none', borderRadius: 6, color: '#0a0a0a', fontFamily: B, fontSize: 14, letterSpacing: 1, cursor: 'pointer' }}>💍 CREATE VENDOR PROFILE</button>
+            <button onClick={() => window.open('https://www.ringsnroses.com', '_blank')} style={{ padding: '7px 14px', background: 'transparent', border: '1px solid rgba(212,166,74,0.4)', borderRadius: 6, color: '#D4A64A', fontFamily: M, fontSize: 14, cursor: 'pointer' }}>Learn More</button>
+            <button onClick={onDismiss} style={{ padding: '7px 14px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#6A7080', fontFamily: M, fontSize: 14, cursor: 'pointer' }}>Skip for now</button>
           </div>
         </div>
       </div>
@@ -522,7 +452,7 @@ export default function CreateProfilePage() {
   const router = useRouter()
   const [activeSection, setActiveSection] = useState(1)
   const [showDropdown,  setShowDropdown]  = useState(false)
-  const [sidebarOpen,   setSidebarOpen]   = useState(false)
+  const [sidebarOpen,   setSidebarOpen]   = useState(true)
   const SB_W = sidebarOpen ? 220 : 56
   const [languages, setLanguages] = useState<string[]>([])
   const [availableFor, setAvailableFor] = useState<string[]>([])
@@ -542,205 +472,8 @@ export default function CreateProfilePage() {
   const [pendingDraft, setPendingDraft] = useState<any>(null)
   const [validationError, setValidationError] = useState('')
   const [isEditMode, setIsEditMode] = useState(false)
+  const [userName, setUserName] = useState('')
   const { countries: locationCountries, stateMap, cityMap } = useLocationConfig()
-
-  // On load: detect saved draft and PROMPT user instead of auto-restoring
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('ss_profile_draft')
-      if (!raw) return
-      const draft = JSON.parse(raw)
-      const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
-      // Only restore draft if it belongs to the current user
-      if (draft?.userEmail && draft.userEmail !== u.email) {
-        localStorage.removeItem('ss_profile_draft')
-        return
-      }
-      // Edit mode — auto-restore without prompt
-      if (draft?.editMode) {
-        setIsEditMode(true)
-        applyDraft(draft)
-        return
-      }
-      // Normal draft restore prompt
-      const hasContent = draft?.form?.firstName || draft?.form?.email || draft?.selectedRoles?.length > 0
-      if (draft?.form && !draft.published && hasContent) {
-        setPendingDraft(draft)
-        setShowDraftPrompt(true)
-      }
-    } catch {}
-  }, [])
-
-  const applyDraft = (draft: any) => {
-    if (draft?.form)           setForm(draft.form)
-    if (draft?.languages)     setLanguages(draft.languages)
-    if (draft?.availableFor)  setAvailableFor(draft.availableFor)
-    if (draft?.selectedRoles) setSelectedRoles(draft.selectedRoles)
-    if (draft?.bio)           setBio(draft.bio)
-    if (draft?.activeSection) setActiveSection(draft.activeSection)
-    if (draft?.credits)       setCredits(draft.credits)
-    setDraftRestored(true)
-    setTimeout(() => setDraftRestored(false), 4000)
-  }
-
-  // Load existing profile from API on mount
-  useEffect(() => {
-    async function loadProfile() {
-      const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
-      let token = u.token
-      if (!token) return
-
-      // Refresh token if expiring
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]))
-        if (Date.now() > (payload.exp * 1000) - 5 * 60 * 1000) {
-          if (u.refreshToken) {
-            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-            const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-            const res = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey ?? '' },
-              body: JSON.stringify({ refresh_token: u.refreshToken }),
-            })
-            if (res.ok) {
-              const data = await res.json()
-              if (data.access_token) {
-                token = data.access_token
-                localStorage.setItem('ss_user', JSON.stringify({ ...u, token, refreshToken: data.refresh_token }))
-              }
-            }
-          }
-        }
-      } catch {}
-
-      const res = await fetch('/api/profile/aspirant', { headers: { Authorization: `Bearer ${token}` } })
-      if (!res.ok) return
-      const data = await res.json()
-      const p = data.data?.profile ?? data.profile ?? data
-      if (!p?.first_name) return
-      setIsEditMode(true)
-
-      setForm(prev => ({
-        ...prev,
-        title:         p.title        || prev.title,
-        firstName:     p.first_name   || prev.firstName,
-        lastName:      p.last_name    || prev.lastName,
-        email:         p.profiles?.email || prev.email,
-        mobile:        p.profiles?.phone || prev.mobile,
-        gender:        p.gender       || prev.gender,
-        dob:           p.date_of_birth ? p.date_of_birth.slice(0, 10) : prev.dob,
-        addressLine1:  p.address_line1 || prev.addressLine1,
-        addressLine2:  p.address_line2 || prev.addressLine2,
-        city:          p.city         || prev.city,
-        state:         p.state        || prev.state,
-        pincode:       p.pincode      || prev.pincode,
-        country:       p.country      || prev.country,
-        height:        p.height_cm ? (() => { const t = Math.round(parseFloat(String(p.height_cm)) / 2.54); const ft = Math.floor(t/12); const inch = t%12; return ft > 0 ? `${ft}'${inch}"` : prev.height })() : prev.height,
-        height_cm:     p.height_cm    ? String(p.height_cm) : prev.height_cm,
-        weight:        p.weight_kg    ? `${Math.round(parseFloat(String(p.weight_kg)))} kg` : prev.weight,
-        weight_kg:     p.weight_kg    ? String(p.weight_kg) : prev.weight_kg,
-        hairColor:     p.hair_color   || prev.hairColor,
-        eyeColor:      p.eye_color    || prev.eyeColor,
-        bodyTone:      p.body_tone    || prev.bodyTone,
-        bodyType:      p.body_type    || prev.bodyType,
-        chest:         p.chest_size   ? String(p.chest_size) : prev.chest,
-        waist:         p.waist_size   ? String(p.waist_size) : prev.waist,
-        hip:           p.hip_size     ? String(p.hip_size)   : prev.hip,
-        shoe:          p.shoe_size    ? String(p.shoe_size)  : prev.shoe,
-        experienceLevel: p.experience_level || prev.experienceLevel,
-        profilePhoto:  p.profile_image_url  || prev.profilePhoto,
-      }))
-      if (p.languages?.length)   setLanguages(p.languages)
-      if (p.availability?.length) setAvailableFor(p.availability)
-      if (p.about_me)             setBio(p.about_me)
-      if (p.category && p.role)   setSelectedRoles([{ department: p.category, role: p.role }])
-      if (p.social_links?.credits?.length) setCredits(p.social_links.credits)
-
-      if (Array.isArray(p.aspirant_media)) {
-        const photos = p.aspirant_media.filter((m: any) => m.type === 'image').map((m: any) => m.url)
-        const primaryPhoto = p.aspirant_media.find((m: any) => m.is_primary && m.type === 'image')
-        if (photos.length) setGalleryPhotos(photos)
-        if (primaryPhoto) setForm(prev => ({ ...prev, profilePhoto: primaryPhoto.url }))
-        const videos = p.aspirant_media.filter((m: any) => m.type === 'video').map((m: any) => m.url)
-        if (videos.length) setShowreelUrl(videos[0])
-        if (videos.length > 1) setOtherVideos(videos.slice(1))
-      }
-    }
-    loadProfile()
-  }, [])
-
-  const continueDraft = () => {
-    applyDraft(pendingDraft)
-    setShowDraftPrompt(false)
-    setPendingDraft(null)
-  }
-
-  const startFresh = () => {
-    localStorage.removeItem('ss_profile_draft')
-    setShowDraftPrompt(false)
-    setPendingDraft(null)
-  }
-
-  // ── Auto-save category to ss_user the moment roles are selected ──
-  // This ensures the pricing page can show RingsNRoses eligibility
-  // even if the user navigates there before clicking PUBLISH PROFILE.
-  useEffect(() => {
-    if (selectedRoles.length === 0) return
-    try {
-      const ELIGIBLE = [
-        'Makeup Artist', 'Hair Stylist', 'Costume Designer',
-        'Choreographer', 'Photographer', 'Videographer',
-        'Music Composer', 'Singer',
-      ]
-      // Prefer a role that matches RingsNRoses eligibility; fall back to first role
-      const eligibleRole = selectedRoles.find(r => ELIGIBLE.includes(r.role))?.role
-        || selectedRoles[0].role
-      const existing = JSON.parse(localStorage.getItem('ss_user') || '{}')
-      localStorage.setItem('ss_user', JSON.stringify({
-        ...existing,
-        category: selectedRoles[0]?.role || '',
-        departments: [...new Set(selectedRoles.map(r => r.department))],
-        roles: selectedRoles,
-        name: `${form.firstName} ${form.lastName}`.trim() || existing.name || '',
-        verifiedAt: existing.verifiedAt || new Date().toISOString(),
-      }))
-    } catch {}
-  }, [selectedRoles])
-
-  // ── Validate required fields per section before advancing ──
-  const validateSection = (section: number): boolean => {
-    setValidationError('')
-    if (section === 1) {
-      if (!form.title)     { setValidationError('Please select a Title.');              return false }
-      if (!form.firstName) { setValidationError('First Name is required.');             return false }
-      if (!form.lastName)  { setValidationError('Last Name is required.');              return false }
-      if (!form.email)     { setValidationError('Email Address is required.');          return false }
-      if (!form.mobile)    { setValidationError('Mobile Number is required.');          return false }
-      if (!form.gender)    { setValidationError('Please select a Gender.');             return false }
-      if (!form.dob)       { setValidationError('Date of Birth is required.');          return false }
-      if (!form.city)      { setValidationError('City is required.');                   return false }
-      if (!form.state)     { setValidationError('State is required.');                  return false }
-      if (!form.country)   { setValidationError('Please select a Country.');            return false }
-      if (languages.length === 0) { setValidationError('Please select at least one Language.'); return false }
-    }
-    if (section === 2) {
-      if (!form.height)   { setValidationError('Please select your Height.');           return false }
-      if (!form.weight)   { setValidationError('Please select your Weight.');           return false }
-      if (!form.bodyType) { setValidationError('Please select a Body Type.');           return false }
-      if (!form.bodyTone) { setValidationError('Please select a Body Tone.');           return false }
-      if (!form.eyeColor) { setValidationError('Please select Eye Colour.');            return false }
-      if (!form.hairColor){ setValidationError('Please select Hair Colour.');           return false }
-      if (availableFor.length === 0) { setValidationError('Please select at least one option for Available For.'); return false }
-    }
-    if (section === 3) {
-      if (selectedRoles.length === 0) { setValidationError('Please select at least one Department & Role.'); return false }
-      if (!bio.trim())                { setValidationError('About Me is required. Tell casting directors about yourself.'); return false }
-    }
-    if (section === 4) {
-      if (!form.profilePhoto) { setValidationError('A Profile Photo is required before publishing.'); return false }
-    }
-    return true
-  }
 
   const [form, setForm] = useState({
     title: '', firstName: '', lastName: '', email: '', mobile: '',
@@ -754,28 +487,171 @@ export default function CreateProfilePage() {
   })
 
   const [credits, setCredits] = useState<{ type: string; year: string; role: string; title: string; description: string }[]>([])
-  const addCredit = () => setCredits(p => [...p, { type: 'Film', year: '', role: '', title: '', description: '' }])
+  const addCredit    = () => setCredits(p => [...p, { type: 'Film', year: '', role: '', title: '', description: '' }])
   const removeCredit = (i: number) => setCredits(p => p.filter((_, idx) => idx !== i))
   const updateCredit = (i: number, key: string, val: string) => setCredits(p => p.map((c, idx) => idx === i ? { ...c, [key]: val } : c))
 
-  const completion = Math.min(100, Math.round(
-    [form.firstName, form.lastName, form.dob, form.city, form.profilePhoto, bio, selectedRoles.length > 0].filter(Boolean).length / 7 * 100
-  ))
+  const applyDraft = (draft: any) => {
+    if (draft?.form)          setForm(draft.form)
+    if (draft?.languages)     setLanguages(draft.languages)
+    if (draft?.availableFor)  setAvailableFor(draft.availableFor)
+    if (draft?.selectedRoles) setSelectedRoles(draft.selectedRoles)
+    if (draft?.bio)           setBio(draft.bio)
+    if (draft?.activeSection) setActiveSection(draft.activeSection)
+    if (draft?.credits)       setCredits(draft.credits)
+    setDraftRestored(true)
+    setTimeout(() => setDraftRestored(false), 4000)
+  }
 
-  const g = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const val = e.target.value
-    setForm(p => ({ ...p, [k]: val }))
-    setValidationError('')
-    // Keep ss_user name in sync as the user types
-    if (k === 'firstName' || k === 'lastName') {
+  useEffect(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
+      if (u.name) setUserName(u.name)
+
+      const raw = localStorage.getItem('ss_profile_draft')
+      if (!raw) return
+      const draft = JSON.parse(raw)
+      if (draft?.userEmail && draft.userEmail !== u.email) {
+        localStorage.removeItem('ss_profile_draft')
+        return
+      }
+      if (draft?.editMode) { setIsEditMode(true); applyDraft(draft); return }
+      const hasContent = draft?.form?.firstName || draft?.form?.email || draft?.selectedRoles?.length > 0
+      if (draft?.form && !draft.published && hasContent) {
+        setPendingDraft(draft)
+        setShowDraftPrompt(true)
+      }
+    } catch {}
+
+    async function loadProfile() {
       try {
-        const existing = JSON.parse(localStorage.getItem('ss_user') || '{}')
-        const newName = k === 'firstName'
-          ? `${val} ${form.lastName}`.trim()
-          : `${form.firstName} ${val}`.trim()
-        localStorage.setItem('ss_user', JSON.stringify({ ...existing, name: newName, verifiedAt: existing.verifiedAt || new Date().toISOString() }))
+        const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
+        let token = u.token
+        if (!token) return
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]))
+          if (Date.now() > (payload.exp * 1000) - 5 * 60 * 1000) {
+            if (u.refreshToken) {
+              const supabaseUrl  = process.env.NEXT_PUBLIC_SUPABASE_URL
+              const supabaseKey  = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+              const res = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey ?? '' },
+                body: JSON.stringify({ refresh_token: u.refreshToken }),
+              })
+              if (res.ok) {
+                const data = await res.json()
+                if (data.access_token) {
+                  token = data.access_token
+                  localStorage.setItem('ss_user', JSON.stringify({ ...u, token, refreshToken: data.refresh_token }))
+                }
+              }
+            }
+          }
+        } catch {}
+
+        const res = await fetch('/api/profile/aspirant', { headers: { Authorization: `Bearer ${token}` } })
+        if (!res.ok) return
+        const data = await res.json()
+        const p = data.data?.profile ?? data.profile ?? data
+        if (!p?.first_name) return
+        setIsEditMode(true)
+        setForm(prev => ({
+          ...prev,
+          title:         p.title         || prev.title,
+          firstName:     p.first_name    || prev.firstName,
+          lastName:      p.last_name     || prev.lastName,
+          email:         p.profiles?.email || prev.email,
+          mobile:        p.profiles?.phone || prev.mobile,
+          gender:        p.gender        || prev.gender,
+          dob:           p.date_of_birth ? p.date_of_birth.slice(0, 10) : prev.dob,
+          addressLine1:  p.address_line1 || prev.addressLine1,
+          addressLine2:  p.address_line2 || prev.addressLine2,
+          city:          p.city          || prev.city,
+          state:         p.state         || prev.state,
+          pincode:       p.pincode       || prev.pincode,
+          country:       p.country       || prev.country,
+          height:        p.height_cm ? (() => { const t = Math.round(parseFloat(String(p.height_cm)) / 2.54); const ft = Math.floor(t/12); const inch = t%12; return ft > 0 ? `${ft}'${inch}"` : prev.height })() : prev.height,
+          height_cm:     p.height_cm     ? String(p.height_cm) : prev.height_cm,
+          weight:        p.weight_kg     ? `${Math.round(parseFloat(String(p.weight_kg)))} kg` : prev.weight,
+          weight_kg:     p.weight_kg     ? String(p.weight_kg) : prev.weight_kg,
+          hairColor:     p.hair_color    || prev.hairColor,
+          eyeColor:      p.eye_color     || prev.eyeColor,
+          bodyTone:      p.body_tone     || prev.bodyTone,
+          bodyType:      p.body_type     || prev.bodyType,
+          chest:         p.chest_size    ? `${p.chest_size}"` : prev.chest,
+          waist:         p.waist_size    ? `${p.waist_size}"` : prev.waist,
+          hip:           p.hip_size      ? `${p.hip_size}"`   : prev.hip,
+          shoe:          p.shoe_size     ? String(p.shoe_size) : prev.shoe,
+          experienceLevel: p.experience_level || prev.experienceLevel,
+          profilePhoto:  p.profile_image_url  || prev.profilePhoto,
+        }))
+        if (p.languages?.length)    setLanguages(p.languages)
+        if (p.availability?.length) setAvailableFor(p.availability)
+        if (p.about_me)             setBio(p.about_me)
+        if (p.category && p.role)   setSelectedRoles([{ department: p.category, role: p.role }])
+        if (p.social_links?.credits?.length) setCredits(p.social_links.credits)
+        if (Array.isArray(p.aspirant_media)) {
+          const photos = p.aspirant_media.filter((m: any) => m.type === 'image').map((m: any) => m.url)
+          const primaryPhoto = p.aspirant_media.find((m: any) => m.is_primary && m.type === 'image')
+          if (photos.length) setGalleryPhotos(photos)
+          if (primaryPhoto)  setForm(prev => ({ ...prev, profilePhoto: primaryPhoto.url }))
+          const videos = p.aspirant_media.filter((m: any) => m.type === 'video').map((m: any) => m.url)
+          if (videos.length) setShowreelUrl(videos[0])
+          if (videos.length > 1) setOtherVideos(videos.slice(1))
+        }
       } catch {}
     }
+    loadProfile()
+  }, [])
+
+  useEffect(() => {
+    if (selectedRoles.length === 0) return
+    try {
+      const existing = JSON.parse(localStorage.getItem('ss_user') || '{}')
+      localStorage.setItem('ss_user', JSON.stringify({
+        ...existing,
+        category:    selectedRoles[0]?.role || '',
+        departments: [...new Set(selectedRoles.map(r => r.department))],
+        roles:       selectedRoles,
+        name:        `${form.firstName} ${form.lastName}`.trim() || existing.name || '',
+        verifiedAt:  existing.verifiedAt || new Date().toISOString(),
+      }))
+    } catch {}
+  }, [selectedRoles])
+
+  const validateSection = (section: number): boolean => {
+    setValidationError('')
+    if (section === 1) {
+      if (!form.title)          { setValidationError('Please select a Title.');              return false }
+      if (!form.firstName)      { setValidationError('First Name is required.');             return false }
+      if (!form.lastName)       { setValidationError('Last Name is required.');              return false }
+      if (!form.email)          { setValidationError('Email Address is required.');          return false }
+      if (!form.mobile)         { setValidationError('Mobile Number is required.');          return false }
+      if (!form.gender)         { setValidationError('Please select a Gender.');             return false }
+      if (!form.dob)            { setValidationError('Date of Birth is required.');          return false }
+      if (!form.city)           { setValidationError('City is required.');                   return false }
+      if (!form.state)          { setValidationError('State is required.');                  return false }
+      if (!form.country)        { setValidationError('Please select a Country.');            return false }
+      if (languages.length === 0) { setValidationError('Please select at least one Language.'); return false }
+    }
+    if (section === 2) {
+      if (!form.height)         { setValidationError('Please select your Height.');          return false }
+      if (!form.weight)         { setValidationError('Please select your Weight.');          return false }
+      if (!form.bodyType)       { setValidationError('Please select a Body Type.');          return false }
+      if (!form.bodyTone)       { setValidationError('Please select a Body Tone.');          return false }
+      if (!form.eyeColor)       { setValidationError('Please select Eye Colour.');           return false }
+      if (!form.hairColor)      { setValidationError('Please select Hair Colour.');          return false }
+      if (availableFor.length === 0) { setValidationError('Please select at least one option for Available For.'); return false }
+    }
+    if (section === 3) {
+      if (selectedRoles.length === 0) { setValidationError('Please select at least one Department & Role.'); return false }
+      if (!bio.trim())                { setValidationError('About Me is required.'); return false }
+    }
+    if (section === 4) {
+      if (!form.profilePhoto) { setValidationError('A Profile Photo is required before publishing.'); return false }
+    }
+    return true
   }
 
   const uploadFile = async (file: File, type: string, isPrimary = false): Promise<string | null> => {
@@ -797,8 +673,7 @@ export default function CreateProfilePage() {
   const handleProfilePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const preview = URL.createObjectURL(file)
-    setForm(p => ({ ...p, profilePhoto: preview })) // show preview immediately
+    setForm(p => ({ ...p, profilePhoto: URL.createObjectURL(file) }))
     const url = await uploadFile(file, 'photo', true)
     if (url) setForm(p => ({ ...p, profilePhoto: url }))
   }
@@ -806,27 +681,18 @@ export default function CreateProfilePage() {
   const handleGallery = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     if (!files.length) return
-    // Show previews immediately
     const previews = files.map(f => URL.createObjectURL(f))
     setGalleryPhotos(p => [...p, ...previews].slice(0, 10))
-    // Upload each file
     for (let i = 0; i < files.length; i++) {
       const url = await uploadFile(files[i], 'photo', false)
-      if (url) {
-        setGalleryPhotos(p => {
-          const updated = [...p]
-          const idx = updated.indexOf(previews[i])
-          if (idx !== -1) updated[idx] = url
-          return updated
-        })
-      }
+      if (url) setGalleryPhotos(p => { const u = [...p]; const idx = u.indexOf(previews[i]); if (idx !== -1) u[idx] = url; return u })
     }
   }
 
   const handleShowreel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    setShowreelUrl(URL.createObjectURL(file)) // preview
+    setShowreelUrl(URL.createObjectURL(file))
     const url = await uploadFile(file, 'video', false)
     if (url) setShowreelUrl(url)
   }
@@ -838,54 +704,57 @@ export default function CreateProfilePage() {
     setOtherVideos(p => [...p, ...previews].slice(0, 5))
     for (let i = 0; i < files.length; i++) {
       const url = await uploadFile(files[i], 'video', false)
-      if (url) {
-        setOtherVideos(p => {
-          const updated = [...p]
-          const idx = updated.indexOf(previews[i])
-          if (idx !== -1) updated[idx] = url
-          return updated
-        })
-      }
+      if (url) setOtherVideos(p => { const u = [...p]; const idx = u.indexOf(previews[i]); if (idx !== -1) u[idx] = url; return u })
     }
   }
 
   const handleSaveDraft = () => {
     try {
       const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
-      const draft = {
-        form, languages, availableFor, selectedRoles, bio,
+      localStorage.setItem('ss_profile_draft', JSON.stringify({
+        form, languages, availableFor, selectedRoles, bio, credits,
         activeSection, savedAt: new Date().toISOString(), userEmail: u.email,
-      }
-      localStorage.setItem('ss_profile_draft', JSON.stringify(draft))
+      }))
     } catch {}
     setSavedDraft(true)
     setTimeout(() => setSavedDraft(false), 3000)
   }
 
-  const focus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-    (e.target.style.borderColor = RED)
-  const blur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-    (e.target.style.borderColor = 'rgba(255,255,255,0.1)')
+  const focus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => (e.target.style.borderColor = RED)
+  const blur  = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')
 
-  // Unique departments selected
+  const g = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const val = e.target.value
+    setForm(p => ({ ...p, [k]: val }))
+    setValidationError('')
+    if (k === 'firstName' || k === 'lastName') {
+      try {
+        const existing = JSON.parse(localStorage.getItem('ss_user') || '{}')
+        const newName = k === 'firstName' ? `${val} ${form.lastName}`.trim() : `${form.firstName} ${val}`.trim()
+        setUserName(newName)
+        localStorage.setItem('ss_user', JSON.stringify({ ...existing, name: newName, verifiedAt: existing.verifiedAt || new Date().toISOString() }))
+      } catch {}
+    }
+  }
+
   const selectedDepts = [...new Set(selectedRoles.map(r => r.department))]
+  const displayName   = `${form.firstName} ${form.lastName}`.trim() || userName || 'Your Name'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' as const, height: '100vh', overflow: 'hidden', background: '#050505', fontFamily: M, color: '#F5F5F5' }}>
 
-      {/* ═══ FULL-WIDTH HEADER — logo far left, user right (matches dashboard) ═══ */}
+      {/* ═══ HEADER ═══ */}
       <div style={{ height: 60, flexShrink: 0, background: '#0B0F14', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', padding: '0 24px', gap: 16, zIndex: 50 }}>
         <SilverScreensLogo size="md" href="/" showTagline={false} />
         <div style={{ flex: 1 }} />
-        {/* User dropdown */}
         <div style={{ position: 'relative' as const }}>
           <div onClick={() => setShowDropdown(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '6px 10px', background: 'rgba(255,255,255,0.04)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)' }}>
             <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(200,32,42,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>👤</div>
             <div>
-              <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: '#F5F5F5' }}>{`${form.firstName} ${form.lastName}`.trim() || 'Your Name'}</div>
-              <div style={{ fontFamily: M, fontSize: 14, color: '#6A7080' }}>Aspirant</div>
+              <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: '#F5F5F5' }}>{displayName}</div>
+              <div style={{ fontFamily: M, fontSize: 13, color: '#6A7080' }}>Aspirant</div>
             </div>
-            <span style={{ color: '#6A7080', fontSize: 14 }}>▼</span>
+            <span style={{ color: '#6A7080', fontSize: 12 }}>▼</span>
           </div>
           {showDropdown && (
             <>
@@ -893,18 +762,16 @@ export default function CreateProfilePage() {
               <div style={{ position: 'absolute' as const, top: 48, right: 0, width: 160, background: '#0B0F14', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, overflow: 'hidden', zIndex: 200, boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
                 {profileMenuLinks.map(l => (
                   <div key={l.href} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', cursor: 'pointer', fontSize: 14 }}
-                    onClick={() => {
-                      setShowDropdown(false)
-                      if (l.label === 'Logout') {
-                        localStorage.removeItem('ss_user')
-                        window.location.replace('/login')
-                      } else {
-                        router.push(l.href)
-                      }
-                    }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  ><span>{l.icon}</span><span style={{ fontFamily: M, fontSize: 14, color: l.label === 'Logout' ? '#ef4444' : '#A8B0BD' }}>{l.label}</span>
+                    onClick={() => {
+                      setShowDropdown(false)
+                      if (l.label === 'Logout') { localStorage.removeItem('ss_user'); window.location.replace('/login') }
+                      else router.push(l.href)
+                    }}
+                  >
+                    <span>{l.icon}</span>
+                    <span style={{ fontFamily: M, color: l.label === 'Logout' ? '#ef4444' : '#A8B0BD' }}>{l.label}</span>
                   </div>
                 ))}
               </div>
@@ -913,34 +780,35 @@ export default function CreateProfilePage() {
         </div>
       </div>
 
-      {/* ═══ BODY — sidebar + content ═══ */}
+      {/* ═══ BODY ═══ */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
-        {/* ═══ COLLAPSIBLE SIDEBAR ═══ */}
+        {/* ═══ SIDEBAR ═══ */}
         <aside style={{ width: SB_W, flexShrink: 0, background: '#0B0F14', borderRight: '1px solid rgba(255,255,255,0.07)', display: 'flex', flexDirection: 'column' as const, overflowY: 'auto' as const, overflowX: 'hidden', transition: 'width 0.2s ease' }}>
-          {/* Toggle button */}
+          {/* Toggle */}
           <div style={{ display: 'flex', justifyContent: sidebarOpen ? 'flex-end' : 'center', padding: sidebarOpen ? '10px 12px 0' : '10px 0 0', flexShrink: 0 }}>
             <button onClick={() => setSidebarOpen(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', width: 30, height: 30, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)', fontSize: 16 }}
               onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.07)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'none')}
             >{sidebarOpen ? '‹' : '☰'}</button>
           </div>
-          {/* User card — visible when open */}
+          {/* User card */}
           {sidebarOpen && (
             <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(200,32,42,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>👤</div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: '#F5F5F5', whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' }}>{`${form.firstName} ${form.lastName}`.trim() || 'Your Name'}</div>
+                <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: '#F5F5F5', whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayName}</div>
                 <div style={{ fontFamily: M, fontSize: 13, color: '#6A7080' }}>Aspirant</div>
               </div>
             </div>
           )}
-          {/* Nav items */}
+          {/* Nav */}
           <nav style={{ flex: 1, padding: '8px 0' }}>
             {sidebarOpen && <div style={{ fontFamily: M, fontSize: 12, letterSpacing: 1.5, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' as const, padding: '8px 16px 4px' }}>Main Menu</div>}
             {mainMenuLinks.map(l => (
               <div key={l.href} title={!sidebarOpen ? l.label : undefined}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'space-between' : 'center', padding: sidebarOpen ? '9px 16px' : '10px 0', cursor: 'pointer' }}
+                onClick={() => router.push(l.href)}
                 onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
@@ -966,13 +834,24 @@ export default function CreateProfilePage() {
         {/* ═══ MAIN ═══ */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, overflow: 'hidden' }}>
 
+          {/* Step tabs */}
+          <div style={{ flexShrink: 0, background: '#0B0F14', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex' }}>
+            {STEPS.map(s => (
+              <button key={s.num} onClick={() => setActiveSection(s.num)}
+                style={{ flex: 1, padding: '14px 8px', background: 'none', border: 'none', borderBottom: `2px solid ${activeSection === s.num ? RED : 'transparent'}`, cursor: 'pointer', fontFamily: M, fontSize: 15, fontWeight: activeSection === s.num ? 700 : 400, color: activeSection === s.num ? RED : activeSection > s.num ? '#22c55e' : '#6A7080', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              >
+                {activeSection > s.num ? '✓' : s.num}. {s.label}
+              </button>
+            ))}
+          </div>
+
           {/* Content */}
           <div style={{ display: 'flex', gap: 20, padding: '20px 24px', flex: 1, overflowY: 'auto' as const }}>
 
             {/* Form */}
             <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' as const, gap: 16 }}>
 
-              {/* Page heading */}
+              {/* Heading */}
               <div>
                 <div style={{ fontFamily: B, fontSize: 26, letterSpacing: 1, color: '#F5F5F5' }}>{isEditMode ? 'EDIT YOUR PROFILE' : 'CREATE YOUR PROFILE'}</div>
                 <div style={{ fontFamily: M, fontSize: 15, color: '#6A7080', marginTop: 3 }}>{isEditMode ? 'Update your details — changes will be sent for admin review' : 'Complete your profile to start applying for castings'}</div>
@@ -984,32 +863,30 @@ export default function CreateProfilePage() {
                   <span style={{ fontSize: 18, flexShrink: 0 }}>✏️</span>
                   <div>
                     <div style={{ fontFamily: B, fontSize: 15, color: GOLD }}>Editing your profile</div>
-                    <div style={{ fontFamily: M, fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>Your changes will be submitted for admin review before going live. Your current profile remains visible until approved.</div>
+                    <div style={{ fontFamily: M, fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>Your changes will be submitted for admin review before going live.</div>
                   </div>
                   <button onClick={() => router.push('/my-profile')} style={{ marginLeft: 'auto', flexShrink: 0, background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, padding: '6px 14px', color: 'rgba(255,255,255,0.5)', fontFamily: M, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
                 </div>
               )}
 
-              {/* Draft prompt — shown when a previous draft is detected */}
+              {/* Draft prompt */}
               {showDraftPrompt && (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '14px 18px', background: 'rgba(212,166,74,0.07)', border: '1px solid rgba(212,166,74,0.25)', borderRadius: 10, flexWrap: 'wrap' as const }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ fontSize: 20 }}>📝</span>
                     <div>
                       <div style={{ fontFamily: B, fontSize: 15, color: GOLD }}>You have an unfinished profile draft</div>
-                      <div style={{ fontFamily: M, fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>
-                        Saved on {pendingDraft?.savedAt ? new Date(pendingDraft.savedAt).toLocaleString() : 'earlier'}
-                      </div>
+                      <div style={{ fontFamily: M, fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>Saved on {pendingDraft?.savedAt ? new Date(pendingDraft.savedAt).toLocaleString() : 'earlier'}</div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
-                    <button onClick={startFresh} style={{ padding: '8px 16px', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6, color: 'rgba(255,255,255,0.5)', fontFamily: M, fontSize: 14, cursor: 'pointer' }}>Start Fresh</button>
-                    <button onClick={continueDraft} style={{ padding: '8px 20px', background: GOLD, border: 'none', borderRadius: 6, color: '#000', fontFamily: B, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>Continue Draft →</button>
+                    <button onClick={() => { localStorage.removeItem('ss_profile_draft'); setShowDraftPrompt(false); setPendingDraft(null) }} style={{ padding: '8px 16px', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6, color: 'rgba(255,255,255,0.5)', fontFamily: M, fontSize: 14, cursor: 'pointer' }}>Start Fresh</button>
+                    <button onClick={() => { applyDraft(pendingDraft); setShowDraftPrompt(false); setPendingDraft(null) }} style={{ padding: '8px 20px', background: GOLD, border: 'none', borderRadius: 6, color: '#000', fontFamily: B, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>Continue Draft →</button>
                   </div>
                 </div>
               )}
 
-              {/* Draft restored confirmation */}
+              {/* Draft restored */}
               {draftRestored && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 8 }}>
                   <span style={{ fontSize: 16 }}>✅</span>
@@ -1017,38 +894,7 @@ export default function CreateProfilePage() {
                 </div>
               )}
 
-              {/* Progress */}
-              <div style={{ background: '#0B0F14', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '16px 20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                  <div>
-                    <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: '#F5F5F5' }}>Profile Completion</div>
-                    <div style={{ fontFamily: M, fontSize: 14, color: '#6A7080', marginTop: 2 }}>Complete all sections to increase your visibility</div>
-                  </div>
-                  <div style={{ position: 'relative' as const, width: 52, height: 52 }}>
-                    <svg width="52" height="52" viewBox="0 0 52 52">
-                      <circle cx="26" cy="26" r="20" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="4" />
-                      <circle cx="26" cy="26" r="20" fill="none" stroke={RED} strokeWidth="4"
-                        strokeDasharray={`${2 * Math.PI * 20}`}
-                        strokeDashoffset={`${2 * Math.PI * 20 * (1 - completion / 100)}`}
-                        strokeLinecap="round" transform="rotate(-90 26 26)" />
-                    </svg>
-                    <div style={{ position: 'absolute' as const, inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: B, fontSize: 14, color: '#F5F5F5' }}>{completion}%</div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                  {STEPS.map((s, i) => (
-                    <div key={s.num} style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', position: 'relative' as const }}>
-                      {i < STEPS.length - 1 && <div style={{ position: 'absolute' as const, top: 13, left: '50%', right: '-50%', height: 2, background: activeSection > s.num ? RED : 'rgba(255,255,255,0.08)' }} />}
-                      <div onClick={() => setActiveSection(s.num)} style={{ width: 26, height: 26, borderRadius: '50%', zIndex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: B, fontSize: 14, background: activeSection === s.num ? RED : activeSection > s.num ? 'rgba(200,32,42,0.3)' : 'rgba(255,255,255,0.06)', border: `2px solid ${activeSection >= s.num ? RED : 'rgba(255,255,255,0.1)'}`, color: activeSection >= s.num ? '#F5F5F5' : '#6A7080', transition: 'all 0.3s' }}>
-                        {activeSection > s.num ? '✓' : s.num}
-                      </div>
-                      <div style={{ fontFamily: M, fontSize: 14, color: activeSection >= s.num ? RED : '#6A7080', marginTop: 5, fontWeight: activeSection === s.num ? 700 : 400, whiteSpace: 'nowrap' as const }}>{s.label}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* ── SECTION 1: Basic Info ── */}
+              {/* SECTION 1 */}
               {activeSection === 1 && (
                 <div style={{ background: '#0B0F14', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '20px' }}>
                   <SecHead num={1} icon="👤" title="Basic Information" sub="Personal details for your profile" />
@@ -1082,7 +928,7 @@ export default function CreateProfilePage() {
                 </div>
               )}
 
-              {/* ── SECTION 2: Physical Details ── */}
+              {/* SECTION 2 */}
               {activeSection === 2 && (
                 <div style={{ background: '#0B0F14', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '20px' }}>
                   <SecHead num={2} icon="📏" title="Physical Details" sub="Your physical measurements and appearance" />
@@ -1102,75 +948,45 @@ export default function CreateProfilePage() {
                 </div>
               )}
 
-              {/* ── SECTION 3: Departments & Roles ── */}
+              {/* SECTION 3 */}
               {activeSection === 3 && (
                 <div style={{ background: '#0B0F14', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '20px' }}>
                   <SecHead num={3} icon="🎬" title="Departments & Roles" sub="Select the departments and roles that best represent your skills (max 5 roles)" />
                   <DepartmentRoleSelector selectedRoles={selectedRoles} onChange={setSelectedRoles} />
-
-                  {/* About Me */}
                   <div style={{ marginTop: 20 }}>
                     <F label="About Me" required>
-                      <textarea
-                        placeholder="Tell casting directors about yourself, your experience, training, achievements and what makes you unique..."
-                        value={bio} onChange={e => setBio(e.target.value.slice(0, 500))} rows={5}
-                        style={{ ...inp, resize: 'vertical' as const, cursor: 'text' }}
-                        onFocus={focus} onBlur={blur}
-                      />
+                      <textarea placeholder="Tell casting directors about yourself, your experience, training, achievements and what makes you unique..." value={bio} onChange={e => setBio(e.target.value.slice(0, 500))} rows={5} style={{ ...inp, resize: 'vertical' as const, cursor: 'text' }} onFocus={focus} onBlur={blur} />
                       <div style={{ fontFamily: M, fontSize: 14, color: '#6A7080', marginTop: 4, textAlign: 'right' as const }}>{bio.length} / 500</div>
                     </F>
                   </div>
-
-                  {/* Experience & Credits */}
                   <div style={{ marginTop: 20 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                       <div style={{ fontFamily: M, fontSize: 15, fontWeight: 700, color: '#F5F5F5' }}>Experience & Credits</div>
                       <button onClick={addCredit} style={{ background: RED, border: 'none', borderRadius: 6, padding: '6px 14px', color: '#fff', fontFamily: M, fontSize: 14, cursor: 'pointer' }}>+ Add Project</button>
                     </div>
                     {credits.length === 0 && (
-                      <div style={{ textAlign: 'center', padding: '20px', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: 8, color: '#6A7080', fontFamily: M, fontSize: 14 }}>
-                        No credits added yet. Click "+ Add Project" to add your past work.
-                      </div>
+                      <div style={{ textAlign: 'center' as const, padding: '20px', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: 8, color: '#6A7080', fontFamily: M, fontSize: 14 }}>No credits added yet. Click "+ Add Project" to add your past work.</div>
                     )}
                     {credits.map((c, i) => (
                       <div key={i} style={{ marginBottom: 10, padding: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto', gap: 10, marginBottom: 8 }}>
-                          <div>
-                            <div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>Project Type</div>
-                            <Select value={c.type} onChange={v => updateCredit(i, 'type', v)} options={PROJECT_TYPES} placeholder='-- Select Type --' />
-                          </div>
-                          <div>
-                            <div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>Year</div>
-                            <input type="number" min="1990" max={new Date().getFullYear()} placeholder="2024" value={c.year} onChange={e => updateCredit(i, 'year', e.target.value)} style={{ ...inp, padding: '8px 10px' }} />
-                          </div>
-                          <div>
-                            <div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>Role</div>
-                            <input type="text" placeholder="e.g. Lead, Supporting" value={c.role} onChange={e => updateCredit(i, 'role', e.target.value)} style={{ ...inp, padding: '8px 10px' }} />
-                          </div>
-                          <div>
-                            <div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>Project Title</div>
-                            <input type="text" placeholder="e.g. Leo 2" value={c.title} onChange={e => updateCredit(i, 'title', e.target.value)} style={{ ...inp, padding: '8px 10px' }} />
-                          </div>
+                          <div><div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>Project Type</div><Select value={c.type} onChange={v => updateCredit(i, 'type', v)} options={PROJECT_TYPES} placeholder='-- Select Type --' /></div>
+                          <div><div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>Year</div><input type="number" min="1990" max={new Date().getFullYear()} placeholder="2024" value={c.year} onChange={e => updateCredit(i, 'year', e.target.value)} style={{ ...inp, padding: '8px 10px' }} /></div>
+                          <div><div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>Role</div><input type="text" placeholder="e.g. Lead, Supporting" value={c.role} onChange={e => updateCredit(i, 'role', e.target.value)} style={{ ...inp, padding: '8px 10px' }} /></div>
+                          <div><div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>Project Title</div><input type="text" placeholder="e.g. Leo 2" value={c.title} onChange={e => updateCredit(i, 'title', e.target.value)} style={{ ...inp, padding: '8px 10px' }} /></div>
                           <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 2 }}>
                             <button onClick={() => removeCredit(i)} style={{ background: 'rgba(200,32,42,0.15)', border: '1px solid rgba(200,32,42,0.3)', borderRadius: 6, padding: '8px 10px', color: RED, cursor: 'pointer', fontFamily: M, fontSize: 14 }}>✕</button>
                           </div>
                         </div>
-                        <div>
-                          <div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>About the Project (optional)</div>
-                          <textarea placeholder="Describe your role, the project, director, production house..." value={c.description} onChange={e => updateCredit(i, 'description', e.target.value)} rows={2} style={{ ...inp, resize: 'vertical' as const, cursor: 'text', padding: '8px 10px' }} />
-                        </div>
+                        <div><div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>About the Project (optional)</div><textarea placeholder="Describe your role, the project, director, production house..." value={c.description} onChange={e => updateCredit(i, 'description', e.target.value)} rows={2} style={{ ...inp, resize: 'vertical' as const, cursor: 'text', padding: '8px 10px' }} /></div>
                       </div>
                     ))}
                   </div>
-
-                  {/* RingsNRoses cross-platform prompt */}
-                  {showRnRPrompt && selectedRoles.length > 0 && (
-                    <RingsNRosesPrompt selectedRoles={selectedRoles} onDismiss={() => setShowRnRPrompt(false)} />
-                  )}
+                  {showRnRPrompt && selectedRoles.length > 0 && <RingsNRosesPrompt selectedRoles={selectedRoles} onDismiss={() => setShowRnRPrompt(false)} />}
                 </div>
               )}
 
-              {/* ── SECTION 4: Media ── */}
+              {/* SECTION 4 */}
               {activeSection === 4 && (
                 <div style={{ background: '#0B0F14', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '20px' }}>
                   <SecHead num={4} icon="🖼️" title="Media & Portfolio" sub="Add photos, videos and showreels to highlight your talent" />
@@ -1189,7 +1005,7 @@ export default function CreateProfilePage() {
                       </div>
                       <input ref={profilePhotoRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleProfilePhoto} />
                     </div>
-                    {/* Gallery Photos */}
+                    {/* Gallery */}
                     <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 16 }}>
                       <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: '#F5F5F5', marginBottom: 4 }}>Gallery Photos <span style={{ color: '#6A7080', fontWeight: 400 }}>{galleryPhotos.length}/10</span></div>
                       <div style={{ fontFamily: M, fontSize: 14, color: '#6A7080', marginBottom: 10 }}>Add at least 3 photos (no watermarks)</div>
@@ -1249,11 +1065,10 @@ export default function CreateProfilePage() {
                 </div>
               )}
 
-              {/* ── SECTION 5: Review ── */}
+              {/* SECTION 5 */}
               {activeSection === 5 && (
                 <div style={{ background: '#0B0F14', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '20px' }}>
                   <SecHead num={5} icon="✅" title="Review & Submit" sub="Review your profile before publishing" />
-
                   {form.profilePhoto && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16, padding: '12px 14px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 6 }}>
                       <img src={form.profilePhoto} style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${RED}` }} alt="" />
@@ -1264,20 +1079,14 @@ export default function CreateProfilePage() {
                       <span style={{ color: '#22c55e', fontSize: 18, marginLeft: 'auto' }}>✓ Photo Added</span>
                     </div>
                   )}
-
-                  {/* Personal Details */}
                   <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: RED, letterSpacing: 2, textTransform: 'uppercase' as const, marginBottom: 8 }}>Personal Details</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
                     {[
-                      ['Full Name',     `${form.title} ${form.firstName} ${form.lastName}`.trim() || '—'],
-                      ['Email',         form.email    || '—'],
-                      ['Mobile',        form.mobile   || '—'],
-                      ['Gender',        form.gender],
-                      ['Date of Birth', form.dob      || '—'],
-                      ['Country',       form.country],
-                      ['City',          form.city     || '—'],
-                      ['State',         form.state    || '—'],
-                      ['Languages',     languages.join(', ') || '—'],
+                      ['Full Name', `${form.title} ${form.firstName} ${form.lastName}`.trim() || '—'],
+                      ['Email', form.email || '—'], ['Mobile', form.mobile || '—'],
+                      ['Gender', form.gender], ['Date of Birth', form.dob || '—'],
+                      ['Country', form.country], ['City', form.city || '—'],
+                      ['State', form.state || '—'], ['Languages', languages.join(', ') || '—'],
                     ].map(([k, v]) => (
                       <div key={k} style={{ padding: '9px 12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 6 }}>
                         <div style={{ fontFamily: M, fontSize: 14, color: '#6A7080', textTransform: 'uppercase' as const, letterSpacing: 1, marginBottom: 3 }}>{k}</div>
@@ -1285,8 +1094,6 @@ export default function CreateProfilePage() {
                       </div>
                     ))}
                   </div>
-
-                  {/* Physical Details */}
                   <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: RED, letterSpacing: 2, textTransform: 'uppercase' as const, marginBottom: 8 }}>Physical Details</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 16 }}>
                     {[
@@ -1300,20 +1107,16 @@ export default function CreateProfilePage() {
                       </div>
                     ))}
                   </div>
-
-                  {/* Departments & Roles */}
                   <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: RED, letterSpacing: 2, textTransform: 'uppercase' as const, marginBottom: 8 }}>Departments & Roles</div>
                   <div style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 6, marginBottom: 16 }}>
-                    {selectedRoles.length === 0 ? (
-                      <span style={{ fontFamily: M, fontSize: 14, color: '#6A7080' }}>— No roles selected</span>
-                    ) : (
+                    {selectedRoles.length === 0 ? <span style={{ fontFamily: M, fontSize: 14, color: '#6A7080' }}>— No roles selected</span> : (
                       <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
                         {selectedDepts.map(dept => (
                           <div key={dept} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const }}>
                             <span style={{ fontFamily: M, fontSize: 14, color: '#6A7080', minWidth: 120 }}>{dept}</span>
                             <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const }}>
                               {selectedRoles.filter(r => r.department === dept).map(r => (
-                                <span key={r.role} style={{ padding: '2px 9px', borderRadius: 12, fontSize: 14, fontFamily: M, fontWeight: 600, background: 'rgba(200,32,42,0.12)', border: `1px solid rgba(200,32,42,0.3)`, color: RED }}>{r.role}</span>
+                                <span key={r.role} style={{ padding: '2px 9px', borderRadius: 12, fontSize: 14, fontFamily: M, fontWeight: 600, background: 'rgba(200,32,42,0.12)', border: '1px solid rgba(200,32,42,0.3)', color: RED }}>{r.role}</span>
                               ))}
                             </div>
                           </div>
@@ -1321,8 +1124,6 @@ export default function CreateProfilePage() {
                       </div>
                     )}
                   </div>
-
-                  {/* Available For */}
                   <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: RED, letterSpacing: 2, textTransform: 'uppercase' as const, marginBottom: 8 }}>Available For</div>
                   <div style={{ padding: '9px 12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 6, marginBottom: 16 }}>
                     <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4 }}>
@@ -1331,8 +1132,6 @@ export default function CreateProfilePage() {
                       )) : <span style={{ fontFamily: M, fontSize: 14, color: '#6A7080' }}>—</span>}
                     </div>
                   </div>
-
-                  {/* Media */}
                   <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: RED, letterSpacing: 2, textTransform: 'uppercase' as const, marginBottom: 8 }}>Media</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 16 }}>
                     {[
@@ -1347,7 +1146,6 @@ export default function CreateProfilePage() {
                       </div>
                     ))}
                   </div>
-
                   {bio && (
                     <div style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 6 }}>
                       <div style={{ fontFamily: M, fontSize: 14, color: '#6A7080', textTransform: 'uppercase' as const, letterSpacing: 1, marginBottom: 4 }}>About Me</div>
@@ -1357,7 +1155,7 @@ export default function CreateProfilePage() {
                 </div>
               )}
 
-              {/* Validation error banner */}
+              {/* Validation error */}
               {validationError && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', background: 'rgba(200,32,42,0.1)', border: '1px solid rgba(200,32,42,0.35)', borderRadius: 8, marginBottom: 4 }}>
                   <span style={{ fontSize: 16, flexShrink: 0 }}>⚠️</span>
@@ -1365,74 +1163,54 @@ export default function CreateProfilePage() {
                 </div>
               )}
 
-              {/* Bottom Actions */}
+              {/* Bottom actions */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: '#0B0F14', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10 }}>
                 <div style={{ display: 'flex', gap: 10 }}>
                   {activeSection > 1 && (
-                    <button onClick={() => { setValidationError(''); setActiveSection(s => s - 1); }} style={{ padding: '9px 20px', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, color: '#A8B0BD', fontFamily: B, fontSize: 14, letterSpacing: 1, cursor: 'pointer' }}>← BACK</button>
+                    <button onClick={() => { setValidationError(''); setActiveSection(s => s - 1) }} style={{ padding: '9px 20px', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, color: '#A8B0BD', fontFamily: B, fontSize: 14, letterSpacing: 1, cursor: 'pointer' }}>← BACK</button>
                   )}
                   <button onClick={handleSaveDraft} style={{ padding: '9px 20px', background: 'transparent', border: `1px solid ${savedDraft ? '#22c55e' : 'rgba(255,255,255,0.15)'}`, borderRadius: 6, color: savedDraft ? '#22c55e' : '#A8B0BD', fontFamily: B, fontSize: 14, letterSpacing: 1, cursor: 'pointer', transition: 'all 0.2s' }}>
                     {savedDraft ? '✓ SAVED' : 'SAVE DRAFT'}
                   </button>
                 </div>
                 {activeSection < 5
-                  ? <button onClick={() => { if (validateSection(activeSection)) setActiveSection(s => s + 1); }} style={{ padding: '9px 32px', background: RED, border: 'none', borderRadius: 6, color: '#F5F5F5', fontFamily: B, fontSize: 17, letterSpacing: 1, cursor: 'pointer', boxShadow: '0 6px 20px rgba(200,32,42,0.3)' }}>NEXT STEP →</button>
+                  ? <button onClick={() => { if (validateSection(activeSection)) setActiveSection(s => s + 1) }} style={{ padding: '9px 32px', background: RED, border: 'none', borderRadius: 6, color: '#F5F5F5', fontFamily: B, fontSize: 17, letterSpacing: 1, cursor: 'pointer', boxShadow: '0 6px 20px rgba(200,32,42,0.3)' }}>NEXT STEP →</button>
                   : <button onClick={async () => {
                       if (!validateSection(activeSection)) return
                       try {
                         const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
                         const token = u.token
                         if (token) {
-                          // Convert height from feet/inches select to cm
-                          const heightStr = form.height || (form as any).height_cm || ''
+                          const heightStr = form.height || ''
                           let finalHeightCm: string | undefined
                           const feetInches = heightStr.match(/(\d+)'(\d+)"?/)
-                          if (feetInches) {
-                            finalHeightCm = String(Math.round(parseInt(feetInches[1]) * 30.48 + parseInt(feetInches[2]) * 2.54))
-                          } else {
-                            const numOnly = heightStr.match(/[\d.]+/)
-                            finalHeightCm = numOnly ? numOnly[0] : undefined
-                          }
-                          // Weight: extract number from weight string
-                          const weightMatch = (form.weight || (form as any).weight_kg || '').match(/[\d.]+/)
+                          if (feetInches) finalHeightCm = String(Math.round(parseInt(feetInches[1]) * 30.48 + parseInt(feetInches[2]) * 2.54))
+                          else { const n = heightStr.match(/[\d.]+/); finalHeightCm = n ? n[0] : undefined }
+                          const weightMatch = (form.weight || '').match(/[\d.]+/)
                           const finalWeightKg = weightMatch ? weightMatch[0] : undefined
                           await fetch('/api/profile/aspirant', {
-                            method:  'PUT',
+                            method: 'PUT',
                             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                             body: JSON.stringify({
-                              first_name:    form.firstName,
-                              last_name:     form.lastName,
-                              title:         form.title,
-                              gender:        form.gender,
-                              date_of_birth: form.dob,
-                              address_line1: form.addressLine1,
-                              address_line2: form.addressLine2,
-                              city:          form.city,
-                              state:         form.state,
-                              pincode:       form.pincode,
-                              country:       form.country || 'India',
-                              height_cm:     finalHeightCm ? parseFloat(finalHeightCm) : undefined,
-                              weight_kg:     finalWeightKg ? parseFloat(finalWeightKg) : undefined,
-                              hair_color:    form.hairColor,
-                              eye_color:     form.eyeColor,
-                              body_tone:     form.bodyTone,
-                              body_type:     form.bodyType,
-                              chest_size:    form.chest ? parseFloat(form.chest.match(/[\d.]+/)?.[0] || '0') || undefined : undefined,
-                              waist_size:    form.waist ? parseFloat(form.waist.match(/[\d.]+/)?.[0] || '0') || undefined : undefined,
-                              hip_size:      form.hip   ? parseFloat(form.hip.match(/[\d.]+/)?.[0]   || '0') || undefined : undefined,
-                              shoe_size:     form.shoe  ? parseFloat(form.shoe.match(/[\d.]+/)?.[0]  || '0') || undefined : undefined,
-                              about_me:      bio,
-                              category:      selectedRoles[0]?.department || '',
-                              role:          selectedRoles[0]?.role || '',
-                              languages,
-                              availability:  availableFor,
-                              is_available:  availableFor.length > 0,
+                              first_name: form.firstName, last_name: form.lastName, title: form.title,
+                              gender: form.gender, date_of_birth: form.dob,
+                              address_line1: form.addressLine1, address_line2: form.addressLine2,
+                              city: form.city, state: form.state, pincode: form.pincode, country: form.country || 'India',
+                              height_cm:  finalHeightCm  ? parseFloat(finalHeightCm)  : undefined,
+                              weight_kg:  finalWeightKg  ? parseFloat(finalWeightKg)  : undefined,
+                              hair_color: form.hairColor, eye_color: form.eyeColor,
+                              body_tone:  form.bodyTone,  body_type: form.bodyType,
+                              chest_size: form.chest ? parseFloat(form.chest.match(/[\d.]+/)?.[0] || '0') || undefined : undefined,
+                              waist_size: form.waist ? parseFloat(form.waist.match(/[\d.]+/)?.[0] || '0') || undefined : undefined,
+                              hip_size:   form.hip   ? parseFloat(form.hip.match(/[\d.]+/)?.[0]   || '0') || undefined : undefined,
+                              shoe_size:  form.shoe  ? parseFloat(form.shoe.match(/[\d.]+/)?.[0]  || '0') || undefined : undefined,
+                              about_me: bio, category: selectedRoles[0]?.department || '', role: selectedRoles[0]?.role || '',
+                              languages, availability: availableFor, is_available: availableFor.length > 0,
                               experience_level: form.experienceLevel || undefined,
                               social_links: credits.length > 0 ? { credits } : undefined,
                             }),
                           })
                         }
-                        const draft = { form, languages, availableFor, selectedRoles, bio, activeSection, savedAt: new Date().toISOString(), userEmail: u.email }
                         const existing = JSON.parse(localStorage.getItem('ss_user') || '{}')
                         localStorage.setItem('ss_user', JSON.stringify({
                           ...existing,
@@ -1443,7 +1221,11 @@ export default function CreateProfilePage() {
                           profileStatus: isEditMode ? 'pending_review' : 'active',
                           verifiedAt: existing.verifiedAt || new Date().toISOString(),
                         }))
-                        localStorage.setItem('ss_profile_draft', JSON.stringify({ ...draft, published: true, editMode: false }))
+                        localStorage.setItem('ss_profile_draft', JSON.stringify({
+                          form, languages, availableFor, selectedRoles, bio, credits, activeSection,
+                          savedAt: new Date().toISOString(), userEmail: (JSON.parse(localStorage.getItem('ss_user') || '{}')).email,
+                          published: true, editMode: false,
+                        }))
                       } catch {}
                       if (isEditMode) {
                         router.push('/my-profile')
@@ -1458,54 +1240,32 @@ export default function CreateProfilePage() {
               </div>
             </div>
 
-            {/* Right Panel */}
-            <div style={{ width: 260, flexShrink: 0, display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
-              {/* Profile Preview */}
+            {/* Right panel */}
+            <div style={{ width: 240, flexShrink: 0, display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
               <div style={{ background: '#0B0F14', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, overflow: 'hidden' }}>
-                <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span>👁️</span><span style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: '#F5F5F5' }}>Profile Preview</span></div>
-                  <span style={{ fontFamily: M, fontSize: 14, color: '#6A7080', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: 10 }}>{completion}% Complete</span>
-                </div>
-                <div style={{ height: 180, background: form.profilePhoto ? 'transparent' : 'linear-gradient(160deg, #1a0a0a, #0B0F14)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                  {form.profilePhoto ? <img src={form.profilePhoto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : <span style={{ fontSize: 48, opacity: 0.2 }}>👤</span>}
+                <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: '#F5F5F5' }}>Profile Tips</div>
                 </div>
                 <div style={{ padding: '14px' }}>
-                  <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: '#F5F5F5', marginBottom: 2 }}>{`${form.firstName} ${form.lastName}`.trim() || 'Your Name'} {(form.firstName || form.lastName) && <span style={{ color: '#22c55e', fontSize: 14 }}>✓</span>}</div>
-                  <div style={{ fontFamily: M, fontSize: 14, color: '#A8B0BD', marginBottom: 6 }}>Aspirant</div>
-                  {/* Departments preview */}
-                  {selectedDepts.length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginBottom: 6 }}>
-                      {selectedDepts.map(d => (
-                        <span key={d} style={{ fontFamily: M, fontSize: 14, background: 'rgba(200,32,42,0.12)', border: '1px solid rgba(200,32,42,0.25)', color: RED, padding: '2px 7px', borderRadius: 10 }}>{d}</span>
-                      ))}
+                  {[
+                    { icon: '📸', t: 'Add a clear profile photo',  d: 'Profiles with real photos get 70% more views.'           },
+                    { icon: '🎬', t: 'Upload a showreel',          d: 'A showreel increases your chances of getting noticed.'   },
+                    { icon: '✅', t: 'Complete all sections',      d: 'Complete profiles are 3x more likely to be shortlisted.' },
+                    { icon: '🎭', t: 'Select correct departments', d: 'Agencies search by department and role. Be accurate.'    },
+                  ].map(tip => (
+                    <div key={tip.t} style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>{tip.icon}</div>
+                      <div>
+                        <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: '#F5F5F5', marginBottom: 2 }}>{tip.t}</div>
+                        <div style={{ fontFamily: M, fontSize: 13, color: '#6A7080', lineHeight: 1.5 }}>{tip.d}</div>
+                      </div>
                     </div>
-                  )}
-                  {form.height && <div style={{ fontFamily: M, fontSize: 14, color: '#6A7080', marginBottom: 3 }}>📏 {form.height} &nbsp; ⚖️ {form.weight}</div>}
-                  {form.city && <div style={{ fontFamily: M, fontSize: 14, color: '#6A7080', marginBottom: 3 }}>📍 {form.city}{form.state ? `, ${form.state}` : ''}</div>}
-                  {languages.length > 0 && <div style={{ fontFamily: M, fontSize: 14, color: '#6A7080', marginBottom: 10 }}>🗣️ {languages.join(', ')}</div>}
-                  <button style={{ width: '100%', padding: '7px', background: 'transparent', border: `1px solid ${RED}`, borderRadius: 5, color: RED, fontFamily: B, fontSize: 14, letterSpacing: 1, cursor: 'pointer' }}>VIEW FULL PREVIEW</button>
+                  ))}
+                  <Link href="#" style={{ fontFamily: M, fontSize: 14, color: RED, textDecoration: 'none', fontWeight: 600 }}>View Success Stories →</Link>
                 </div>
               </div>
-              {/* Tips */}
-              <div style={{ background: '#0B0F14', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '14px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}><span>💡</span><span style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: '#F5F5F5' }}>Profile Tips</span></div>
-                {[
-                  { icon: '📸', t: 'Add a clear profile photo',  d: 'Profiles with real photos get 70% more views.'           },
-                  { icon: '🎬', t: 'Upload a showreel',          d: 'A showreel increases your chances of getting noticed.'   },
-                  { icon: '✅', t: 'Complete all sections',      d: 'Complete profiles are 3x more likely to be shortlisted.' },
-                  { icon: '🎭', t: 'Select correct departments', d: 'Agencies search by department and role. Be accurate.'    },
-                ].map(tip => (
-                  <div key={tip.t} style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>{tip.icon}</div>
-                    <div>
-                      <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: '#F5F5F5', marginBottom: 2 }}>{tip.t}</div>
-                      <div style={{ fontFamily: M, fontSize: 14, color: '#6A7080', lineHeight: 1.5 }}>{tip.d}</div>
-                    </div>
-                  </div>
-                ))}
-                <Link href="#" style={{ fontFamily: M, fontSize: 14, color: RED, textDecoration: 'none', fontWeight: 600 }}>View Success Stories →</Link>
-              </div>
             </div>
+
           </div>
         </div>
       </div>

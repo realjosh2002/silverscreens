@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
   LayoutDashboard, Megaphone, PlusCircle, ClipboardList,
@@ -31,8 +31,8 @@ const NAV_ITEMS = [
   { icon: Star,            label: 'Shortlisted Talents',     href: '/agency/shortlisted' },
   { icon: CalendarCheck,   label: 'Audition Management',     href: '/agency/auditions' },
   { icon: Bookmark,        label: 'Saved Talents',           href: '/agency/saved-talents' },
-  { icon: MessageSquare,   label: 'Messages',  badge: 12,    href: '/agency/messages', active: true },
-  { icon: Bell,            label: 'Notifications', badge: 3, href: '/agency/notifications' },
+  { icon: MessageSquare,   label: 'Messages',                href: '/agency/messages', active: true },
+  { icon: Bell,            label: 'Notifications',           href: '/agency/notifications' },
 ];
 
 interface Conversation {
@@ -44,49 +44,19 @@ interface Message {
   id: string; from: 'me' | 'them'; text: string; time: string; read: boolean;
 }
 
-const CONVERSATIONS: Conversation[] = [
-  { id: 'c1', name: 'Arjun Malhotra',  role: 'Actor · Lead Hero',          avatar: 'AM', gradient: 'linear-gradient(135deg,#667eea,#764ba2)', lastMsg: 'Sure, I will be there on time.', time: '11:30 AM', unread: 3, online: true },
-  { id: 'c2', name: 'Meera Iyer',      role: 'Actor · Female Lead',        avatar: 'MI', gradient: 'linear-gradient(135deg,#f093fb,#f5576c)', lastMsg: 'Thank you for the opportunity!', time: '10:45 AM', unread: 1, online: true },
-  { id: 'c3', name: 'Vikram Singh',    role: 'Actor · Antagonist',         avatar: 'VS', gradient: 'linear-gradient(135deg,#4facfe,#00f2fe)', lastMsg: 'What documents do I need to bring?', time: 'Yesterday', unread: 0, online: false },
-  { id: 'c4', name: 'Aisha Sharma',    role: 'Actor · Supporting Actress', avatar: 'AS', gradient: 'linear-gradient(135deg,#43e97b,#38f9d7)', lastMsg: 'Looking forward to the audition.', time: 'Yesterday', unread: 0, online: false },
-  { id: 'c5', name: 'Kabir Malhotra',  role: 'Actor · Supporting Actor',   avatar: 'KM', gradient: 'linear-gradient(135deg,#fa709a,#fee140)', lastMsg: 'Can we reschedule the audition?', time: 'Mon', unread: 2, online: false },
-  { id: 'c6', name: 'Priya Nair',      role: 'Dancer · Lead Actress',      avatar: 'PN', gradient: 'linear-gradient(135deg,#a18cd1,#fbc2eb)', lastMsg: 'I have submitted all the required docs.', time: 'Mon', unread: 0, online: true },
-  { id: 'c7', name: 'Rohan Deshmukh',  role: 'Actor · Lead Hero',          avatar: 'RD', gradient: 'linear-gradient(135deg,#fccb90,#d57eeb)', lastMsg: 'Please find attached my updated portfolio.', time: 'Sun', unread: 0, online: false },
-];
-
-const MESSAGES_MAP: Record<string, Message[]> = {
-  c1: [
-    { id: 'm1', from: 'me',   text: 'Hi Arjun, we would like to invite you for the audition of City of Dreams – Season 2 on 25 May 2024 at 11:00 AM.', time: '10:00 AM', read: true },
-    { id: 'm2', from: 'them', text: 'Hello! Thank you so much for the opportunity. I am very excited about this role.', time: '10:15 AM', read: true },
-    { id: 'm3', from: 'me',   text: 'Great! The audition will be held at Dharma Productions Office, Andheri West. Please prepare a 2-minute monologue.', time: '10:20 AM', read: true },
-    { id: 'm4', from: 'them', text: 'Understood. Should I also prepare any dialogue from the script?', time: '10:45 AM', read: true },
-    { id: 'm5', from: 'me',   text: 'Yes, please prepare the scenes shared in the audition brief. Contact Mohamed Jaleel at +91 99941 89841 for any queries.', time: '11:00 AM', read: true },
-    { id: 'm6', from: 'them', text: 'Sure, I will be there on time.', time: '11:30 AM', read: false },
-  ],
-  c2: [
-    { id: 'm1', from: 'me',   text: 'Hi Meera, congratulations! You have been shortlisted for The Silent Witness.', time: '09:30 AM', read: true },
-    { id: 'm2', from: 'them', text: 'Thank you for the opportunity! I am really looking forward to this.', time: '10:45 AM', read: false },
-  ],
-  c3: [
-    { id: 'm1', from: 'them', text: 'Hello, I received the audition invitation. What documents do I need to bring?', time: 'Yesterday', read: true },
-    { id: 'm2', from: 'me',   text: 'Please bring your portfolio, ID proof and any prior work samples.', time: 'Yesterday', read: true },
-  ],
-};
-
-/* ── Auth helper ── */
-function getAuthHeaders(): Record<string, string> {
-  try {
-    const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
-    return u.token ? { Authorization: `Bearer ${u.token}` } : {};
-  } catch { return {}; }
-}
-
 const GRADIENTS = [
   'linear-gradient(135deg,#667eea,#764ba2)', 'linear-gradient(135deg,#f093fb,#f5576c)',
   'linear-gradient(135deg,#4facfe,#00f2fe)', 'linear-gradient(135deg,#43e97b,#38f9d7)',
   'linear-gradient(135deg,#fa709a,#fee140)', 'linear-gradient(135deg,#a18cd1,#fbc2eb)',
   'linear-gradient(135deg,#fccb90,#d57eeb)',
 ];
+
+function getAuthHeaders(): Record<string, string> {
+  try {
+    const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
+    return u.token ? { Authorization: `Bearer ${u.token}` } : {};
+  } catch { return {}; }
+}
 
 function apiToConversation(c: any, idx: number): Conversation {
   const other = c.otherParty ?? c.participant ?? {};
@@ -106,44 +76,72 @@ function apiToConversation(c: any, idx: number): Conversation {
   };
 }
 
-function apiToMessages(list: any[]): Message[] {
+function apiToMessages(list: any[], currentUserId: string): Message[] {
   return list.map((m: any, i: number) => ({
     id:   String(m.id ?? m._id ?? i),
-    from: (m.isOwn ?? false) ? 'me' : 'them',
+    from: (m.isOwn ?? m.sender_id === currentUserId) ? 'me' : 'them',
     text: m.content ?? m.text ?? '',
-    time: m.createdAt
-      ? new Date(m.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+    time: m.sent_at ?? m.createdAt
+      ? new Date(m.sent_at ?? m.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
       : m.time ?? '',
-    read: m.read ?? m.isRead ?? m.status === 'read' ?? true,
+    read: m.is_read ?? m.read ?? true,
   }));
 }
-export default function MessagesPage() {
-  const router = useRouter();
-  const [sidebarOpen,   setSidebarOpen]   = useState(false);
-  const [profileOpen,   setProfileOpen]   = useState(false);
-  const [activeConv,    setActiveConv]    = useState<string>('c1');
-  const [searchQuery,   setSearchQuery]   = useState('');
-  const [newMessage,    setNewMessage]    = useState('');
-  const [messagesState, setMessagesState] = useState<Record<string, Message[]>>(MESSAGES_MAP);
-  const chatEndRef = useRef<HTMLDivElement>(null);
 
-  /* ── Live data ── */
-  const [conversations,  setConversations]  = useState<Conversation[]>(CONVERSATIONS);
+function makePlaceholder(recipientId: string, recipientName: string): Conversation {
+  const name = recipientName || 'Aspirant';
+  return {
+    id:       `new_${recipientId}`,
+    name,
+    role:     'Aspirant',
+    avatar:   name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase(),
+    gradient: GRADIENTS[0],
+    lastMsg:  'Start a conversation',
+    time:     '',
+    unread:   0,
+    online:   false,
+  };
+}
+
+export default function MessagesPage() {
+  const router       = useRouter();
+  const searchParams = useSearchParams();
+
+  // Read URL params immediately — before any async work
+  const recipientId   = searchParams.get('recipient_id') ?? '';
+  const recipientName = searchParams.get('recipient_name') ?? '';
+
+  const [sidebarOpen,    setSidebarOpen]    = useState(false);
+  const [profileOpen,    setProfileOpen]    = useState(false);
+  const [searchQuery,    setSearchQuery]    = useState('');
+  const [newMessage,     setNewMessage]     = useState('');
+  const [messagesState,  setMessagesState]  = useState<Record<string, Message[]>>({});
+  const [conversations,  setConversations]  = useState<Conversation[]>(() => {
+    // ← If URL has a recipient, immediately seed the placeholder so the chat
+    //   window is visible before the API responds
+    if (recipientId) return [makePlaceholder(recipientId, recipientName)];
+    return [];
+  });
+  const [activeConv,     setActiveConv]     = useState<string>(() =>
+    recipientId ? `new_${recipientId}` : ''
+  );
+  const [loadingConvs,   setLoadingConvs]   = useState(true);
   const [agencyName,     setAgencyName]     = useState('My Agency');
   const [agencyInitials, setAgencyInitials] = useState('AG');
   const [agencyId,       setAgencyId]       = useState('AGE·········');
   const [agencyType,     setAgencyType]     = useState('Production House');
-  const [msgCount,       setMsgCount]       = useState(12);
-  const [notifCount,     setNotifCount]     = useState(3);
+  const [msgCount,       setMsgCount]       = useState(0);
+  const [notifCount,     setNotifCount]     = useState(0);
+  const [currentUserId,  setCurrentUserId]  = useState('');
 
+  const chatEndRef = useRef<HTMLDivElement>(null);
   const SB_W = sidebarOpen ? 230 : 52;
 
-  /* ── Scroll to bottom on new messages ── */
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeConv, messagesState]);
 
-  /* ── Load agency identity from ss_user instantly ── */
+  // Load agency identity from localStorage
   useEffect(() => {
     try {
       const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
@@ -152,10 +150,11 @@ export default function MessagesPage() {
         setAgencyInitials(u.name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase());
       }
       if (u.profileNumber) setAgencyId(u.profileNumber);
+      if (u.id) setCurrentUserId(u.id);
     } catch {}
   }, []);
 
-  /* ── Fetch conversations + badge counts on mount ── */
+  // Fetch real conversations and merge with placeholder
   useEffect(() => {
     const h = getAuthHeaders();
 
@@ -163,84 +162,142 @@ export default function MessagesPage() {
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data) return;
-        const list = data.conversations ?? data;
-        if (!Array.isArray(list) || list.length === 0) return;
-        const normalised = list.map((c: any, i: number) => apiToConversation(c, i));
-        setConversations(normalised);
-        if (normalised.length > 0) setActiveConv(String(normalised[0].id));
-        setMsgCount(normalised.filter((c: Conversation) => c.unread > 0).length);
-      }).catch(() => {});
+        const list = data.data?.conversations ?? data.conversations ?? [];
+        if (!Array.isArray(list)) return;
 
+        const normalised = list.map((c: any, i: number) => apiToConversation(c, i));
+        setMsgCount(normalised.filter((c: Conversation) => c.unread > 0).length);
+
+        if (recipientId) {
+          // Check if a real conversation already exists with this recipient
+          const existing = normalised.find((c: Conversation, i: number) => {
+            const raw = list[i];
+            return (
+              raw?.aspirant_id === recipientId ||
+              raw?.agency_id   === recipientId ||
+              raw?.otherParty?.id === recipientId ||
+              c.name.toLowerCase() === recipientName.toLowerCase()
+            );
+          });
+
+          if (existing) {
+            // Replace placeholder with real conversation
+            setConversations([existing, ...normalised.filter(c => c.id !== existing.id)]);
+            setActiveConv(existing.id);
+          } else {
+            // Keep placeholder at top, append real conversations below
+            setConversations([makePlaceholder(recipientId, recipientName), ...normalised]);
+            setActiveConv(`new_${recipientId}`);
+          }
+        } else {
+          setConversations(normalised);
+          if (normalised.length > 0 && !activeConv) {
+            setActiveConv(normalised[0].id);
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingConvs(false));
+
+    // Agency profile
     fetch('/api/profile/agency', { headers: h })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data) return;
-        const p = data.profile ?? data;
-        if (p.companyName || p.name) {
-          const name = p.companyName ?? p.name;
+        const p = data.data?.profile ?? data.profile ?? data;
+        if (p.company_name || p.companyName || p.name) {
+          const name = p.company_name ?? p.companyName ?? p.name;
           setAgencyName(name);
           setAgencyInitials(name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase());
         }
-        if (p.profileNumber) setAgencyId(p.profileNumber);
-        if (p.companyType)   setAgencyType(p.companyType);
+        if (p.profile_number ?? p.profileNumber) setAgencyId(p.profile_number ?? p.profileNumber);
+        if (p.company_type  ?? p.companyType)    setAgencyType(p.company_type ?? p.companyType);
       }).catch(() => {});
 
+    // Notifications count
     fetch('/api/notifications', { headers: h })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data) return;
-        const list = data.notifications ?? data;
-        if (Array.isArray(list)) setNotifCount(list.filter((n: any) => !n.read && !n.isRead).length);
+        const count = data.data?.unread_count ?? data.unread_count;
+        if (count != null) setNotifCount(count);
       }).catch(() => {});
   }, []);
 
-  /* ── Fetch messages when active conversation changes ── */
+  // Fetch messages when active conversation changes
   useEffect(() => {
-    if (!activeConv) return;
+    if (!activeConv || activeConv.startsWith('new_')) return;
     const h = getAuthHeaders();
     fetch(`/api/messages/${activeConv}`, { headers: h })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data) return;
-        const list = data.messages ?? data;
+        const list = data.data?.messages ?? data.messages ?? [];
         if (!Array.isArray(list)) return;
-        setMessagesState(prev => ({ ...prev, [activeConv]: apiToMessages(list) }));
+        setMessagesState(prev => ({ ...prev, [activeConv]: apiToMessages(list, currentUserId) }));
       }).catch(() => {});
-  }, [activeConv]);
+  }, [activeConv, currentUserId]);
 
-  const conv = conversations.find(c => c.id === activeConv) ?? conversations[0] ?? CONVERSATIONS[0];
+  const conv     = conversations.find(c => c.id === activeConv) ?? null;
   const messages = messagesState[activeConv] || [];
-
   const filteredConvs = conversations.filter(c =>
     !searchQuery || c.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  /* ── Send message — wired to POST /api/messages/send ── */
   const sendMessage = async () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || !activeConv) return;
     const text = newMessage.trim();
     setNewMessage('');
+
     const msg: Message = {
       id: `m${Date.now()}`, from: 'me', text,
       time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
       read: false,
     };
+
     // Optimistic update
     setMessagesState(p => ({ ...p, [activeConv]: [...(p[activeConv] || []), msg] }));
     setConversations(prev => prev.map(c => c.id === activeConv ? { ...c, lastMsg: text, time: msg.time } : c));
-    // POST to API
+
     try {
       const h = getAuthHeaders();
+      const isNew = activeConv.startsWith('new_');
+      const rid   = isNew ? activeConv.replace('new_', '') : undefined;
+
+      const body = isNew
+        ? { recipient_id: rid, content: text }
+        : { conversationId: activeConv, content: text };
+
       const res = await fetch('/api/messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...h },
-        body: JSON.stringify({ conversationId: activeConv, content: text }),
+        body: JSON.stringify(body),
       });
+
       if (res.ok) {
-        setMessagesState(p => ({
-          ...p,
-          [activeConv]: (p[activeConv] || []).map(m => m.id === msg.id ? { ...m, read: true } : m),
-        }));
+        const data = await res.json();
+        const realConvId = String(data.data?.conversation_id ?? data.conversation_id ?? '');
+
+        if (isNew && realConvId) {
+          // Replace placeholder with real conversation ID
+          setConversations(prev => prev.map(c =>
+            c.id === activeConv ? { ...c, id: realConvId } : c
+          ));
+          setMessagesState(prev => {
+            const msgs = prev[activeConv] ?? [];
+            const next = { ...prev };
+            delete next[activeConv];
+            next[realConvId] = msgs.map(m => m.id === msg.id ? { ...m, read: true } : m);
+            return next;
+          });
+          setActiveConv(realConvId);
+          router.replace('/agency/messages');
+        } else {
+          setMessagesState(p => ({
+            ...p,
+            [activeConv]: (p[activeConv] || []).map(m => m.id === msg.id ? { ...m, read: true } : m),
+          }));
+        }
       }
     } catch {}
   };
@@ -284,18 +341,20 @@ export default function MessagesPage() {
                   <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Agency ID</span>
                   <span style={{ fontSize: 14, fontWeight: 700, color: GOLD }}>{agencyId}</span>
                 </div>
-
                 {[
-                  { label: 'Reports & Analytics', href: '/agency/reports' },
-                  { label: 'Subscription & Billing', href: '/pricing' },
-                  { label: 'Company Profile', href: '/agency-profile' },
-                  { label: 'Documents', href: '/agency/documents' },
-                  { label: 'Calendar', href: '/agency/calendar' },
-                  { label: 'Settings', href: '/agency/settings' },
-                  { label: 'Support', href: '/contact' },
-                  { label: 'Logout', href: '/login' },
+                  { label: 'Reports & Analytics',   href: '/agency/reports'   },
+                  { label: 'Subscription & Billing', href: '/pricing'          },
+                  { label: 'Company Profile',        href: '/agency-profile'   },
+                  { label: 'Documents',              href: '/agency/documents' },
+                  { label: 'Calendar',               href: '/agency/calendar'  },
+                  { label: 'Settings',               href: '/agency/settings'  },
+                  { label: 'Support',                href: '/contact'          },
+                  { label: 'Logout',                 href: '/login'            },
                 ].map(({ label, href }) => (
-                  <div key={label} onClick={() => { if (label === 'Logout') { localStorage.removeItem('ss_user'); window.location.replace('/login'); } else { router.push(href); setProfileOpen(false); } }}
+                  <div key={label} onClick={() => {
+                    if (label === 'Logout') { localStorage.removeItem('ss_user'); window.location.replace('/login'); }
+                    else { router.push(href); setProfileOpen(false); }
+                  }}
                     style={{ padding: '10px 16px', fontSize: 15, cursor: 'pointer', color: label === 'Logout' ? '#ff6b6b' : '#F5F5F5', borderTop: label === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -310,7 +369,7 @@ export default function MessagesPage() {
       {/* ══ BODY ══ */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
-        {/* ── COLLAPSIBLE SIDEBAR ── */}
+        {/* ── SIDEBAR ── */}
         <aside style={{ width: SB_W, flexShrink: 0, background: BG2, borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', overflowY: 'auto', overflowX: 'hidden', scrollbarWidth: 'none', transition: 'width 0.2s ease' }}>
           <div style={{ height: 52, display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'flex-end' : 'center', padding: sidebarOpen ? '0 12px' : 0, borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
             <button onClick={() => setSidebarOpen(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', width: 30, height: 30, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}
@@ -330,65 +389,54 @@ export default function MessagesPage() {
           <nav style={{ flex: 1, padding: sidebarOpen ? '8px 6px' : '8px 4px', overflowY: 'auto', scrollbarWidth: 'none' }}>
             {NAV_ITEMS.map(({ icon: Icon, label, active, badge, href }) => (
               <div key={label} onClick={() => router.push(href)} title={!sidebarOpen ? label : undefined}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'space-between' : 'center', padding: sidebarOpen ? '8px 10px' : '10px 0', marginBottom: 2, borderRadius: 6, cursor: 'pointer', background: active ? 'rgba(200,32,42,0.12)' : 'transparent', borderLeft: sidebarOpen && active ? `3px solid ${RED}` : sidebarOpen ? '3px solid transparent' : 'none', position: 'relative' }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'space-between' : 'center', padding: sidebarOpen ? '8px 10px' : '10px 0', marginBottom: 2, borderRadius: 6, cursor: 'pointer', background: active ? 'rgba(200,32,42,0.12)' : 'transparent', borderLeft: sidebarOpen && active ? `3px solid ${RED}` : sidebarOpen ? '3px solid transparent' : 'none' }}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
                 onMouseLeave={e => { if (!active) e.currentTarget.style.background = active ? 'rgba(200,32,42,0.12)' : 'transparent'; }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: sidebarOpen ? 9 : 0, justifyContent: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: sidebarOpen ? 9 : 0 }}>
                   <Icon size={15} color={active ? RED : 'rgba(255,255,255,0.42)'} strokeWidth={active ? 2.5 : 1.8} />
-                  {sidebarOpen && <span style={{ fontSize: 14, fontWeight: active ? 600 : 400, color: active ? '#F5F5F5' : 'rgba(255,255,255,0.6)', whiteSpace: 'nowrap' }}>{label}</span>}
+                  {sidebarOpen && <span style={{ fontSize: 14, color: active ? '#fff' : 'rgba(255,255,255,0.6)', fontWeight: active ? 700 : 400, whiteSpace: 'nowrap' }}>{label}</span>}
                 </div>
-                {sidebarOpen && badge && <div style={{ background: RED, color: '#fff', borderRadius: 10, fontSize: 14, fontWeight: 700, padding: '1px 6px', minWidth: 18, textAlign: 'center' }}>{badge}</div>}
-                {!sidebarOpen && badge && <div style={{ position: 'absolute', top: 6, right: 4, background: RED, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: '#fff' }}>{badge}</div>}
+                {sidebarOpen && badge && <div style={{ background: RED, color: '#fff', borderRadius: 12, fontSize: 14, fontWeight: 700, padding: '1px 6px', minWidth: 18, textAlign: 'center' }}>{badge}</div>}
               </div>
             ))}
           </nav>
-          {sidebarOpen && (
-            <div style={{ margin: '8px 10px 14px', borderRadius: 12, background: 'linear-gradient(135deg,#1a1205,#2a1e0a)', border: '1px solid rgba(212,166,74,0.25)', padding: '14px 12px', textAlign: 'center', flexShrink: 0 }}>
-              <div style={{ fontSize: 20, marginBottom: 4 }}>👑</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: GOLD, marginBottom: 3 }}>Upgrade to Pro</div>
-              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', marginBottom: 10, lineHeight: 1.5 }}>Unlock unlimited messaging and priority support.</div>
-              <button onClick={() => router.push('/pricing')} style={{ width: '100%', background: GOLD, color: '#000', border: 'none', borderRadius: 8, padding: '7px 0', fontSize: 14, fontWeight: 700, fontFamily: BARLOW, cursor: 'pointer' }}>Upgrade Now</button>
-            </div>
-          )}
         </aside>
 
-        {/* ── MESSAGES LAYOUT ── */}
+        {/* ── MESSAGES PANEL ── */}
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-          {/* Conversation list */}
+          {/* Conversations list */}
           <div style={{ width: 300, flexShrink: 0, borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', background: BG2 }}>
-            {/* Header */}
-            <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <div onClick={() => router.back()} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 14, color: 'rgba(255,255,255,0.4)', cursor: 'pointer', marginBottom: 10, width: 'fit-content' }}
-                onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}
-              >
-                <ChevronLeft size={13} /> Back
-              </div>
-              <div style={{ fontSize: 18, fontFamily: BEBAS, letterSpacing: 1, color: '#fff', marginBottom: 10 }}>Messages</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '7px 12px' }}>
-                <Search size={14} color="rgba(255,255,255,0.4)" />
-                <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search conversations..." style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 14, color: '#fff', fontFamily: BARLOW, flex: 1 }} />
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <button onClick={() => router.push('/agency/dashboard')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.5)', fontSize: 14, fontFamily: BARLOW, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, padding: 0 }}>
+                <ChevronLeft size={14} /> Back
+              </button>
+              <div style={{ fontFamily: BEBAS, fontSize: 20, letterSpacing: 1, marginBottom: 12 }}>MESSAGES</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: BG3, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '7px 10px' }}>
+                <Search size={13} color="rgba(255,255,255,0.35)" />
+                <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search conversations..." style={{ flex: 1, background: 'none', border: 'none', outline: 'none', fontSize: 14, color: '#fff', fontFamily: BARLOW }} />
               </div>
             </div>
 
-            {/* Conversation rows */}
             <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>
+              {loadingConvs && filteredConvs.filter(c => !c.id.startsWith('new_')).length === 0 && (
+                <div style={{ padding: '32px 0', textAlign: 'center', fontSize: 14, color: 'rgba(255,255,255,0.3)' }}>Loading…</div>
+              )}
+              {!loadingConvs && filteredConvs.length === 0 && (
+                <div style={{ padding: '32px 16px', textAlign: 'center', fontSize: 14, color: 'rgba(255,255,255,0.3)' }}>No conversations yet</div>
+              )}
               {filteredConvs.map(c => (
-                <div key={c.id} onClick={() => setActiveConv(c.id)}
-                  style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 16px', cursor: 'pointer', background: activeConv === c.id ? 'rgba(200,32,42,0.1)' : 'transparent', borderLeft: activeConv === c.id ? `3px solid ${RED}` : '3px solid transparent', transition: 'background 0.1s' }}
+                <div key={c.id} onClick={() => setActiveConv(c.id)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', cursor: 'pointer', borderLeft: `3px solid ${activeConv === c.id ? RED : 'transparent'}`, background: activeConv === c.id ? 'rgba(200,32,42,0.08)' : 'transparent', transition: 'all 0.15s' }}
                   onMouseEnter={e => { if (activeConv !== c.id) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
-                  onMouseLeave={e => { if (activeConv !== c.id) e.currentTarget.style.background = 'transparent'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = activeConv === c.id ? 'rgba(200,32,42,0.08)' : 'transparent'; }}
                 >
                   <div style={{ position: 'relative', flexShrink: 0 }}>
-                    <div style={{ width: 42, height: 42, borderRadius: '50%', background: c.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: '#fff', fontFamily: BEBAS }}>
-                      {c.avatar}
-                    </div>
-                    {c.online && <div style={{ position: 'absolute', bottom: 1, right: 1, width: 10, height: 10, borderRadius: '50%', background: GREEN, border: `2px solid ${BG2}` }} />}
+                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: c.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: '#fff', fontFamily: BEBAS }}>{c.avatar}</div>
+                    {c.online && <div style={{ position: 'absolute', bottom: 1, right: 1, width: 9, height: 9, borderRadius: '50%', background: GREEN, border: `2px solid ${BG2}` }} />}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 3 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
                       <span style={{ fontSize: 14, fontWeight: c.unread > 0 ? 700 : 500, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
                       <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.35)', flexShrink: 0, marginLeft: 6 }}>{c.time}</span>
                     </div>
@@ -406,91 +454,101 @@ export default function MessagesPage() {
           {/* Chat window */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-            {/* Chat header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', background: BG2, flexShrink: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ position: 'relative' }}>
-                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: conv.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: '#fff', fontFamily: BEBAS }}>
-                    {conv.avatar}
+            {!conv ? (
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, color: 'rgba(255,255,255,0.3)' }}>
+                <MessageSquare size={40} color="rgba(255,255,255,0.1)" />
+                <div style={{ fontSize: 16 }}>Select a conversation to start messaging</div>
+              </div>
+            ) : (
+              <>
+                {/* Chat header */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', background: BG2, flexShrink: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ position: 'relative' }}>
+                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: conv.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: '#fff', fontFamily: BEBAS }}>{conv.avatar}</div>
+                      {conv.online && <div style={{ position: 'absolute', bottom: 1, right: 1, width: 9, height: 9, borderRadius: '50%', background: GREEN, border: `2px solid ${BG2}` }} />}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>{conv.name}</div>
+                      <div style={{ fontSize: 14, color: conv.online ? GREEN : 'rgba(255,255,255,0.4)' }}>
+                        {conv.online ? 'Online' : 'Offline'}{conv.role ? ` · ${conv.role}` : ''}
+                      </div>
+                    </div>
                   </div>
-                  {conv.online && <div style={{ position: 'absolute', bottom: 1, right: 1, width: 9, height: 9, borderRadius: '50%', background: GREEN, border: `2px solid ${BG2}` }} />}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {[
+                      { icon: <Phone size={15} />,          label: 'Call'    },
+                      { icon: <Video size={15} />,          label: 'Video'   },
+                      { icon: <Info size={15} />,           label: 'Profile' },
+                      { icon: <MoreHorizontal size={15} />, label: 'More'    },
+                    ].map(({ icon, label }) => (
+                      <button key={label} title={label} style={{ width: 34, height: 34, borderRadius: 8, background: BG3, border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.6)' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = BG4)}
+                        onMouseLeave={e => (e.currentTarget.style.background = BG3)}
+                      >{icon}</button>
+                    ))}
+                  </div>
                 </div>
-                <div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>{conv.name}</div>
-                  <div style={{ fontSize: 14, color: conv.online ? GREEN : 'rgba(255,255,255,0.4)' }}>{conv.online ? 'Online' : 'Offline'} · {conv.role}</div>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {[
-                  { icon: <Phone size={15} />, label: 'Call',    onClick: () => {} },
-                  { icon: <Video size={15} />, label: 'Video',   onClick: () => {} },
-                  { icon: <Info size={15} />,  label: 'Profile', onClick: () => router.push(`/agency/talent/${activeConv === 'c1' ? 'a1' : activeConv === 'c2' ? 'a2' : 'a1'}`) },
-                  { icon: <MoreHorizontal size={15} />, label: 'More', onClick: () => {} },
-                ].map(({ icon, label, onClick }) => (
-                  <button key={label} onClick={onClick} title={label} style={{ width: 34, height: 34, borderRadius: 8, background: BG3, border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.6)' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = BG4)}
-                    onMouseLeave={e => (e.currentTarget.style.background = BG3)}
-                  >{icon}</button>
-                ))}
-              </div>
-            </div>
 
-            {/* Messages */}
-            <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', padding: '20px 20px 10px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {messages.map(msg => (
-                <div key={msg.id} style={{ display: 'flex', justifyContent: msg.from === 'me' ? 'flex-end' : 'flex-start', alignItems: 'flex-end', gap: 8 }}>
-                  {msg.from === 'them' && (
-                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: conv.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: '#fff', fontFamily: BEBAS, flexShrink: 0, marginBottom: 2 }}>
-                      {conv.avatar}
+                {/* Messages area */}
+                <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', padding: '20px 20px 10px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {activeConv.startsWith('new_') && messages.length === 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 12, padding: '40px 0' }}>
+                      <div style={{ width: 56, height: 56, borderRadius: '50%', background: conv.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, color: '#fff', fontFamily: BEBAS }}>{conv.avatar}</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: '#fff' }}>{conv.name}</div>
+                      <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', textAlign: 'center', maxWidth: 280, lineHeight: 1.6 }}>
+                        This is the start of your conversation with <strong style={{ color: '#fff' }}>{conv.name}</strong>. Type a message below to get started.
+                      </div>
                     </div>
                   )}
-                  <div style={{ maxWidth: '65%' }}>
-                    <div style={{
-                      background: msg.from === 'me' ? RED : BG3,
-                      borderRadius: msg.from === 'me' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                      padding: '10px 14px',
-                      fontSize: 14,
-                      color: '#fff',
-                      lineHeight: 1.55,
-                      border: msg.from === 'them' ? '1px solid rgba(255,255,255,0.07)' : 'none',
-                    }}>
-                      {msg.text}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, justifyContent: msg.from === 'me' ? 'flex-end' : 'flex-start' }}>
-                      <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)' }}>{msg.time}</span>
-                      {msg.from === 'me' && (
-                        msg.read
-                          ? <CheckCheck size={12} color={BLUE} />
-                          : <Check size={12} color="rgba(255,255,255,0.3)" />
+                  {!activeConv.startsWith('new_') && messages.length === 0 && (
+                    <div style={{ textAlign: 'center', padding: '40px 0', fontSize: 14, color: 'rgba(255,255,255,0.3)' }}>No messages yet. Say hello!</div>
+                  )}
+                  {messages.map(msg => (
+                    <div key={msg.id} style={{ display: 'flex', justifyContent: msg.from === 'me' ? 'flex-end' : 'flex-start', alignItems: 'flex-end', gap: 8 }}>
+                      {msg.from === 'them' && (
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', background: conv.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: '#fff', fontFamily: BEBAS, flexShrink: 0, marginBottom: 2 }}>
+                          {conv.avatar}
+                        </div>
                       )}
+                      <div style={{ maxWidth: '65%' }}>
+                        <div style={{ background: msg.from === 'me' ? RED : BG3, borderRadius: msg.from === 'me' ? '16px 16px 4px 16px' : '16px 16px 16px 4px', padding: '10px 14px', fontSize: 14, color: '#fff', lineHeight: 1.55, border: msg.from === 'them' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}>
+                          {msg.text}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, justifyContent: msg.from === 'me' ? 'flex-end' : 'flex-start' }}>
+                          <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)' }}>{msg.time}</span>
+                          {msg.from === 'me' && (msg.read ? <CheckCheck size={12} color={BLUE} /> : <Check size={12} color="rgba(255,255,255,0.3)" />)}
+                        </div>
+                      </div>
                     </div>
+                  ))}
+                  <div ref={chatEndRef} />
+                </div>
+
+                {/* Message input */}
+                <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.06)', background: BG2, flexShrink: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '8px 12px' }}>
+                    <button style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: 4, color: 'rgba(255,255,255,0.4)' }}>
+                      <Paperclip size={16} />
+                    </button>
+                    <input
+                      value={newMessage}
+                      onChange={e => setNewMessage(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+                      placeholder={`Message ${conv.name}…`}
+                      autoFocus
+                      style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 14, color: '#fff', fontFamily: BARLOW }}
+                    />
+                    <button style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: 4, color: 'rgba(255,255,255,0.4)' }}>
+                      <Smile size={16} />
+                    </button>
+                    <button onClick={sendMessage} style={{ width: 34, height: 34, borderRadius: 8, background: newMessage.trim() ? RED : 'rgba(255,255,255,0.06)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: newMessage.trim() ? 'pointer' : 'default', transition: 'background 0.15s', flexShrink: 0 }}>
+                      <Send size={15} color={newMessage.trim() ? '#fff' : 'rgba(255,255,255,0.3)'} />
+                    </button>
                   </div>
                 </div>
-              ))}
-              <div ref={chatEndRef} />
-            </div>
-
-            {/* Message input */}
-            <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.06)', background: BG2, flexShrink: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '8px 12px' }}>
-                <button style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: 4, color: 'rgba(255,255,255,0.4)' }}>
-                  <Paperclip size={16} />
-                </button>
-                <input
-                  value={newMessage}
-                  onChange={e => setNewMessage(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-                  placeholder="Type a message..."
-                  style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 14, color: '#fff', fontFamily: BARLOW }}
-                />
-                <button style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: 4, color: 'rgba(255,255,255,0.4)' }}>
-                  <Smile size={16} />
-                </button>
-                <button onClick={sendMessage} style={{ width: 34, height: 34, borderRadius: 8, background: newMessage.trim() ? RED : 'rgba(255,255,255,0.06)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: newMessage.trim() ? 'pointer' : 'default', transition: 'background 0.15s', flexShrink: 0 }}>
-                  <Send size={15} color={newMessage.trim() ? '#fff' : 'rgba(255,255,255,0.3)'} />
-                </button>
-              </div>
-            </div>
+              </>
+            )}
           </div>
         </div>
       </div>

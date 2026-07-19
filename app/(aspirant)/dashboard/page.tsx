@@ -44,7 +44,7 @@ const PROFILE_MENU = [
   { label: 'Logout',         href: '' },
 ];
 
-/* ─── Static fallback data (shown while loading / on error) ─── */
+/* ─── Static fallback data ───────────────────────────────────── */
 const FALLBACK_CASTINGS = [
   { title: 'Lead Actor – Feature Film',       agency: 'Silver Paradise Productions', location: 'Mumbai',    type: 'Feature Film', gender: 'Male',   age: '25-35 Yrs', posted: 'Posted 2 days ago', applyBy: '25 May 2025', img: 'https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=80&h=80&fit=crop', href: '/casting-calls/1',  department: 'Acting' },
   { title: 'Supporting Actor – Web Series',   agency: 'FrameWorks Entertainment',    location: 'Mumbai',    type: 'Web Series',   gender: 'Male',   age: '20-30 Yrs', posted: 'Posted 1 day ago',  applyBy: '20 May 2025', img: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=80&h=80&fit=crop', href: '/casting-calls/2',  department: 'Acting' },
@@ -56,12 +56,6 @@ const FALLBACK_CASTINGS = [
 const FALLBACK_MESSAGES = [
   { sender: 'Silver Paradise Productions', avatar: 'SP', time: '2h ago', preview: 'We would like to see you for an audition.', unread: 1, href: '/messages/1' },
   { sender: 'FrameWorks Entertainment',    avatar: 'FW', time: '1d ago', preview: 'Your profile has been shortlisted.',        unread: 0, href: '/messages/2' },
-];
-
-const upcomingEvents = [
-  { day: '16', month: 'MAY', type: 'Audition',    typeColor: GOLD,      title: 'Web Series – City Lights S2',   time: '11:00 AM – 01:00 PM', location: 'Versova, Mumbai',       mode: 'In Person' },
-  { day: '18', month: 'MAY', type: 'Callback',    typeColor: '#3B82F6', title: "Feature Film – Echoes'",        time: '03:00 PM – 05:00 PM', location: 'Film City, Goregaon',   mode: 'In Person' },
-  { day: '22', month: 'MAY', type: 'Screen Test', typeColor: GREEN,     title: 'Ad Film – Brand Campaign',      time: '10:00 AM – 12:00 PM', location: 'Andheri West, Mumbai',  mode: 'In Person' },
 ];
 
 const completionItems = [
@@ -77,12 +71,24 @@ const quickActions = [
   { icon: FolderOpen, label: 'Manage Documents',    href: '/profile?tab=documents' },
 ];
 
-/* ─── Helper: get auth headers from ss_user ─────────────────── */
+/* ─── Helper ─────────────────────────────────────────────────── */
 function getAuthHeaders(): Record<string, string> {
   try {
     const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
     return u.token ? { Authorization: `Bearer ${u.token}` } : {}
   } catch { return {} }
+}
+
+interface UpcomingEvent {
+  day: string;
+  month: string;
+  type: string;
+  typeColor: string;
+  title: string;
+  time: string;
+  location: string;
+  mode: string;
+  href: string;
 }
 
 export default function DashboardPage() {
@@ -114,7 +120,7 @@ export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
-  /* ── Data from ss_user (instant, no flash) ── */
+  /* ── Data from ss_user ── */
   const [userName,       setUserName]       = useState('My Account');
   const [userDepts,      setUserDepts]      = useState<string[]>([]);
   const [profileNumber,  setProfileNumber]  = useState('ASP·······');
@@ -126,6 +132,7 @@ export default function DashboardPage() {
   const [notifCount,     setNotifCount]     = useState(0);
   const [msgCount,       setMsgCount]       = useState(0);
   const [profilePct,     setProfilePct]     = useState(0);
+  const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
   const [stats,          setStats]          = useState({
     applications: '0', shortlisted: '0', auditions: '0',
     offers: '0', earnings: '₹0',
@@ -142,16 +149,15 @@ export default function DashboardPage() {
     } catch {}
   }, [])
 
-  /* ── Fetch profile data ── */
+  /* ── Fetch all data ── */
   useEffect(() => {
     const headers = getAuthHeaders()
 
-    // 1. Profile (stats + completion %)
+    // 1. Profile (completion % + name + avatar)
     fetch('/api/profile/aspirant', { headers })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data) return
-        // API returns { success, data: { profile: {...} } }
         const p = data.data?.profile ?? data.profile ?? data
         const pct = p.profile_completion ?? p.profileCompletion ?? 0
         setProfilePct(pct)
@@ -160,28 +166,77 @@ export default function DashboardPage() {
         const pn = p.profile_number ?? p.profileNumber
         if (pn)            setProfileNumber(pn)
         if (p.profile_image_url ?? p.profilePhoto) setAvatarUrl(p.profile_image_url ?? p.profilePhoto)
-        setStats({
-          applications: String(p.total_applications  ?? p.totalApplications  ?? 0),
-          shortlisted:  String(p.total_shortlisted   ?? p.totalShortlisted   ?? 0),
-          auditions:    String(p.total_auditions      ?? p.totalAuditions     ?? 0),
-          offers:       String(p.total_offers         ?? p.totalOffers        ?? 0),
-          earnings:     p.total_earnings != null
-            ? `₹${Number(p.total_earnings).toLocaleString('en-IN')}`
-            : p.totalEarnings != null
-            ? `₹${Number(p.totalEarnings).toLocaleString('en-IN')}`
-            : '₹0',
-        })
       })
       .catch(() => {})
 
-    // 2. Casting calls
+    // 2. Stats — fetch applications and count them directly
+    fetch('/api/applications?limit=100', { headers })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return
+        const list = data.data?.applications ?? data.applications ?? []
+        if (!Array.isArray(list)) return
+        const total       = data.data?.pagination?.total ?? list.length
+        const shortlisted = list.filter((a: any) => a.status === 'shortlisted').length
+        const offers      = list.filter((a: any) => a.status === 'selected').length
+        setStats(prev => ({
+          ...prev,
+          applications: String(total),
+          shortlisted:  String(shortlisted),
+          offers:       String(offers),
+        }))
+      })
+      .catch(() => {})
+
+    // 3. Auditions count for stat card + upcoming events
+    fetch('/api/auditions?limit=100', { headers })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return
+        const list = data.data?.auditions ?? data.auditions ?? []
+        if (!Array.isArray(list)) return
+
+        // Stat card — auditions this month
+        const now = new Date()
+        const thisMonth = list.filter((a: any) => {
+          if (!a.scheduled_at) return false
+          const d = new Date(a.scheduled_at)
+          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+        }).length
+        setStats(prev => ({ ...prev, auditions: String(thisMonth) }))
+
+        // Upcoming events — only future scheduled auditions
+        const upcoming = list
+          .filter((a: any) => a.status === 'scheduled' && a.scheduled_at && new Date(a.scheduled_at) >= now)
+          .slice(0, 3)
+          .map((a: any) => {
+            const cc  = a.casting_calls   ?? {}
+            const ap  = a.agency_profiles ?? {}
+            const d   = new Date(a.scheduled_at)
+            const modeMap: Record<string, string> = { offline: 'In Person', online: 'Virtual', both: 'Hybrid' }
+            return {
+              day:       d.getDate().toString(),
+              month:     d.toLocaleDateString('en-IN', { month: 'short' }).toUpperCase(),
+              type:      'Audition',
+              typeColor: GOLD,
+              title:     cc.title ?? 'Audition',
+              time:      d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) + ' IST',
+              location:  a.venue_details ?? (a.mode === 'online' ? 'Video Call' : '—'),
+              mode:      modeMap[a.mode] ?? 'In Person',
+              href:      `/auditions/${a.id}`,
+            }
+          })
+        setUpcomingEvents(upcoming)
+      })
+      .catch(() => {})
+
+    // 4. Casting calls
     fetch('/api/casting-calls?limit=5', { headers })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data) return
         const list = data.castingCalls ?? data.data ?? data
         if (!Array.isArray(list) || list.length === 0) return
-        // Normalise API shape → UI shape
         setCastings(list.slice(0, 5).map((c: any) => ({
           title:      c.title      ?? c.name ?? '',
           agency:     c.agency?.name ?? c.companyName ?? c.agency ?? '',
@@ -203,19 +258,24 @@ export default function DashboardPage() {
       })
       .catch(() => {})
 
-    // 3. Notifications count
+    // 5. Notifications count
     fetch('/api/notifications', { headers })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data) return
-        const list = data.notifications ?? data
+        const count = data.data?.unread_count ?? data.unread_count
+        if (count != null) {
+          setNotifCount(count)
+          return
+        }
+        const list = data.data?.notifications ?? data.notifications ?? data
         if (Array.isArray(list)) {
-          setNotifCount(list.filter((n: any) => !n.read && !n.isRead).length)
+          setNotifCount(list.filter((n: any) => !n.is_read && !n.read && !n.isRead).length)
         }
       })
       .catch(() => {})
 
-    // 4. Messages / conversations
+    // 6. Messages
     fetch('/api/messages/conversations', { headers })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
@@ -237,9 +297,9 @@ export default function DashboardPage() {
       })
       .catch(() => {})
 
-  }, []) // run once on mount
+  }, [])
 
-  /* ── Stat cards (built from state) ── */
+  /* ── Stat cards ── */
   const statCards = [
     { icon: FileText,   value: stats.applications, label: 'Applications',     sub: 'Total Applied',     href: '/my-applications' },
     { icon: Bookmark,   value: stats.shortlisted,  label: 'Shortlisted',      sub: 'By Agencies',       href: '/my-applications' },
@@ -268,25 +328,21 @@ export default function DashboardPage() {
           <span style={{ fontFamily: BARLOW, fontSize: 14, fontWeight: 700, color: GOLD, letterSpacing: 1 }}>ASPIRANT</span>
         </div>
         <div style={{ flex: 1 }} />
-        {/* Find Casting Calls */}
         <button onClick={() => router.push('/casting-calls')} style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'transparent', border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 8, padding: '0 16px', height: 36, fontSize: 14, fontWeight: 600, fontFamily: BARLOW, cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
           + Find Casting Calls
         </button>
-        {/* Messages */}
         <div onClick={() => router.push('/messages')} style={{ position: 'relative', cursor: 'pointer' }}>
           <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <MessageSquare size={15} color="rgba(255,255,255,0.7)" />
           </div>
           {msgCount > 0 && <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff' }}>{msgCount}</div>}
         </div>
-        {/* Bell */}
         <div onClick={() => router.push('/notifications')} style={{ position: 'relative', cursor: 'pointer' }}>
           <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Bell size={15} color="rgba(255,255,255,0.7)" />
           </div>
           {notifCount > 0 && <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff' }}>{notifCount}</div>}
         </div>
-        {/* Avatar */}
         <div style={{ position: 'relative' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer' }} onClick={() => setProfileOpen(v => !v)}>
             <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(212,166,74,0.38)', flexShrink: 0 }}>
@@ -367,9 +423,7 @@ export default function DashboardPage() {
             <div style={{ margin: '10px 10px 14px', borderRadius: 12, background: 'linear-gradient(135deg, #1a0507 0%, #2a0b0e 100%)', border: `1px solid ${GOLD_BDR}`, padding: '16px 14px', textAlign: 'center', flexShrink: 0 }}>
               <div style={{ fontSize: 22, marginBottom: 6 }}>👑</div>
               <div style={{ fontSize: 19, fontFamily: BARLOW, fontWeight: 600, letterSpacing: 0.5, marginBottom: 4 }}>Upgrade to Premium</div>
-              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', marginBottom: 12, lineHeight: 1.6 }}>
-                Get noticed by top agencies and unlock exclusive opportunities.
-              </div>
+              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', marginBottom: 12, lineHeight: 1.6 }}>Get noticed by top agencies and unlock exclusive opportunities.</div>
               <button onClick={() => router.push('/dashboard/subscription')} style={{ width: '100%', background: GOLD, color: '#000', border: 'none', borderRadius: 8, padding: '8px 0', fontSize: 14, fontWeight: 700, fontFamily: BARLOW, cursor: 'pointer' }}>Upgrade Now</button>
             </div>
           )}
@@ -409,7 +463,7 @@ export default function DashboardPage() {
                   <Icon size={17} color="rgba(255,255,255,0.5)" />
                 </div>
                 <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', fontWeight: 500, whiteSpace: 'nowrap' }}>{label}</span>
-                <span style={{ fontSize: value.length > 4 ? 19 : 24, fontWeight: 800, fontFamily: BEBAS, letterSpacing: 0.5, color: gold ? GOLD : '#fff', whiteSpace: 'nowrap' }}>{value}</span>
+                <span style={{ fontSize: (value as string).length > 4 ? 19 : 24, fontWeight: 800, fontFamily: BEBAS, letterSpacing: 0.5, color: gold ? GOLD : '#fff', whiteSpace: 'nowrap' }}>{value}</span>
                 <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap' }}>{sub}</div>
               </div>
             ))}
@@ -446,7 +500,9 @@ export default function DashboardPage() {
                         {[call.type, call.gender, call.age].map(tag => (
                           <span key={tag} style={{ fontSize: 14, padding: '2px 8px', borderRadius: 20, background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.08)' }}>{tag}</span>
                         ))}
-                        <span style={{ fontSize: 13, padding: '2px 8px', borderRadius: 20, background: 'rgba(212,166,74,0.08)', color: GOLD, border: '1px solid rgba(212,166,74,0.2)' }}>{call.department}</span>
+                        {call.department && (
+                          <span style={{ fontSize: 13, padding: '2px 8px', borderRadius: 20, background: 'rgba(212,166,74,0.08)', color: GOLD, border: '1px solid rgba(212,166,74,0.2)' }}>{call.department}</span>
+                        )}
                         <div style={{ flex: 1 }} />
                         <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.35)' }}>Apply by</span>
                         <span style={{ fontSize: 14, fontWeight: 700, color: GOLD }}>{call.applyBy}</span>
@@ -459,74 +515,56 @@ export default function DashboardPage() {
               <button onClick={() => router.push('/casting-calls')} style={{ width: '100%', marginTop: 12, background: 'transparent', border: `1px solid ${GOLD_BDR}`, color: GOLD, borderRadius: 8, padding: '9px 0', fontSize: 14, fontWeight: 600, fontFamily: BARLOW, cursor: 'pointer' }}>Browse All Casting Calls</button>
             </div>
 
-            {/* Upcoming */}
+            {/* Upcoming — real auditions from API */}
             <div style={{ flex: 2, minWidth: 0, borderRadius: 12, background: BG3, border: '1px solid rgba(255,255,255,0.06)', padding: '16px 18px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <span style={{ fontSize: 18, fontWeight: 700 }}>Upcoming</span>
                 <span onClick={() => router.push('/calendar')} style={{ fontSize: 14, color: GOLD, cursor: 'pointer', fontWeight: 600 }}>View Calendar</span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {upcomingEvents.map((evt, i) => (
-                  <div key={i} onClick={() => router.push('/calendar')} style={{ display: 'flex', gap: 10, padding: 10, cursor: 'pointer', background: BG4, borderRadius: 10, border: '1px solid rgba(255,255,255,0.05)' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = BG4)}
-                  >
-                    <div style={{ width: 44, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: 8 }}>
-                      <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', fontWeight: 700, letterSpacing: 0.5 }}>{evt.month}</span>
-                      <span style={{ fontSize: 22, fontWeight: 800, fontFamily: BEBAS, lineHeight: 1.1 }}>{evt.day}</span>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontFamily: BARLOW, fontWeight: 700, letterSpacing: 0.3, color: evt.typeColor, marginBottom: 2 }}>{evt.type}</div>
-                      <div style={{ fontSize: 15, fontFamily: BARLOW, fontWeight: 600, letterSpacing: 0.3, marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{evt.title}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
-                        <Clock size={10} color="rgba(255,255,255,0.35)" />
-                        <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>{evt.time}</span>
+              {upcomingEvents.length === 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 16px', textAlign: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 32 }}>🎬</span>
+                  <div style={{ fontSize: 15, fontFamily: BARLOW, fontWeight: 600, color: 'rgba(255,255,255,0.5)' }}>No upcoming auditions</div>
+                  <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', lineHeight: 1.5 }}>Apply to casting calls to get invited for auditions</div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {upcomingEvents.map((evt, i) => (
+                    <div key={i} onClick={() => router.push(evt.href)} style={{ display: 'flex', gap: 10, padding: 10, cursor: 'pointer', background: BG4, borderRadius: 10, border: '1px solid rgba(255,255,255,0.05)' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = BG4)}
+                    >
+                      <div style={{ width: 44, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: 8 }}>
+                        <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', fontWeight: 700, letterSpacing: 0.5 }}>{evt.month}</span>
+                        <span style={{ fontSize: 22, fontWeight: 800, fontFamily: BEBAS, lineHeight: 1.1 }}>{evt.day}</span>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <MapPin size={10} color="rgba(255,255,255,0.35)" />
-                          <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>{evt.location}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontFamily: BARLOW, fontWeight: 700, letterSpacing: 0.3, color: evt.typeColor, marginBottom: 2 }}>{evt.type}</div>
+                        <div style={{ fontSize: 15, fontFamily: BARLOW, fontWeight: 600, letterSpacing: 0.3, marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{evt.title}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
+                          <Clock size={10} color="rgba(255,255,255,0.35)" />
+                          <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>{evt.time}</span>
                         </div>
-                        <span style={{ fontSize: 14, padding: '2px 7px', borderRadius: 20, background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' }}>{evt.mode}</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <MapPin size={10} color="rgba(255,255,255,0.35)" />
+                            <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>{evt.location}</span>
+                          </div>
+                          <span style={{ fontSize: 14, padding: '2px 7px', borderRadius: 20, background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' }}>{evt.mode}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
               <button onClick={() => router.push('/calendar')} style={{ width: '100%', marginTop: 12, background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', borderRadius: 8, padding: '9px 0', fontSize: 14, fontWeight: 600, fontFamily: BARLOW, cursor: 'pointer' }}>View Full Calendar</button>
             </div>
           </div>
 
-          {/* Recently Applied + Messages + Profile Completion row */}
+          {/* Messages + Profile Completion row */}
           <div style={{ display: 'flex', gap: 12, alignItems: 'stretch' }}>
 
-            {/* Recently Applied — static for now; wire to /api/applications when ready */}
-            <div style={{ flex: 2, minWidth: 0, borderRadius: 12, background: BG3, border: '1px solid rgba(255,255,255,0.06)', padding: '16px 18px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <span style={{ fontSize: 18, fontWeight: 700 }}>Recently Applied</span>
-                <span onClick={() => router.push('/applications')} style={{ fontSize: 14, color: GOLD, cursor: 'pointer', fontWeight: 600 }}>View All</span>
-              </div>
-              <div onClick={() => router.push('/applications/1')} style={{ display: 'flex', gap: 12, padding: 10, cursor: 'pointer', background: BG4, borderRadius: 10, border: '1px solid rgba(255,255,255,0.05)' }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
-                onMouseLeave={e => (e.currentTarget.style.background = BG4)}
-              >
-                <img src="https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=80&h=80&fit=crop" alt="" style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                    <span style={{ fontSize: 16, fontFamily: BARLOW, fontWeight: 600, letterSpacing: 0.3 }}>Lead Actor – Feature Film</span>
-                    <span style={{ fontSize: 14, fontFamily: BARLOW, fontWeight: 600, letterSpacing: 0.3, color: GOLD }}>Application Submitted</span>
-                  </div>
-                  <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', marginBottom: 6 }}>Silver Paradise Productions • 2 days ago</div>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    {['Feature Film', 'Male', '25-35 Yrs'].map(tag => (
-                      <span key={tag} style={{ fontSize: 14, padding: '2px 8px', borderRadius: 20, background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' }}>{tag}</span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Messages — live from API */}
+            {/* Messages */}
             <div style={{ flex: 2, minWidth: 0, borderRadius: 12, background: BG3, border: '1px solid rgba(255,255,255,0.06)', padding: '16px 18px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <span style={{ fontSize: 18, fontWeight: 700 }}>Messages</span>
@@ -554,7 +592,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Profile Completion — live % from API */}
+            {/* Profile Completion */}
             <div style={{ flex: 2, minWidth: 0, borderRadius: 12, background: BG3, border: '1px solid rgba(255,255,255,0.06)', padding: '16px 18px', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <span style={{ fontSize: 18, fontWeight: 700 }}>Profile Completion</span>
