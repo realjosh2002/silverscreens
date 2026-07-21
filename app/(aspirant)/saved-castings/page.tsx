@@ -1,10 +1,10 @@
 'use client';
 
+import AspirantHeader from '@/components/layout/AspirantHeader'
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
-import AspirantHeader from '@/components/layout/AspirantHeader'
 
   LayoutDashboard, FileText, MessageSquare, Mic2, Bookmark, Star, Bell,
   ChevronRight, ChevronDown, ChevronLeft, Menu, CalendarDays, Headphones, Heart, User, Users,

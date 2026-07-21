@@ -1,11 +1,11 @@
 'use client'
 
+import AspirantHeader from '@/components/layout/AspirantHeader'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo'
 import { useNotifications } from '@/context/NotificationsContext'
 import {
-import AspirantHeader from '@/components/layout/AspirantHeader'
 
   LayoutDashboard, FileText, MessageSquare, Mic2, Bookmark,
   Star, Bell, ChevronRight, ChevronLeft, Menu, Crown, User, Settings,
