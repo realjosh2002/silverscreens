@@ -116,8 +116,8 @@ export default function AgencyCastingCallsListPage() {
   /* ── Live data ── */
   const [allRows,    setAllRows]    = useState<CastingCallRow[]>(CASTING_CALLS);
   const [loading,    setLoading]    = useState(true);
-  const [msgCount,   setMsgCount]   = useState(12);
-  const [notifCount, setNotifCount] = useState(3);
+  const [msgCount,   setMsgCount]   = useState(0);
+  const [notifCount, setNotifCount] = useState(0);
 
   /* ── Load agency identity from ss_user instantly ── */
   useEffect(() => {
@@ -172,7 +172,7 @@ export default function AgencyCastingCallsListPage() {
       .then(data => {
         if (!data) return;
         const list = data.notifications ?? data;
-        if (Array.isArray(list)) setNotifCount(list.filter((n: any) => !n.read && !n.isRead).length);
+        if (Array.isArray(list)) setNotifCount(list.filter((n: any) => !n.is_read).length);
       })
       .catch(() => {});
 

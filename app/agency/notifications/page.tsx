@@ -7,11 +7,9 @@ import {
   LayoutDashboard, Megaphone, PlusCircle, ClipboardList,
   UserSearch, Star, CalendarCheck, MessageSquare, Bell,
   Bookmark, ChevronDown, ChevronLeft, ChevronRight, Menu,
-  CheckCheck, ChevronRight as Arrow, Shield, Megaphone as Bullhorn,
-  Users, UserPlus,
+  CheckCheck, ChevronRight as Arrow, Megaphone as Bullhorn,
 } from 'lucide-react';
 
-/* ─── Design tokens ───────────────────────────────────────────── */
 const RED    = '#C8202A';
 const GOLD   = '#D4A64A';
 const GREEN  = '#22C55E';
@@ -34,100 +32,66 @@ const NAV_ITEMS = [
   { icon: Star,            label: 'Shortlisted Talents',     href: '/agency/shortlisted' },
   { icon: CalendarCheck,   label: 'Audition Management',     href: '/agency/auditions' },
   { icon: Bookmark,        label: 'Saved Talents',           href: '/agency/saved-talents' },
-  { icon: MessageSquare,   label: 'Messages',  badge: 12,    href: '/agency/messages' },
-  { icon: Bell,            label: 'Notifications', badge: 24,href: '/agency/notifications', active: true },
+  { icon: MessageSquare,   label: 'Messages',                href: '/agency/messages' },
+  { icon: Bell,            label: 'Notifications',           href: '/agency/notifications', active: true },
 ];
 
-/* ─── Notification types & icons ─────────────────────────────── */
 type NType = 'application' | 'shortlist' | 'audition' | 'message' | 'casting' | 'system' | 'team';
 
 interface Notification {
   id: string; type: NType; read: boolean;
-  title: React.ReactNode; subtitle: string;
+  title: string; subtitle: string;
   time: string; href: string;
 }
 
 const TYPE_CFG: Record<NType, { icon: React.ReactNode; iconBg: string }> = {
-  application: { icon: <Users size={18} color="#fff" />,        iconBg: GREEN   },
-  shortlist:   { icon: <Star size={18} color="#fff" fill="#fff"/>,iconBg: PURPLE },
-  audition:    { icon: <CalendarCheck size={18} color="#fff" />, iconBg: ORANGE  },
-  message:     { icon: <MessageSquare size={18} color="#fff" />, iconBg: BLUE    },
-  casting:     { icon: <Bullhorn size={18} color="#fff" />,      iconBg: GOLD    },
-  team:        { icon: <UserPlus size={18} color="#fff" />,      iconBg: '#14b8a6'},
-  system:      { icon: <Shield size={18} color="#fff" />,        iconBg: '#6b7280'},
+  application: { icon: <ClipboardList size={18} color="#4ADE80" />, iconBg: 'rgba(34,197,94,0.15)'  },
+  shortlist:   { icon: <Star         size={18} color="#C084FC" />, iconBg: 'rgba(168,85,247,0.15)' },
+  audition:    { icon: <CalendarCheck size={18} color="#FB923C" />, iconBg: 'rgba(249,115,22,0.15)' },
+  message:     { icon: <MessageSquare size={18} color="#60A5FA" />, iconBg: 'rgba(59,130,246,0.15)' },
+  casting:     { icon: <Megaphone     size={18} color="#D4A64A" />, iconBg: 'rgba(212,166,74,0.15)' },
+  system:      { icon: <Bell          size={18} color="#94A3B8" />, iconBg: 'rgba(148,163,184,0.12)'},
+  team:        { icon: <UserSearch    size={18} color="#818CF8" />, iconBg: 'rgba(99,102,241,0.15)' },
 };
 
-const NOTIFICATIONS: Notification[] = [
-  {
-    id: 'n1', type: 'application', read: false,
-    title: <>You have <span style={{ color: GREEN, fontWeight: 700 }}>15 new applications</span> for <strong>"Lead Hero"</strong> in <strong>City of Dreams</strong>.</>,
-    subtitle: 'City of Dreams  •  Feature Film',
-    time: '10:30 AM', href: '/agency/applications',
-  },
-  {
-    id: 'n2', type: 'shortlist', read: false,
-    title: <>Meera Iyer has been <span style={{ color: PURPLE, fontWeight: 700 }}>shortlisted</span> for <strong>"Female Lead"</strong> in <strong>The Silent Witness</strong>.</>,
-    subtitle: 'The Silent Witness  •  Short Film',
-    time: 'Yesterday, 04:15 PM', href: '/agency/shortlisted',
-  },
-  {
-    id: 'n3', type: 'audition', read: false,
-    title: <>Upcoming audition for <strong>4 candidates</strong> in <strong>Rangbaaz: Dobara</strong>.</>,
-    subtitle: '24 May 2024, 11:00 AM  •  Mumbai (Andheri)',
-    time: 'Yesterday, 11:45 AM', href: '/agency/auditions',
-  },
-  {
-    id: 'n4', type: 'message', read: true,
-    title: <><strong>Arjun Malhotra</strong> sent you a message regarding your application.</>,
-    subtitle: 'Regarding: Lead Hero - City of Dreams',
-    time: '22 May 2024, 06:20 PM', href: '/agency/messages',
-  },
-  {
-    id: 'n5', type: 'shortlist', read: true,
-    title: <>You marked <strong>3 candidates</strong> as shortlisted for <strong>Antagonist</strong> in <strong>Rangbaaz: Dobara</strong>.</>,
-    subtitle: 'Rangbaaz: Dobara  •  Web Series',
-    time: '22 May 2024, 03:10 PM', href: '/agency/shortlisted',
-  },
-  {
-    id: 'n6', type: 'casting', read: true,
-    title: <>Your casting call <strong>"Supporting Actor"</strong> in <strong>Love in Rewind</strong> is now live.</>,
-    subtitle: 'Love in Rewind  •  Music Video',
-    time: '21 May 2024, 09:30 AM', href: '/agency/casting-calls',
-  },
-  {
-    id: 'n7', type: 'team', read: true,
-    title: <>New team member <strong>Riya Sharma</strong> has joined your company.</>,
-    subtitle: 'Casting Assistant',
-    time: '20 May 2024, 05:40 PM', href: '/agency/dashboard',
-  },
-  {
-    id: 'n8', type: 'system', read: true,
-    title: <><strong>System Update:</strong> New verification guidelines have been updated.</>,
-    subtitle: 'Please review the changes.',
-    time: '20 May 2024, 12:25 PM', href: '/agency/dashboard',
-  },
-];
+const TYPE_MAP: Record<string, NType> = {
+  application_update: 'application',
+  application_new:    'application',
+  application:        'application',
+  shortlisted:        'shortlist',
+  audition_scheduled: 'audition',
+  audition_reminder:  'audition',
+  audition:           'audition',
+  message:            'message',
+  message_new:        'message',
+  casting_match:      'casting',
+  casting:            'casting',
+  system:             'system',
+  team:               'team',
+};
 
 const FILTER_TABS = [
-  { key: 'all',         label: 'All',          count: 24 },
-  { key: 'application', label: 'Applications', count: 8  },
-  { key: 'audition',    label: 'Auditions',    count: 5  },
-  { key: 'message',     label: 'Messages',     count: 4  },
-  { key: 'casting',     label: 'Castings',     count: 4  },
-  { key: 'system',      label: 'System',       count: 3  },
+  { key: 'all',         label: 'All Notifications' },
+  { key: 'unread',      label: 'Unread'            },
+  { key: 'application', label: 'Applications'      },
+  { key: 'audition',    label: 'Auditions'         },
+  { key: 'message',     label: 'Messages'          },
+  { key: 'casting',     label: 'Casting'           },
+  { key: 'system',      label: 'System'            },
 ];
 
 const RIGHT_FILTERS = [
-  { key: 'all',         label: 'All Notifications', count: 24 },
-  { key: 'unread',      label: 'Unread',             count: 8  },
-  { key: 'application', label: 'Applications',       count: 8  },
-  { key: 'audition',    label: 'Auditions',           count: 5  },
-  { key: 'message',     label: 'Messages',            count: 4  },
-  { key: 'casting',     label: 'Castings',            count: 4  },
-  { key: 'system',      label: 'System',              count: 3  },
+  { key: 'all',         label: 'All Notifications' },
+  { key: 'unread',      label: 'Unread'            },
+  { key: 'application', label: 'Applications'      },
+  { key: 'audition',    label: 'Auditions'         },
+  { key: 'message',     label: 'Messages'          },
+  { key: 'casting',     label: 'Casting'           },
+  { key: 'system',      label: 'System'            },
 ];
 
-/* ── Auth helper ── */
+const PER_PAGE = 8;
+
 function getAuthHeaders(): Record<string, string> {
   try {
     const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
@@ -135,46 +99,45 @@ function getAuthHeaders(): Record<string, string> {
   } catch { return {}; }
 }
 
-/* ── Normalise API notification → Notification shape ── */
 function apiToNotification(n: any, idx: number): Notification {
-  const type: NType = TYPE_CFG[n.type as NType] ? n.type : 'system';
-  const title = n.title ?? n.message ?? 'Notification';
+  const rawType: string = n.type ?? 'system';
+  const type: NType = TYPE_MAP[rawType] ?? (TYPE_CFG[rawType as NType] ? rawType as NType : 'system');
   return {
     id:       String(n.id ?? n._id ?? idx),
     type,
-    read:     n.read ?? n.isRead ?? false,
-    title:    typeof title === 'string' ? <>{title}</> : title,
+    read:     n.is_read ?? n.isRead ?? n.read ?? false,
+    title:    n.title ?? n.message ?? 'Notification',
     subtitle: n.subtitle ?? n.description ?? '',
-    time:     n.createdAt
+    time:     n.created_at
+      ? new Date(n.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : n.createdAt
       ? new Date(n.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
       : n.time ?? '',
-    href:     n.href ?? '/agency/dashboard',
+    href:     n.action_url ?? n.href ?? '/agency/dashboard',
   };
 }
+
 export default function NotificationsPage() {
   const router = useRouter();
-  const [sidebarOpen,  setSidebarOpen]  = useState(false);
-  const [profileOpen,  setProfileOpen]  = useState(false);
-  const [activeTab,    setActiveTab]    = useState('all');
-  const [rightFilter,  setRightFilter]  = useState('all');
-  const [notifications,setNotifications]= useState<Notification[]>(NOTIFICATIONS);
-  const [pushOn,       setPushOn]       = useState(true);
-  const [emailOn,      setEmailOn]      = useState(true);
-  const [smsOn,        setSmsOn]        = useState(false);
-  const [marketOn,     setMarketOn]     = useState(false);
-  const [page,         setPage]         = useState(1);
-
-  /* ── Live data ── */
+  const [sidebarOpen,    setSidebarOpen]    = useState(false);
+  const [profileOpen,    setProfileOpen]    = useState(false);
+  const [activeTab,      setActiveTab]      = useState('all');
+  const [rightFilter,    setRightFilter]    = useState('all');
+  const [notifications,  setNotifications]  = useState<Notification[]>([]);
+  const [pushOn,         setPushOn]         = useState(true);
+  const [emailOn,        setEmailOn]        = useState(true);
+  const [smsOn,          setSmsOn]          = useState(false);
+  const [marketOn,       setMarketOn]       = useState(false);
+  const [page,           setPage]           = useState(1);
+  const [loading,        setLoading]        = useState(true);
   const [agencyName,     setAgencyName]     = useState('My Agency');
   const [agencyInitials, setAgencyInitials] = useState('AG');
   const [agencyId,       setAgencyId]       = useState('AGE·········');
   const [agencyType,     setAgencyType]     = useState('Production House');
-  const [msgCount,       setMsgCount]       = useState(12);
+  const [msgCount,       setMsgCount]       = useState(0);
 
-  const PER_PAGE = 8;
   const SB_W = sidebarOpen ? 230 : 52;
 
-  /* ── Load agency identity from ss_user instantly ── */
   useEffect(() => {
     try {
       const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
@@ -186,7 +149,6 @@ export default function NotificationsPage() {
     } catch {}
   }, []);
 
-  /* ── Fetch notifications + badge counts on mount ── */
   useEffect(() => {
     const h = getAuthHeaders();
 
@@ -194,57 +156,60 @@ export default function NotificationsPage() {
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data) return;
-        const list = data.notifications ?? data;
-        if (!Array.isArray(list) || list.length === 0) return;
+        const list = data.data?.notifications ?? data.notifications ?? [];
+        if (!Array.isArray(list)) return;
         setNotifications(list.map((n: any, i: number) => apiToNotification(n, i)));
-      }).catch(() => {});
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
 
     fetch('/api/profile/agency', { headers: h })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data) return;
-        const p = data.profile ?? data;
-        if (p.companyName || p.name) {
-          const name = p.companyName ?? p.name;
+        const p = data.data?.profile ?? data.profile ?? data;
+        if (p.company_name || p.companyName || p.name) {
+          const name = p.company_name ?? p.companyName ?? p.name;
           setAgencyName(name);
           setAgencyInitials(name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase());
         }
-        if (p.profileNumber) setAgencyId(p.profileNumber);
-        if (p.companyType)   setAgencyType(p.companyType);
+        if (p.profile_number ?? p.profileNumber) setAgencyId(p.profile_number ?? p.profileNumber);
+        if (p.company_type  ?? p.companyType)    setAgencyType(p.company_type ?? p.companyType);
       }).catch(() => {});
 
     fetch('/api/messages/conversations', { headers: h })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data) return;
-        const list = data.conversations ?? data;
+        const list = data.data?.conversations ?? data.conversations ?? [];
         if (Array.isArray(list)) setMsgCount(list.filter((c: any) => c.unreadCount > 0).length);
       }).catch(() => {});
   }, []);
 
   const markAllRead = () => {
-    setNotifications(p => p.map(n => ({ ...n, read: true }))); // optimistic
+    setNotifications(p => p.map(n => ({ ...n, read: true })));
     const h = getAuthHeaders();
-    fetch('/api/notifications/mark-read', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', ...h },
-      body: JSON.stringify({ all: true }),
+    fetch('/api/notifications', {
+      method:  'PUT',
+      headers: { 'Content-Type': 'application/json', ...h },
+      body:    JSON.stringify({}),
     }).catch(() => {});
   };
 
   const markRead = (id: string) => {
-    setNotifications(p => p.map(n => n.id === id ? { ...n, read: true } : n)); // optimistic
+    setNotifications(p => p.map(n => n.id === id ? { ...n, read: true } : n));
     const h = getAuthHeaders();
-    fetch(`/api/notifications/${id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json', ...h },
-      body: JSON.stringify({ read: true }),
+    fetch('/api/notifications', {
+      method:  'PUT',
+      headers: { 'Content-Type': 'application/json', ...h },
+      body:    JSON.stringify({ notification_id: id }),
     }).catch(() => {});
   };
 
-  // Live counts computed from real data
   const liveCounts = useMemo(() => ({
     all:         notifications.length,
     unread:      notifications.filter(n => !n.read).length,
-    application: notifications.filter(n => n.type === 'application').length,
+    application: notifications.filter(n => n.type === 'application' || n.type === 'shortlist').length,
     audition:    notifications.filter(n => n.type === 'audition').length,
     message:     notifications.filter(n => n.type === 'message').length,
     casting:     notifications.filter(n => n.type === 'casting').length,
@@ -252,13 +217,17 @@ export default function NotificationsPage() {
   }), [notifications]);
 
   const filtered = notifications.filter(n => {
-    const tabMatch = activeTab === 'all' || n.type === activeTab;
-    const rfMatch  = rightFilter === 'all' ? true : rightFilter === 'unread' ? !n.read : n.type === rightFilter;
+    const tabMatch = activeTab === 'all' || activeTab === 'unread'
+      ? (activeTab === 'unread' ? !n.read : true)
+      : (n.type === activeTab || (activeTab === 'application' && n.type === 'shortlist'));
+    const rfMatch = rightFilter === 'all' ? true
+      : rightFilter === 'unread' ? !n.read
+      : (n.type === rightFilter || (rightFilter === 'application' && n.type === 'shortlist'));
     return tabMatch && rfMatch;
   });
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
-  const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const totalPages  = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  const paged       = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const Toggle = ({ on, setOn }: { on: boolean; setOn: (v: boolean) => void }) => (
@@ -284,8 +253,8 @@ export default function NotificationsPage() {
           {msgCount > 0 && <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', pointerEvents: 'none' }}>{msgCount}</div>}
         </div>
         <div onClick={() => router.push('/agency/notifications')} style={{ position: 'relative', cursor: 'pointer' }}>
-          <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Bell size={15} color="rgba(255,255,255,0.7)" />
+          <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(200,32,42,0.15)', border: `1px solid ${RED}40`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Bell size={15} color={RED} />
           </div>
           {unreadCount > 0 && <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', pointerEvents: 'none' }}>{unreadCount}</div>}
         </div>
@@ -304,20 +273,22 @@ export default function NotificationsPage() {
               <div style={{ position: 'absolute', top: 46, right: 0, width: 220, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', zIndex: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
                 <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Agency ID</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: GOLD, fontFamily: BARLOW }}>{agencyId}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: GOLD }}>{agencyId}</span>
                 </div>
                 {[
-                  { label: 'Reports & Analytics', href: '/agency/reports' },
-                  { label: 'Subscription & Billing', href: '/pricing' },
-                  { label: 'Company Profile', href: '/agency-profile' },
-                  { label: 'Documents', href: '/agency/documents' },
-                  { label: 'Calendar', href: '/agency/calendar' },
-                  { label: 'Settings', href: '/agency/settings' },
-                  { label: 'Support', href: '/contact' },
-                  { label: 'Logout', href: '/login' },
+                  { label: 'Reports & Analytics',   href: '/agency/reports'   },
+                  { label: 'Subscription & Billing', href: '/pricing'          },
+                  { label: 'Company Profile',        href: '/agency-profile'   },
+                  { label: 'Documents',              href: '/agency/documents' },
+                  { label: 'Calendar',               href: '/agency/calendar'  },
+                  { label: 'Settings',               href: '/agency/settings'  },
+                  { label: 'Support',                href: '/contact'          },
+                  { label: 'Logout',                 href: '/login'            },
                 ].map(({ label, href }) => (
-                  <div key={label} onClick={() => { if (label === 'Logout') { localStorage.removeItem('ss_user'); window.location.replace('/login'); } else { router.push(href); setProfileOpen(false); } }}
-                    style={{ padding: '10px 16px', fontSize: 15, cursor: 'pointer', color: label === 'Logout' ? '#ff6b6b' : '#F5F5F5', borderTop: label === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
+                  <div key={label} onClick={() => {
+                    if (label === 'Logout') { localStorage.removeItem('ss_user'); window.location.replace('/login'); }
+                    else { router.push(href); setProfileOpen(false); }
+                  }} style={{ padding: '10px 16px', fontSize: 15, cursor: 'pointer', color: label === 'Logout' ? '#ff6b6b' : '#F5F5F5', borderTop: label === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                   >{label}</div>
@@ -331,7 +302,7 @@ export default function NotificationsPage() {
       {/* ══ BODY ══ */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
-        {/* ── COLLAPSIBLE SIDEBAR ── */}
+        {/* ── SIDEBAR ── */}
         <aside style={{ width: SB_W, flexShrink: 0, background: BG2, borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', overflowY: 'auto', overflowX: 'hidden', scrollbarWidth: 'none', transition: 'width 0.2s ease' }}>
           <div style={{ height: 52, display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'flex-end' : 'center', padding: sidebarOpen ? '0 12px' : 0, borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
             <button onClick={() => setSidebarOpen(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', width: 30, height: 30, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}
@@ -377,11 +348,9 @@ export default function NotificationsPage() {
         {/* ── CENTRE + RIGHT ── */}
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-          {/* ── MAIN NOTIFICATIONS ── */}
+          {/* ── MAIN ── */}
           <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '20px 24px 0', flexShrink: 0 }}>
-
-              {/* Header */}
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
                 <div>
                   <h1 style={{ fontFamily: BEBAS, fontSize: 28, letterSpacing: 1, color: '#fff', margin: '0 0 4px' }}>Notifications</h1>
@@ -395,12 +364,12 @@ export default function NotificationsPage() {
               {/* Filter tabs */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderBottom: '1px solid rgba(255,255,255,0.07)', marginBottom: 14 }}>
                 {FILTER_TABS.map(tab => {
-                  const active = activeTab === tab.key;
-                  const liveCount = liveCounts[tab.key as keyof typeof liveCounts] ?? 0;
+                  const isActive = activeTab === tab.key;
+                  const count = liveCounts[tab.key as keyof typeof liveCounts] ?? 0;
                   return (
-                    <div key={tab.key} onClick={() => { setActiveTab(tab.key); setPage(1); }} style={{ padding: '10px 16px', cursor: 'pointer', borderBottom: active ? `2px solid ${RED}` : '2px solid transparent', marginBottom: -1, whiteSpace: 'nowrap' }}>
-                      <span style={{ fontSize: 14, fontFamily: BARLOW, fontWeight: active ? 700 : 500, color: active ? RED : 'rgba(255,255,255,0.5)' }}>
-                        {tab.label} <span style={{ fontSize: 14, color: active ? RED : 'rgba(255,255,255,0.3)' }}>({liveCount})</span>
+                    <div key={tab.key} onClick={() => { setActiveTab(tab.key); setPage(1); }} style={{ padding: '10px 16px', cursor: 'pointer', borderBottom: isActive ? `2px solid ${RED}` : '2px solid transparent', marginBottom: -1, whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: 14, fontFamily: BARLOW, fontWeight: isActive ? 700 : 500, color: isActive ? RED : 'rgba(255,255,255,0.5)' }}>
+                        {tab.label} <span style={{ color: isActive ? RED : 'rgba(255,255,255,0.3)' }}>({count})</span>
                       </span>
                     </div>
                   );
@@ -410,38 +379,31 @@ export default function NotificationsPage() {
 
             {/* Notification list */}
             <div style={{ flex: 1, padding: '0 24px' }}>
-              {paged.length === 0 ? (
+              {loading && (
+                <div style={{ padding: '60px 0', textAlign: 'center', fontSize: 14, color: 'rgba(255,255,255,0.3)' }}>Loading…</div>
+              )}
+              {!loading && paged.length === 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0' }}>
                   <Bell size={36} color="rgba(255,255,255,0.1)" style={{ marginBottom: 12 }} />
                   <div style={{ fontSize: 16, color: 'rgba(255,255,255,0.4)' }}>No notifications in this category.</div>
                 </div>
-              ) : paged.map((n, idx) => {
-                const cfg = TYPE_CFG[n.type];
+              )}
+              {paged.map((n, idx) => {
+                const cfg = TYPE_CFG[n.type] ?? TYPE_CFG.system;
                 return (
                   <div key={n.id} onClick={() => { markRead(n.id); router.push(n.href); }}
                     style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 16px', background: n.read ? 'transparent' : 'rgba(200,32,42,0.04)', borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', position: 'relative', transition: 'background 0.15s', borderRadius: idx === 0 ? '12px 12px 0 0' : idx === paged.length - 1 ? '0 0 12px 12px' : 0 }}
                     onMouseEnter={e => (e.currentTarget.style.background = n.read ? 'rgba(255,255,255,0.025)' : 'rgba(200,32,42,0.07)')}
                     onMouseLeave={e => (e.currentTarget.style.background = n.read ? 'transparent' : 'rgba(200,32,42,0.04)')}
                   >
-                    {/* Unread dot */}
-                    {!n.read && (
-                      <div style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 6, height: 6, borderRadius: '50%', background: RED }} />
-                    )}
-
-                    {/* Icon */}
+                    {!n.read && <div style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 6, height: 6, borderRadius: '50%', background: RED }} />}
                     <div style={{ width: 44, height: 44, borderRadius: '50%', background: cfg.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       {cfg.icon}
                     </div>
-
-                    {/* Content */}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 15, color: n.read ? 'rgba(255,255,255,0.7)' : '#fff', lineHeight: 1.5, marginBottom: 4 }}>
-                        {n.title}
-                      </div>
-                      <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>{n.subtitle}</div>
+                      <div style={{ fontSize: 15, color: n.read ? 'rgba(255,255,255,0.7)' : '#fff', lineHeight: 1.5, marginBottom: 4 }}>{n.title}</div>
+                      {n.subtitle && <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>{n.subtitle}</div>}
                     </div>
-
-                    {/* Time + chevron */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                       <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap' }}>{n.time}</span>
                       <Arrow size={16} color="rgba(255,255,255,0.25)" />
@@ -451,37 +413,39 @@ export default function NotificationsPage() {
               })}
 
               {/* Pagination */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0 24px', flexWrap: 'wrap', gap: 10 }}>
-                <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>
-                  Showing {(page-1)*PER_PAGE+1} to {Math.min(page*PER_PAGE, filtered.length)} of {filtered.length} notifications
+              {!loading && filtered.length > PER_PAGE && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0 24px', flexWrap: 'wrap', gap: 10 }}>
+                  <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>
+                    Showing {(page-1)*PER_PAGE+1} to {Math.min(page*PER_PAGE, filtered.length)} of {filtered.length} notifications
+                  </div>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <PBtn onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1}><ChevronLeft size={13} /></PBtn>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
+                      <PBtn key={n} onClick={() => setPage(n)} active={page===n}>{n}</PBtn>
+                    ))}
+                    <PBtn onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page===totalPages}><ChevronRight size={13} /></PBtn>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  <PBtn onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1}><ChevronLeft size={13} /></PBtn>
-                  {[1,2,3].map(n => <PBtn key={n} onClick={() => setPage(n)} active={page===n}>{n}</PBtn>)}
-                  <PBtn onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page===totalPages}><ChevronRight size={13} /></PBtn>
-                </div>
-              </div>
+              )}
             </div>
           </div>
 
           {/* ── RIGHT PANEL ── */}
           <div style={{ width: 260, flexShrink: 0, borderLeft: '1px solid rgba(255,255,255,0.06)', overflowY: 'auto', scrollbarWidth: 'none', padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-
-            {/* Filter Notifications */}
             <div>
               <div style={{ fontSize: 15, fontWeight: 700, color: '#fff', marginBottom: 14 }}>Filter Notifications</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {RIGHT_FILTERS.map(f => {
-                  const active = rightFilter === f.key;
-                  const liveCount = liveCounts[f.key as keyof typeof liveCounts] ?? 0;
+                  const isActive = rightFilter === f.key;
+                  const count = liveCounts[f.key as keyof typeof liveCounts] ?? 0;
                   return (
                     <div key={f.key} onClick={() => { setRightFilter(f.key); setPage(1); }}
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px', borderRadius: 8, cursor: 'pointer', background: active ? `${RED}15` : 'transparent', borderLeft: active ? `3px solid ${RED}` : '3px solid transparent', transition: 'all 0.1s' }}
-                      onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
-                      onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px', borderRadius: 8, cursor: 'pointer', background: isActive ? `${RED}15` : 'transparent', borderLeft: isActive ? `3px solid ${RED}` : '3px solid transparent', transition: 'all 0.1s' }}
+                      onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                      onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
                     >
-                      <span style={{ fontSize: 14, color: active ? '#fff' : 'rgba(255,255,255,0.6)', fontWeight: active ? 600 : 400 }}>{f.label}</span>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: active ? RED : 'rgba(255,255,255,0.35)', background: active ? `${RED}20` : 'rgba(255,255,255,0.06)', borderRadius: 10, padding: '1px 8px', minWidth: 24, textAlign: 'center' as const }}>{liveCount}</span>
+                      <span style={{ fontSize: 14, color: isActive ? '#fff' : 'rgba(255,255,255,0.6)', fontWeight: isActive ? 600 : 400 }}>{f.label}</span>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: isActive ? RED : 'rgba(255,255,255,0.35)', background: isActive ? `${RED}20` : 'rgba(255,255,255,0.06)', borderRadius: 10, padding: '1px 8px', minWidth: 24, textAlign: 'center' as const }}>{count}</span>
                     </div>
                   );
                 })}
@@ -490,15 +454,14 @@ export default function NotificationsPage() {
 
             <div style={{ height: 1, background: 'rgba(255,255,255,0.07)' }} />
 
-            {/* Notification Settings */}
             <div>
               <div style={{ fontSize: 15, fontWeight: 700, color: '#fff', marginBottom: 14 }}>Notification Settings</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {[
-                  { label: 'Push Notifications', icon: <Bell size={15} />,         on: pushOn,   set: setPushOn   },
-                  { label: 'Email Notifications',icon: <MessageSquare size={15} />, on: emailOn,  set: setEmailOn  },
-                  { label: 'SMS Notifications',  icon: <MessageSquare size={15} />, on: smsOn,    set: setSmsOn    },
-                  { label: 'Marketing Emails',   icon: <Bullhorn size={15} />,      on: marketOn, set: setMarketOn },
+                  { label: 'Push Notifications',  icon: <Bell size={15} />,         on: pushOn,   set: setPushOn   },
+                  { label: 'Email Notifications', icon: <MessageSquare size={15} />, on: emailOn,  set: setEmailOn  },
+                  { label: 'SMS Notifications',   icon: <MessageSquare size={15} />, on: smsOn,    set: setSmsOn    },
+                  { label: 'Marketing Emails',    icon: <Bullhorn size={15} />,      on: marketOn, set: setMarketOn },
                 ].map(({ label, icon, on, set }) => (
                   <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -516,7 +479,6 @@ export default function NotificationsPage() {
 
             <div style={{ height: 1, background: 'rgba(255,255,255,0.07)' }} />
 
-            {/* Need Help */}
             <div style={{ background: BG3, border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '14px 16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                 <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${GOLD}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -524,9 +486,7 @@ export default function NotificationsPage() {
                 </div>
                 <span style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>Need Help?</span>
               </div>
-              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 12, lineHeight: 1.5 }}>
-                Learn how notifications work on SilverScreens.
-              </div>
+              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 12, lineHeight: 1.5 }}>Learn how notifications work on SilverScreens.</div>
               <div onClick={() => router.push('/contact')} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 14, color: RED, fontWeight: 600, cursor: 'pointer' }}>
                 Visit Help Center <Arrow size={14} color={RED} />
               </div>
@@ -538,7 +498,6 @@ export default function NotificationsPage() {
   );
 }
 
-/* ── Helpers ─────────────────────────────────────────────────── */
 function PBtn({ onClick, disabled, active, children }: { onClick: () => void; disabled?: boolean; active?: boolean; children: React.ReactNode }) {
   return (
     <button onClick={onClick} disabled={disabled} style={{ minWidth: 32, height: 32, borderRadius: 7, border: `1px solid ${active ? RED : 'rgba(255,255,255,0.12)'}`, background: active ? RED : 'transparent', color: active ? '#fff' : disabled ? 'rgba(255,255,255,0.2)' : '#fff', fontSize: 14, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: active ? 700 : 400, cursor: disabled ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 6px' }}>

@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo'
 import { useNotifications } from '@/context/NotificationsContext'
 import {
+import AspirantHeader from '@/components/layout/AspirantHeader'
+
   LayoutDashboard, FileText, MessageSquare, Mic2, Bookmark,
   Star, Bell, ChevronRight, ChevronLeft, Menu, Crown, User, Settings,
   Shield, Mail, Eye, Sliders, UserX, CreditCard,
@@ -444,51 +446,7 @@ export default function SettingsPage() {
       )}
 
       {/* ── TOPNAV ── */}
-      <header style={{ height: 60, flexShrink: 0, background: BG2, borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', padding: '0 24px', gap: 16, zIndex: 50 }}>
-        <SilverScreensLogo size="md" href="/" showTagline={false} />
-        <div style={{ flex: 1 }} />
-        {/* Find Casting Calls */}
-        <button onClick={() => router.push('/casting-calls')} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 8, padding: '0 18px', height: 36, fontSize: 15, fontWeight: 600, fontFamily: BARLOW, cursor: 'pointer', whiteSpace: 'nowrap' }}>+ Find Casting Calls</button>
-        {/* Icons — Messages and Bell only, Saved Castings removed */}
-        {[
-          { n: <MessageSquare size={16}/>, badge: counts.messages,      href: '/messages',      readKey: 'messages' as const },
-          { n: <Bell size={16}/>,         badge: counts.notifications, href: '/notifications', readKey: 'notifications' as const },
-        ].map((item, i) => (
-          <div key={i} onClick={() => { markAllRead(item.readKey); router.push(item.href) }} style={{ position: 'relative', cursor: 'pointer' }}>
-            <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}
-              onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.12)'}
-              onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.06)'}
-            >
-              {item.n}
-            </div>
-            {!!item.badge && <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 17, height: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, pointerEvents: 'none' }}>{item.badge}</div>}
-          </div>
-        ))}
-        {/* Avatar */}
-        <div style={{ position: 'relative' }}>
-          <div onClick={() => setDropOpen(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-            <img src={userAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=C8202A&color=fff`} alt={userName} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${GOLD}` }} />
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>{userName}</div>
-              <div onClick={e => { e.stopPropagation(); router.push('/profile') }} style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}
-                onMouseEnter={e => (e.currentTarget.style.color = RED)}
-                onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}
-              >View Profile</div>
-            </div>
-            <ChevronRight size={12} color="rgba(255,255,255,0.35)" style={{ transform: 'rotate(90deg)' }} />
-          </div>
-          {dropOpen && (
-            <div style={{ position: 'absolute', top: 46, right: 0, width: 180, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', zIndex: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
-              {dropdownLinks.map(({ label, href }) => (
-                <div key={label} onClick={() => router.push(href)} style={{ padding: '10px 16px', fontSize: 15, cursor: 'pointer', color: label === 'Logout' ? '#ff6b6b' : '#fff', borderTop: label === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                >{label}</div>
-              ))}
-            </div>
-          )}
-        </div>
-      </header>
+      <AspirantHeader />
 
       {/* ── BODY ── */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>

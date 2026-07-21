@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
+import AgencyTopnav from '@/components/layout/AgencyTopnav'
+
   LayoutDashboard, Megaphone, PlusCircle, ClipboardList,
   UserSearch, Star, CalendarCheck, MessageSquare, Bell,
   Bookmark, ChevronDown, ChevronLeft, ChevronRight, Menu, Plus,
@@ -95,8 +97,8 @@ const NAV_ITEMS = [
   { icon: Star,            label: 'Shortlisted Talents',     href: '/agency/shortlisted' },
   { icon: CalendarCheck,   label: 'Audition Management',     href: '/agency/auditions' },
   { icon: Bookmark,        label: 'Saved Talents',           href: '/agency/saved-talents' },
-  { icon: MessageSquare,   label: 'Messages',  badge: 12,    href: '/agency/messages' },
-  { icon: Bell,            label: 'Notifications', badge: 3, href: '/agency/notifications' },
+  { icon: MessageSquare,   label: 'Messages',    href: '/agency/messages' },
+  { icon: Bell,            label: 'Notifications', href: '/agency/notifications' },
 ];
 
 const PROFILE_MENU = [
@@ -221,49 +223,7 @@ export default function AgencyCalendarPage() {
       {showAdd && <AddEventModal onClose={() => setShowAdd(false)} defaultDate={selectedDay || today} />}
 
       {/* ── TOPNAV ── */}
-      <header style={{ height:60, flexShrink:0, background:BG2, borderBottom:'1px solid rgba(255,255,255,0.07)', display:'flex', alignItems:'center', padding:'0 24px', gap:16, zIndex:50 }}>
-        <SilverScreensLogo size="md" href="/" showTagline={false} />
-        <div style={{ flex:1 }} />
-        <button onClick={() => router.push('/agency/create-casting')} style={{ display:'flex', alignItems:'center', gap:7, background:RED, color:'#fff', border:'none', borderRadius:8, padding:'0 18px', height:36, fontSize:15, fontWeight:700, fontFamily:BARLOW, cursor:'pointer' }}>
-          Post a Casting +
-        </button>
-        <div onClick={() => router.push('/agency/messages')} style={{ position:'relative', cursor:'pointer' }}>
-          <div style={{ width:36, height:36, borderRadius:8, background:'rgba(255,255,255,0.07)', display:'flex', alignItems:'center', justifyContent:'center' }}><MessageSquare size={15} color="rgba(255,255,255,0.7)" /></div>
-          <div style={{ position:'absolute', top:-5, right:-5, background:RED, borderRadius:'50%', width:18, height:18, display:'flex', alignItems:'center', justifyContent:'center', fontSize: 14, fontWeight:700, color:'#fff' }}>12</div>
-        </div>
-        <div onClick={() => router.push('/agency/notifications')} style={{ position:'relative', cursor:'pointer' }}>
-          <div style={{ width:36, height:36, borderRadius:8, background:'rgba(255,255,255,0.07)', display:'flex', alignItems:'center', justifyContent:'center' }}><Bell size={15} color="rgba(255,255,255,0.7)" /></div>
-          <div style={{ position:'absolute', top:-5, right:-5, background:RED, borderRadius:'50%', width:18, height:18, display:'flex', alignItems:'center', justifyContent:'center', fontSize: 14, fontWeight:700, color:'#fff' }}>3</div>
-        </div>
-        <div style={{ position:'relative' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:9, cursor:'pointer' }} onClick={() => setProfileOpen(v=>!v)}>
-            <div style={{ width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg,#1a1410,#2a1e0e)', border:'2px solid rgba(212,166,74,0.38)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:800, color:GOLD, fontFamily:BEBAS }}>DP</div>
-            <div>
-              <div style={{ fontSize:15, fontWeight:700, lineHeight:1.2 }}>Dharma Productions</div>
-              <div style={{ fontSize: 14, color:'rgba(255,255,255,0.4)' }}>Production House</div>
-            </div>
-            <ChevronDown size={12} color="rgba(255,255,255,0.4)" />
-          </div>
-          {profileOpen && (
-            <>
-              <div onClick={() => setProfileOpen(false)} style={{ position:'fixed', inset:0, zIndex:150 }} />
-              <div style={{ position:'absolute', top:46, right:0, width:220, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, overflow:'hidden', zIndex:200, boxShadow:'0 8px 32px rgba(0,0,0,0.6)' }}>
-                <div style={{ padding:'10px 16px', borderBottom:'1px solid rgba(255,255,255,0.07)', display:'flex', justifyContent:'space-between' }}>
-                  <span style={{ fontSize: 14, color:'rgba(255,255,255,0.4)' }}>Agency ID</span>
-                  <span style={{ fontSize: 14, fontWeight:700, color:GOLD }}>AGE062600001</span>
-                </div>
-                {PROFILE_MENU.map(({ label, href }) => (
-                  <div key={label} onClick={() => { router.push(href); setProfileOpen(false); }}
-                    style={{ padding:'10px 16px', fontSize:15, cursor:'pointer', color: label==='Logout'?'#ff6b6b':label==='Calendar'?GOLD:'#F5F5F5', fontWeight:label==='Calendar'?700:400, background:label==='Calendar'?'rgba(212,166,74,0.08)':'transparent', borderTop:label==='Logout'?'1px solid rgba(255,255,255,0.07)':'none' }}
-                    onMouseEnter={e => (e.currentTarget.style.background='rgba(255,255,255,0.05)')}
-                    onMouseLeave={e => (e.currentTarget.style.background=label==='Calendar'?'rgba(212,166,74,0.08)':'transparent')}
-                  >{label}</div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </header>
+      <AgencyTopnav />
 
       {/* ── BODY ── */}
       <div style={{ display:'flex', flex:1, overflow:'hidden' }}>

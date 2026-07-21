@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
 
 // GET /api/notifications — get user notifications
-// PUT /api/notifications — mark all as read
+// PUT /api/notifications — mark as read
 
 export async function GET(req: NextRequest) {
   try {
@@ -62,13 +62,13 @@ export async function PUT(req: NextRequest) {
       // Mark single notification as read
       await prisma.notifications.updateMany({
         where: { id: notification_id, user_id: user.id },
-        data:  { is_read: true, read_at: new Date() },
+        data:  { is_read: true },
       })
     } else {
       // Mark all as read
       await prisma.notifications.updateMany({
         where: { user_id: user.id, is_read: false },
-        data:  { is_read: true, read_at: new Date() },
+        data:  { is_read: true },
       })
     }
 

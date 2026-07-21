@@ -4,6 +4,8 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
+import AspirantHeader from '@/components/layout/AspirantHeader'
+
   LayoutDashboard, FileText, MessageSquare, Mic2,
   Bookmark, Star, Bell, ChevronRight, ChevronDown, ChevronLeft, Menu,
   MapPin, CalendarDays, Clock, Send, XCircle, Check,
@@ -28,7 +30,7 @@ const sidebarItems = [
   { icon: Mic2,            label: 'Auditions',            href: '/auditions' },
   { icon: Bookmark,        label: 'Saved Castings',       href: '/saved-castings' },
   { icon: Star,            label: 'Recommended Castings', href: '/recommended' },
-  { icon: Bell,            label: 'Notifications',        href: '/notifications', badge: 3 },
+  { icon: Bell,            label: 'Notifications',        href: '/notifications'},
 ];
 
 /* ─── Profile dropdown — PRD finalized ───────────────────────── */
@@ -148,7 +150,6 @@ export default function MyApplicationsPage() {
   const [loading,      setLoading]      = useState(true);
   const [userName,     setUserName]     = useState('My Account');
   const [avatarUrl,    setAvatarUrl]    = useState('');
-  const [notifCount,   setNotifCount]   = useState(3);
   const [msgCount,     setMsgCount]     = useState(2);
   const [profileMediaCount, setProfileMediaCount] = useState(0);
 
@@ -223,7 +224,7 @@ export default function MyApplicationsPage() {
       .then(data => {
         if (!data) return;
         const list = data.notifications ?? data;
-        if (Array.isArray(list)) setNotifCount(list.filter((n: any) => !n.read && !n.isRead).length);
+        if (Array.isArray(list)) setNotifCount(list.filter((n: any) => !n.is_read).length);
       }).catch(() => {});
 
     // Messages count
@@ -275,64 +276,7 @@ export default function MyApplicationsPage() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: BG, fontFamily: BARLOW, color: '#fff' }}>
 
       {/* ══ TOP NAVBAR — identical to dashboard ══ */}
-      <header style={{
-        display: 'flex', alignItems: 'center', gap: 16,
-        padding: '0 24px', height: 60, flexShrink: 0,
-        background: BG2, borderBottom: '1px solid rgba(255,255,255,0.06)',
-        position: 'relative', zIndex: 100,
-      }}>
-        <SilverScreensLogo size="md" href="/" showTagline={false} />
-
-        <div style={{ flex: 1 }} />
-
-        {/* Find Casting Calls */}
-        <button onClick={() => router.push('/casting-calls')} style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          background: 'transparent', border: `1px solid ${GOLD}`,
-          color: GOLD, borderRadius: 8, padding: '0 18px', height: 36,
-          fontSize: 15, fontWeight: 600, fontFamily: BARLOW, cursor: 'pointer',
-        }}>+ Find Casting Calls</button>
-
-        {/* Bell */}
-        <div onClick={() => router.push('/notifications')} style={{ position: 'relative', cursor: 'pointer' }}>
-          <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Bell size={16} />
-          </div>
-          <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700 }}>{notifCount > 0 ? notifCount : null}</div>
-        </div>
-
-        {/* Chat */}
-        <div onClick={() => router.push('/messages')} style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-          <MessageSquare size={16} />
-        </div>
-
-        {/* Avatar */}
-        <div ref={dropRef} style={{ position: 'relative' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} onClick={() => setDropdownOpen(v => !v)}>
-            <img src={avatarUrl} alt={userName}
-              style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${GOLD}` }} />
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2 }}>{userName}</div>
-              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)' }}>Aspirant</div>
-            </div>
-            <ChevronRight size={12} color="rgba(255,255,255,0.4)" style={{ transform: 'rotate(90deg)' }} />
-          </div>
-          {dropdownOpen && (
-            <div style={{ position: 'absolute', top: 46, right: 0, width: 190, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', zIndex: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
-              {dropdownLinks.map(item => (
-                <div key={item} style={{ padding: '10px 16px', fontSize: 16, cursor: 'pointer', color: item === 'Logout' ? '#ff6b6b' : '#fff', borderTop: item === 'Logout' ? '1px solid rgba(255,255,255,0.06)' : 'none' }}
-                  onClick={() => {
-                    if (item === 'Logout') { localStorage.removeItem('ss_user'); window.location.replace('/login'); }
-                    else router.push(`/${item.toLowerCase()}`);
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >{item}</div>
-              ))}
-            </div>
-          )}
-        </div>
-      </header>
+      <AspirantHeader />
 
       {/* ══ BODY ══ */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>

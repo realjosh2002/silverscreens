@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo'
 import {
+import AspirantHeader from '@/components/layout/AspirantHeader'
+
   LayoutDashboard, FileText, MessageSquare, Mic2, Bookmark,
   Star, Bell, Crown, ChevronRight, ChevronLeft, Menu, Plus,
   Clock, MapPin, Calendar, ExternalLink,
@@ -30,7 +32,7 @@ const sidebarItems = [
   { icon: Mic2,            label: 'Auditions',             href: '/auditions' },
   { icon: Bookmark,        label: 'Saved Castings',        href: '/saved-castings' },
   { icon: Star,            label: 'Recommended Castings',  href: '/recommended' },
-  { icon: Bell,            label: 'Notifications', badge: 3, href: '/notifications' },
+  { icon: Bell,            label: 'Notifications', href: '/notifications' },
 
 ]
 
@@ -282,45 +284,7 @@ export default function CalendarPage() {
       {showAdd && <AddEventModal onClose={() => { setShowAdd(false); setSelectedEvent(null) }} defaultDate={selectedDay || today} existingEvent={selectedEvent} onSave={handleSave} />}
 
       {/* ── TOPNAV ── */}
-      <header style={{ height: 60, flexShrink: 0, background: BG2, borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', padding: '0 24px', gap: 16, zIndex: 50 }}>
-        <SilverScreensLogo size="md" href="/" showTagline={false} />
-        <div style={{ flex: 1 }} />
-
-        {/* Find Casting Calls */}
-        <button onClick={() => router.push('/casting-calls')} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 8, padding: '0 18px', height: 36, fontSize: 15, fontWeight: 600, fontFamily: BARLOW, cursor: 'pointer', whiteSpace: 'nowrap' }}>+ Find Casting Calls</button>
-
-        {/* Messages */}
-        <div style={{ position: 'relative', cursor: 'pointer' }}>
-          <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><MessageSquare size={16} /></div>
-          <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 17, height: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>3</div>
-        </div>
-        {/* Bell */}
-        <div style={{ position: 'relative', cursor: 'pointer' }}>
-          <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Bell size={16} /></div>
-          <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 17, height: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>8</div>
-        </div>
-        {/* Avatar */}
-        <div style={{ position: 'relative' }}>
-          <div onClick={() => setDropOpen(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&q=80&fit=crop&crop=face" alt="Arjun" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${GOLD}` }} />
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>Arjun Malhotra</div>
-              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>View Profile</div>
-            </div>
-            <ChevronRight size={12} color="rgba(255,255,255,0.35)" style={{ transform: 'rotate(90deg)' }} />
-          </div>
-          {dropOpen && (
-            <div style={{ position: 'absolute', top: 46, right: 0, width: 180, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', zIndex: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
-              {dropdownLinks.map(({ label, href }) => (
-                <div key={label} onClick={() => router.push(href)} style={{ padding: '10px 16px', fontSize: 15, cursor: 'pointer', color: label === 'Logout' ? '#ff6b6b' : '#fff', borderTop: label === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                >{label}</div>
-              ))}
-            </div>
-          )}
-        </div>
-      </header>
+      <AspirantHeader />
 
       {/* ── BODY ── */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>

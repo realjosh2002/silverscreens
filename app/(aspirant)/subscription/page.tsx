@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
+import AspirantHeader from '@/components/layout/AspirantHeader'
+
   LayoutDashboard, FileText, MessageSquare, Mic2, Bookmark,
   Star, Bell, ChevronRight, ChevronLeft, Menu, ChevronDown,
   Crown, CreditCard, FileText as InvoiceIcon, RotateCcw,
@@ -29,7 +31,7 @@ const SIDEBAR_ITEMS = [
   { icon: Mic2,            label: 'Auditions',              href: '/auditions' },
   { icon: Bookmark,        label: 'Saved Castings',        href: '/saved-castings' },
   { icon: Star,            label: 'Recommended Castings',  href: '/recommended' },
-  { icon: Bell,            label: 'Notifications',         href: '/notifications',     badge: 3 },
+  { icon: Bell,            label: 'Notifications',         href: '/notifications'},
 ];
 
 const DROPDOWN_LINKS = [
@@ -42,114 +44,19 @@ const DROPDOWN_LINKS = [
   { label: 'Logout',         href: '/login' },
 ];
 
-/* ─── Subscription data — matches pricing page exactly ────────── */
-const CURRENT_PLAN = {
-  name: 'Star Plan',
-  badge: 'Active',
-  tagline: 'The most popular choice for working professionals.',
-  duration: '6 Months',
-  startDate: '24 Mar 2026',
-  nextRenewal: '24 Sep 2026',
-  autoRenew: true,
-  price: '₹499',
-  period: '6 months',
-  appsUsed: 18,
-  appsTotal: 100,
-};
+/* ─── No hardcoded data — all fetched from API dynamically ─────── */
 
-const SUMMARY_ROWS = [
-  { label: 'Current Plan',        value: 'Star (6 Months)',  color: '' },
-  { label: 'Plan Price',          value: '₹499 / 6 months', color: '' },
-  { label: 'Payment Status',      value: 'Paid',             color: GREEN },
-  { label: 'Subscription Status', value: 'Active',           color: GREEN },
-  { label: 'Next Billing Date',   value: '24 Sep 2026',      color: '' },
-  { label: 'Applications Limit',  value: '100 / 6 months',  color: '' },
-];
 
-/* Plans exactly as shown on pricing page — aspirant plans only */
-const PLANS_MONTHLY = [
-  {
-    name: 'Spotlight',
-    icon: '⚡',
-    tagline: 'Get started and explore your first casting opportunities.',
-    duration: '3 Months',
-    price: '₹299',
-    pricePerMonth: '≈ ₹100/mo',
-    period: '3 months',
-    features: [
-      { text: 'Full profile with photos & showreel', included: true  },
-      { text: 'Apply to casting calls',              included: true  },
-      { text: 'Browse all talent listings',          included: true  },
-      { text: 'Direct messaging with studios',       included: true  },
-      { text: 'Profile analytics dashboard',         included: true  },
-      { text: 'SilverScreens verified badge',        included: true  },
-      { text: 'Priority listing in search',          included: false },
-      { text: 'Featured profile placement',          included: false },
-      { text: 'Dedicated account manager',           included: false },
-    ],
-    current: false,
-    popular: false,
-  },
-  {
-    name: 'Star',
-    icon: '⭐',
-    tagline: 'The most popular choice for working professionals.',
-    duration: '6 Months',
-    price: '₹499',
-    pricePerMonth: '≈ ₹83/mo',
-    period: '6 months',
-    features: [
-      { text: 'Full profile with photos & showreel', included: true  },
-      { text: 'Apply to casting calls',              included: true  },
-      { text: 'Browse all talent listings',          included: true  },
-      { text: 'Direct messaging with studios',       included: true  },
-      { text: 'Profile analytics dashboard',         included: true  },
-      { text: 'SilverScreens verified badge',        included: true  },
-      { text: 'Priority listing in search',          included: true  },
-      { text: 'Featured profile placement',          included: true  },
-      { text: 'Dedicated account manager',           included: false },
-    ],
-    current: true,
-    popular: true,
-  },
-  {
-    name: 'Icon',
-    icon: '👑',
-    tagline: 'Maximum visibility for serious industry professionals.',
-    duration: '12 Months',
-    price: '₹999',
-    pricePerMonth: '≈ ₹83/mo',
-    period: '12 months',
-    features: [
-      { text: 'Full profile with photos & showreel', included: true },
-      { text: 'Apply to casting calls',              included: true },
-      { text: 'Browse all talent listings',          included: true },
-      { text: 'Direct messaging with studios',       included: true },
-      { text: 'Profile analytics dashboard',         included: true },
-      { text: 'SilverScreens verified badge',        included: true },
-      { text: 'Priority listing in search',          included: true },
-      { text: 'Featured profile placement',          included: true },
-      { text: 'Dedicated account manager',           included: true },
-    ],
-    current: false,
-    popular: false,
-  },
-];
 
-/* Same plans — no separate yearly toggle needed since each plan already has fixed duration */
-const PLANS_YEARLY = PLANS_MONTHLY;
 
-const TRANSACTIONS = [
-  { date: '24 Mar 2026', desc: 'Star Plan (6 Months)', plan: 'Star', amount: '₹499', status: 'Paid' },
-];
 
-const BILLING_HISTORY = [
-  { date: '24 Mar 2026', desc: 'Star Plan (6 Months)',     amount: '₹499', status: 'Paid', invoice: 'INV-2026-0324' },
-];
 
-const PAYMENT_METHODS = [
-  { type: 'UPI', label: 'UPI ID', value: 'user@upi', primary: true },
-];
+
+
+
+
+
+
 
 const QUICK_ACTIONS = [
   { icon: Crown,      label: 'Upgrade / Change Plan',   href: null,             color: GOLD },
@@ -161,12 +68,43 @@ const QUICK_ACTIONS = [
 const TABS = ['Overview', 'Plans', 'Billing History', 'Payment Methods'] as const;
 type Tab = typeof TABS[number];
 
+interface ApiPlan {
+  id: string; plan_key: string; plan_name: string; duration_months: number;
+  price: number; original_price: number | null; features: any;
+  application_limit: number | null; is_featured: boolean; sort_order: number;
+}
+interface CurrentSub {
+  plan_name: string; plan_id: string; status: string;
+  starts_at: string; ends_at: string; price: number;
+  duration_months: number; application_limit: number | null;
+}
+function formatPrice(n: number) { return `₹${n.toLocaleString('en-IN')}` }
+function getDuration(m: number) { return m === 1 ? '1 Month' : `${m} Months` }
+function getFeatures(f: any): string[] {
+  if (Array.isArray(f)) return f as string[];
+  if (f && typeof f === 'object') {
+    if (Array.isArray(f.included)) return f.included;
+    if (Array.isArray(f.features)) return f.features;
+    return Object.values(f).flat().filter((v: any) => typeof v === 'string') as string[];
+  }
+  return [];
+}
+function getToken() {
+  try { return JSON.parse(localStorage.getItem('ss_user') || '{}').token || '' } catch { return '' }
+}
+
 export default function SubscriptionPage() {
   const router = useRouter();
   const [sidebarOpen,  setSidebarOpen]  = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [userName,   setUserName]   = useState('My Account');
-  const [avatarUrl,  setAvatarUrl]  = useState('');
+  const [userName,     setUserName]     = useState('My Account');
+  const [avatarUrl,    setAvatarUrl]    = useState('');
+  const [apiPlans,     setApiPlans]     = useState<ApiPlan[]>([]);
+  const [currentSub,   setCurrentSub]   = useState<CurrentSub | null>(null);
+  const [appsUsed,     setAppsUsed]     = useState(0);
+  const [billingHistory, setBillingHistory] = useState<any[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
+  const [activeTab,    setActiveTab]    = useState<Tab>('Overview');
 
   useEffect(() => {
     try {
@@ -175,69 +113,89 @@ export default function SubscriptionPage() {
       if (u.profilePhoto) setAvatarUrl(u.profilePhoto);
     } catch {}
   }, []);
-  const [activeTab,    setActiveTab]    = useState<Tab>('Overview');
-  const [billing,      setBilling]      = useState<'monthly' | 'yearly'>('yearly');
 
-  const SB_W = sidebarOpen ? 210 : 56;
-  const appsRemaining = CURRENT_PLAN.appsTotal - CURRENT_PLAN.appsUsed;
-  const appsPct = Math.round((CURRENT_PLAN.appsUsed / CURRENT_PLAN.appsTotal) * 100);
+  // Fetch plans dynamically — reflects any admin changes instantly
+  useEffect(() => {
+    fetch('/api/plans?type=aspirant')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        const list: ApiPlan[] = data.data?.aspirant_plans ?? data.aspirant_plans ?? [];
+        setApiPlans(list.sort((a, b) => a.sort_order - b.sort_order));
+      })
+      .catch(() => {})
+      .finally(() => setPlansLoading(false));
+  }, []);
+
+  // Fetch current subscription + usage
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    fetch('/api/profile/aspirant', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        const p = data.data?.profile ?? data.profile ?? data;
+        const sub = p?.profiles?.subscriptions?.[0] ?? null;
+        if (sub) setCurrentSub({ plan_name: sub.plan_name ?? '—', plan_id: sub.plan_id ?? '', status: sub.status ?? 'active', starts_at: sub.starts_at ?? sub.created_at ?? '', ends_at: sub.ends_at ?? '', price: sub.price ?? 0, duration_months: sub.duration_months ?? 0, application_limit: sub.application_limit ?? null });
+      }).catch(() => {});
+    fetch('/api/applications', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setAppsUsed(data.data?.pagination?.total ?? data.pagination?.total ?? 0); })
+      .catch(() => {});
+    fetch('/api/payment?type=history', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        const list = data?.data?.payments ?? data?.payments ?? [];
+        if (Array.isArray(list) && list.length > 0) {
+          setBillingHistory(list.map((p: any) => ({ date: p.created_at ? new Date(p.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '', desc: p.plan_name ?? 'Subscription', amount: formatPrice(p.amount ?? 0), status: p.status ?? 'Paid', invoice: p.invoice_id ?? p.id ?? '' })));
+        }
+      }).catch(() => {});
+  }, []);
+
+  const appsTotal     = currentSub?.application_limit ?? 0;
+  const appsRemaining = Math.max(0, appsTotal - appsUsed);
+  const appsPct       = appsTotal > 0 ? Math.round((appsUsed / appsTotal) * 100) : 0;
   const circumference = 2 * Math.PI * 44;
+  const currentPlanName  = currentSub?.plan_name ?? '—';
+  const currentPlanPrice = currentSub?.price ? formatPrice(currentSub.price) : '—';
+  const currentDuration  = currentSub?.duration_months ? getDuration(currentSub.duration_months) : '—';
+  const nextBillingDate  = currentSub?.ends_at ? new Date(currentSub.ends_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+  const startDate        = currentSub?.starts_at ? new Date(currentSub.starts_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+  const isActive         = currentSub?.status === 'active';
 
-  const plans = billing === 'yearly' ? PLANS_YEARLY : PLANS_MONTHLY;
+  const SUMMARY_ROWS = [
+    { label: 'Current Plan',        value: currentPlanName,  color: '' },
+    { label: 'Plan Price',          value: currentSub?.price ? `${currentPlanPrice} / ${currentDuration}` : '—', color: '' },
+    { label: 'Payment Status',      value: 'Paid',           color: GREEN },
+    { label: 'Subscription Status', value: isActive ? 'Active' : (currentSub?.status ?? '—'), color: isActive ? GREEN : RED },
+    { label: 'Next Billing Date',   value: nextBillingDate,  color: '' },
+    { label: 'Applications Limit',  value: appsTotal > 0 ? `${appsTotal} / ${currentDuration}` : '—', color: '' },
+  ];
+
+  const QUICK_ACTIONS = [
+    { icon: Crown,       label: 'Upgrade / Change Plan',  href: null, color: GOLD },
+    { icon: CreditCard,  label: 'Manage Payment Methods', href: null, color: '' },
+    { icon: InvoiceIcon, label: 'Download Invoice',       href: null, color: '' },
+    { icon: XCircle,     label: 'Cancel Subscription',    href: null, color: RED, danger: true },
+  ];
 
   const handleAction = (label: string) => {
     if (label === 'Upgrade / Change Plan') setActiveTab('Plans');
     else if (label === 'Manage Payment Methods') setActiveTab('Payment Methods');
-    else if (label === 'Download Invoice') {
-      alert('Invoice download would start here.');
-    } else if (label === 'Cancel Subscription') {
-      if (confirm('Are you sure you want to cancel your subscription? This action cannot be undone.')) {
-        alert('Subscription cancellation request submitted.');
-      }
+    else if (label === 'Download Invoice') alert('Invoice download would start here.');
+    else if (label === 'Cancel Subscription') {
+      if (confirm('Are you sure you want to cancel your subscription? This action cannot be undone.')) alert('Subscription cancellation request submitted.');
     }
   };
+
+  const SB_W = sidebarOpen ? 210 : 56;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: BG, fontFamily: BARLOW, color: '#F5F5F5' }}>
 
       {/* ══ HEADER — matches all other aspirant pages ══ */}
-      <header style={{ height: 60, flexShrink: 0, background: BG2, borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', padding: '0 24px', gap: 16, zIndex: 50 }}>
-        <SilverScreensLogo size="md" href="/" showTagline={false} />
-        <div style={{ flex: 1 }} />
-        <button onClick={() => router.push('/casting-calls')} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 8, padding: '0 18px', height: 36, fontSize: 15, fontWeight: 600, fontFamily: BARLOW, cursor: 'pointer', whiteSpace: 'nowrap' }}>+ Find Casting Calls</button>
-        <div onClick={() => router.push('/messages')} style={{ position: 'relative', cursor: 'pointer' }}>
-          <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><MessageSquare size={16} /></div>
-          <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 17, height: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>2</div>
-        </div>
-        <div onClick={() => router.push('/notifications')} style={{ position: 'relative', cursor: 'pointer' }}>
-          <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Bell size={16} /></div>
-          <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 17, height: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>3</div>
-        </div>
-        <div style={{ position: 'relative' }}>
-          <div onClick={() => setDropdownOpen(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-            <img src={avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=C8202A&color=fff`} alt={userName} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${GOLD}` }} />
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>{userName}</div>
-              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Aspirant</div>
-            </div>
-            <ChevronDown size={12} color="rgba(255,255,255,0.35)" />
-          </div>
-          {dropdownOpen && (
-            <>
-              <div onClick={() => setDropdownOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 150 }} />
-              <div style={{ position: 'absolute', top: 46, right: 0, width: 200, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', zIndex: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
-                {DROPDOWN_LINKS.map(({ label, href }) => (
-                  <div key={label} onClick={() => { router.push(href); setDropdownOpen(false); }}
-                    style={{ padding: '10px 16px', fontSize: 15, cursor: 'pointer', color: label === 'Logout' ? '#ff6b6b' : label === 'Subscription' ? GOLD : '#F5F5F5', fontWeight: label === 'Subscription' ? 700 : 400, borderTop: label === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >{label}</div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </header>
+      <AspirantHeader />
 
       {/* ══ BODY ══ */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -331,19 +289,19 @@ export default function SubscriptionPage() {
                       </div>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 3 }}>
-                          <span style={{ fontFamily: BEBAS, fontSize: 22, letterSpacing: 0.5, color: '#fff' }}>{CURRENT_PLAN.name}</span>
-                          <span style={{ background: 'rgba(34,197,94,0.15)', color: GREEN, border: '1px solid rgba(34,197,94,0.3)', borderRadius: 20, padding: '2px 10px', fontSize: 13, fontWeight: 700 }}>{CURRENT_PLAN.badge}</span>
+                          <span style={{ fontFamily: BEBAS, fontSize: 22, letterSpacing: 0.5, color: '#fff' }}>{currentPlanName}</span>
+                          <span style={{ background: 'rgba(34,197,94,0.15)', color: GREEN, border: '1px solid rgba(34,197,94,0.3)', borderRadius: 20, padding: '2px 10px', fontSize: 13, fontWeight: 700 }}>{isActive ? 'Active' : (currentSub?.status ?? 'Inactive')}</span>
                         </div>
-                        <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)' }}>{CURRENT_PLAN.tagline}</div>
+                        <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)' }}>{''}</div>
                       </div>
                     </div>
 
                     <div style={{ display: 'flex', gap: 28, marginBottom: 18 }}>
                       {[
-                        { label: 'Plan Duration', value: CURRENT_PLAN.duration },
-                        { label: 'Start Date',    value: CURRENT_PLAN.startDate },
-                        { label: 'Next Renewal',  value: CURRENT_PLAN.nextRenewal },
-                        { label: 'Auto Renew',    value: CURRENT_PLAN.autoRenew ? '🟢 Enabled' : '🔴 Disabled' },
+                        { label: 'Plan Duration', value: currentDuration },
+                        { label: 'Start Date',    value: startDate },
+                        { label: 'Next Renewal',  value: nextBillingDate },
+                        { label: 'Auto Renew',    value: true ? '🟢 Enabled' : '🔴 Disabled' },
                       ].map(({ label, value }) => (
                         <div key={label}>
                           <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>{label}</div>
@@ -357,7 +315,7 @@ export default function SubscriptionPage() {
                         <Crown size={14} /> Manage Plan
                       </button>
                       <button onClick={() => {
-                        if (confirm('Cancel Auto Renew? Your plan will expire on ' + CURRENT_PLAN.nextRenewal + '.')) alert('Auto Renew cancelled.');
+                        if (confirm('Cancel Auto Renew? Your plan will expire on ' + nextBillingDate + '.')) alert('Auto Renew cancelled.');
                       }} style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.7)', borderRadius: 8, padding: '9px 18px', fontSize: 15, fontWeight: 600, fontFamily: BARLOW, cursor: 'pointer' }}>
                         <RefreshCw size={14} /> Cancel Auto Renew
                       </button>
@@ -378,13 +336,13 @@ export default function SubscriptionPage() {
                           />
                         </svg>
                         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                          <span style={{ fontFamily: BEBAS, fontSize: 26, color: GOLD, lineHeight: 1 }}>{CURRENT_PLAN.appsUsed}</span>
+                          <span style={{ fontFamily: BEBAS, fontSize: 26, color: GOLD, lineHeight: 1 }}>{appsUsed}</span>
                           <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>Used</span>
                         </div>
                       </div>
                       <div>
                         <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>Out of</div>
-                        <div style={{ fontFamily: BEBAS, fontSize: 36, color: '#fff', lineHeight: 1 }}>{CURRENT_PLAN.appsTotal}</div>
+                        <div style={{ fontFamily: BEBAS, fontSize: 36, color: '#fff', lineHeight: 1 }}>{appsTotal}</div>
                         <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>Applications</div>
                       </div>
                     </div>
@@ -404,49 +362,45 @@ export default function SubscriptionPage() {
                     </div>
                   </div>
 
+                  {plansLoading ? (
+                    <div style={{ textAlign: 'center', padding: '20px', color: 'rgba(255,255,255,0.35)', fontSize: 15 }}>Loading plans...</div>
+                  ) : (
                   <div style={{ display: 'flex', gap: 12 }}>
-                    {plans.map((plan, i) => (
-                      <div key={i} style={{ flex: 1, borderRadius: 10, padding: '16px', border: plan.current ? `2px solid ${GOLD}` : '1px solid rgba(255,255,255,0.1)', background: plan.current ? 'rgba(212,166,74,0.06)' : BG3, position: 'relative' }}>
-                        {plan.popular && !plan.current && (
+                    {apiPlans.map((plan) => {
+                      const isCurrent = currentSub?.plan_id === plan.plan_key || currentSub?.plan_name === plan.plan_name;
+                      const features = getFeatures(plan.features);
+                      return (
+                      <div key={plan.id} style={{ flex: 1, borderRadius: 10, padding: '16px', border: isCurrent ? `2px solid ${GOLD}` : '1px solid rgba(255,255,255,0.1)', background: isCurrent ? 'rgba(212,166,74,0.06)' : BG3, position: 'relative' }}>
+                        {plan.is_featured && !isCurrent && (
                           <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: GOLD, color: '#000', borderRadius: 20, padding: '3px 12px', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>MOST POPULAR</div>
                         )}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                          <span style={{ fontSize: 20 }}>{plan.icon}</span>
-                          <span style={{ fontSize: 17, fontWeight: 700, color: plan.current ? GOLD : '#fff' }}>{plan.name}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                          <span style={{ fontSize: 17, fontWeight: 700, color: isCurrent ? GOLD : '#fff' }}>{plan.plan_name}</span>
                         </div>
-                        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginBottom: 8 }}>{plan.duration}</div>
-                        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', marginBottom: 10 }}>{plan.tagline}</div>
+                        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginBottom: 8 }}>{getDuration(plan.duration_months)}</div>
                         <div style={{ marginBottom: 4 }}>
-                          <span style={{ fontFamily: BEBAS, fontSize: 28, color: plan.current ? GOLD : '#fff' }}>{plan.price}</span>
-                          <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', marginLeft: 4 }}>/ {plan.period}</span>
+                          <span style={{ fontFamily: BEBAS, fontSize: 28, color: isCurrent ? GOLD : '#fff' }}>{formatPrice(plan.price)}</span>
+                          <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', marginLeft: 4 }}>/ {getDuration(plan.duration_months).toLowerCase()}</span>
                         </div>
-                        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginBottom: 14 }}>{plan.pricePerMonth}</div>
+                        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginBottom: 10 }}>≈ ₹{Math.round(plan.price / plan.duration_months)}/mo</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 16 }}>
-                          {plan.features.map((f, j) => (
-                            <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 7, opacity: f.included ? 1 : 0.35 }}>
-                              {f.included
-                                ? <Check size={13} color={plan.current ? GOLD : GREEN} strokeWidth={2.5} />
-                                : <span style={{ width: 13, height: 13, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>✕</span>
-                              }
-                              <span style={{ fontSize: 14, color: f.included ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.3)' }}>{f.text}</span>
+                          {features.map((f, j) => (
+                            <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                              <Check size={13} color={isCurrent ? GOLD : GREEN} strokeWidth={2.5} />
+                              <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>{f}</span>
                             </div>
                           ))}
                         </div>
                         <button
-                          onClick={() => plan.current ? null : confirm(`Switch to ${plan.name} for ${plan.price}/${plan.period}?`) && alert('Plan change request submitted.')}
-                          style={{
-                            width: '100%', background: plan.current ? GOLD : 'transparent',
-                            border: `1px solid ${plan.current ? GOLD : 'rgba(212,166,74,0.5)'}`,
-                            color: plan.current ? '#000' : GOLD,
-                            borderRadius: 8, padding: '9px 0', fontSize: 15, fontWeight: 700,
-                            fontFamily: BARLOW, cursor: plan.current ? 'default' : 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                          }}>
-                          {plan.current ? <><Check size={14} /> Current Plan</> : 'Choose Plan'}
+                          onClick={() => isCurrent ? null : confirm(`Switch to ${plan.plan_name} for ${formatPrice(plan.price)}?`) && alert('Plan change request submitted.')}
+                          style={{ width: '100%', background: isCurrent ? GOLD : 'transparent', border: `1px solid ${isCurrent ? GOLD : 'rgba(212,166,74,0.5)'}`, color: isCurrent ? '#000' : GOLD, borderRadius: 8, padding: '9px 0', fontSize: 15, fontWeight: 700, fontFamily: BARLOW, cursor: isCurrent ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+                          {isCurrent ? <><Check size={14} /> Current Plan</> : 'Choose Plan'}
                         </button>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
+                  )}
                 </div>
 
                 {/* Recent Transactions */}
@@ -457,11 +411,13 @@ export default function SubscriptionPage() {
                       <div key={h} style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: 0.5, padding: '0 8px' }}>{h}</div>
                     ))}
                   </div>
-                  {TRANSACTIONS.map((t, i) => (
-                    <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1.5fr 1fr 1fr auto', borderBottom: i < TRANSACTIONS.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none', padding: '10px 0' }}>
+                  {billingHistory.length === 0 ? (
+                    <div style={{ padding: '10px 8px', color: 'rgba(255,255,255,0.35)', fontSize: 15 }}>No transactions yet.</div>
+                  ) : billingHistory.slice(0, 3).map((t, i) => (
+                    <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1.5fr 1fr 1fr auto', borderBottom: i < Math.min(billingHistory.length, 3) - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none', padding: '10px 0' }}>
                       <div style={{ fontSize: 15, padding: '0 8px', color: 'rgba(255,255,255,0.7)' }}>{t.date}</div>
                       <div style={{ fontSize: 15, padding: '0 8px' }}>{t.desc}</div>
-                      <div style={{ fontSize: 15, padding: '0 8px', color: 'rgba(255,255,255,0.6)' }}>{t.plan}</div>
+                      <div style={{ fontSize: 15, padding: '0 8px', color: 'rgba(255,255,255,0.6)' }}>{t.desc}</div>
                       <div style={{ fontSize: 15, padding: '0 8px', fontWeight: 700 }}>{t.amount}</div>
                       <div style={{ fontSize: 15, padding: '0 8px' }}>
                         <span style={{ color: GREEN, fontWeight: 700 }}>{t.status}</span>
@@ -479,64 +435,49 @@ export default function SubscriptionPage() {
             {/* ── PLANS TAB ── */}
             {activeTab === 'Plans' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <h2 style={{ fontFamily: BEBAS, fontSize: 22, letterSpacing: 0.5, color: GOLD, marginBottom: 3 }}>Choose Your Plan</h2>
-                    <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)' }}>Select the plan that best fits your career goals.</p>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 15, color: billing === 'monthly' ? '#fff' : 'rgba(255,255,255,0.4)', cursor: 'pointer', fontWeight: billing === 'monthly' ? 700 : 400 }} onClick={() => setBilling('monthly')}>Monthly</span>
-                    <div onClick={() => setBilling(b => b === 'yearly' ? 'monthly' : 'yearly')} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(212,166,74,0.12)', border: `1px solid ${GOLD}`, borderRadius: 20, padding: '5px 12px', cursor: 'pointer' }}>
-                      <Crown size={13} color={GOLD} />
-                      <span style={{ fontSize: 14, fontWeight: 700, color: GOLD }}>Yearly</span>
-                    </div>
-                    <span style={{ fontSize: 13, color: GREEN, fontWeight: 700 }}>Save upto 20%</span>
-                  </div>
+                <div>
+                  <h2 style={{ fontFamily: BEBAS, fontSize: 22, letterSpacing: 0.5, color: GOLD, marginBottom: 3 }}>Choose Your Plan</h2>
+                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)' }}>Select the plan that best fits your career goals. Each plan has a fixed duration.</p>
                 </div>
-
+                {plansLoading ? (
+                  <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.35)', fontSize: 15 }}>Loading plans...</div>
+                ) : apiPlans.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.35)', fontSize: 15 }}>No plans available at the moment.</div>
+                ) : (
                 <div style={{ display: 'flex', gap: 16 }}>
-                  {plans.map((plan, i) => (
-                    <div key={i} style={{ flex: 1, borderRadius: 12, padding: '20px', border: plan.current ? `2px solid ${GOLD}` : '1px solid rgba(255,255,255,0.1)', background: plan.current ? 'rgba(212,166,74,0.06)' : BG2, position: 'relative' }}>
-                      {plan.popular && !plan.current && (
+                  {apiPlans.map((plan) => {
+                    const isCurrent = currentSub?.plan_id === plan.plan_key || currentSub?.plan_name === plan.plan_name;
+                    const features = getFeatures(plan.features);
+                    return (
+                    <div key={plan.id} style={{ flex: 1, borderRadius: 12, padding: '20px', border: isCurrent ? `2px solid ${GOLD}` : '1px solid rgba(255,255,255,0.1)', background: isCurrent ? 'rgba(212,166,74,0.06)' : BG2, position: 'relative' }}>
+                      {plan.is_featured && !isCurrent && (
                         <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: GOLD, color: '#000', borderRadius: 20, padding: '3px 14px', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>MOST POPULAR</div>
                       )}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                        <span style={{ fontSize: 24 }}>{plan.icon}</span>
-                        <span style={{ fontFamily: BEBAS, fontSize: 20, color: plan.current ? GOLD : '#fff' }}>{plan.name}</span>
+                      <div style={{ fontSize: 20, fontFamily: BEBAS, color: isCurrent ? GOLD : '#fff', marginBottom: 2 }}>{plan.plan_name}</div>
+                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginBottom: 10 }}>{getDuration(plan.duration_months)}</div>
+                      <div style={{ marginBottom: 4 }}>
+                        <span style={{ fontFamily: BEBAS, fontSize: 32, color: isCurrent ? GOLD : '#fff' }}>{formatPrice(plan.price)}</span>
+                        <span style={{ fontSize: 15, color: 'rgba(255,255,255,0.4)', marginLeft: 5 }}>/ {getDuration(plan.duration_months).toLowerCase()}</span>
                       </div>
-                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginBottom: 6 }}>{plan.duration}</div>
-                      <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', marginBottom: 12 }}>{plan.tagline}</div>
-                      <div style={{ marginBottom: 6 }}>
-                        <span style={{ fontFamily: BEBAS, fontSize: 32, color: plan.current ? GOLD : '#fff' }}>{plan.price}</span>
-                        <span style={{ fontSize: 15, color: 'rgba(255,255,255,0.4)', marginLeft: 5 }}>/ {plan.period}</span>
-                      </div>
-                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginBottom: 16 }}>{plan.pricePerMonth}</div>
+                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginBottom: 16 }}>≈ ₹{Math.round(plan.price / plan.duration_months)}/mo</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 20 }}>
-                        {plan.features.map((f, j) => (
-                          <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: f.included ? 1 : 0.35 }}>
-                            {f.included
-                              ? <Check size={14} color={plan.current ? GOLD : GREEN} strokeWidth={2.5} />
-                              : <span style={{ width: 14, height: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>✕</span>
-                            }
-                            <span style={{ fontSize: 15, color: f.included ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.3)' }}>{f.text}</span>
+                        {features.map((f, j) => (
+                          <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Check size={14} color={isCurrent ? GOLD : GREEN} strokeWidth={2.5} />
+                            <span style={{ fontSize: 15, color: 'rgba(255,255,255,0.75)' }}>{f}</span>
                           </div>
                         ))}
                       </div>
                       <button
-                        onClick={() => plan.current ? null : confirm(`Switch to ${plan.name} for ${plan.price}/${plan.period}?`) && alert('Plan change request submitted.')}
-                        style={{
-                          width: '100%', background: plan.current ? GOLD : 'transparent',
-                          border: `1px solid ${plan.current ? GOLD : 'rgba(212,166,74,0.5)'}`,
-                          color: plan.current ? '#000' : GOLD,
-                          borderRadius: 8, padding: '10px 0', fontSize: 15, fontWeight: 700,
-                          fontFamily: BARLOW, cursor: plan.current ? 'default' : 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                        }}>
-                        {plan.current ? <><Check size={14} /> Current Plan</> : 'Choose Plan'}
+                        onClick={() => isCurrent ? null : confirm(`Switch to ${plan.plan_name} for ${formatPrice(plan.price)}?`) && alert('Plan change request submitted.')}
+                        style={{ width: '100%', background: isCurrent ? GOLD : 'transparent', border: `1px solid ${isCurrent ? GOLD : 'rgba(212,166,74,0.5)'}`, color: isCurrent ? '#000' : GOLD, borderRadius: 8, padding: '10px 0', fontSize: 15, fontWeight: 700, fontFamily: BARLOW, cursor: isCurrent ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                        {isCurrent ? <><Check size={14} /> Current Plan</> : 'Choose Plan'}
                       </button>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
+                )}
               </div>
             )}
 
@@ -549,7 +490,9 @@ export default function SubscriptionPage() {
                     <div key={h} style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: 0.5, padding: '0 8px' }}>{h}</div>
                   ))}
                 </div>
-                {BILLING_HISTORY.map((row, i) => (
+                {billingHistory.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '30px', color: 'rgba(255,255,255,0.35)', fontSize: 15 }}>No billing history found.</div>
+                ) : billingHistory.map((row, i) => (
                   <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr 1fr auto', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '11px 0' }}>
                     <div style={{ fontSize: 15, padding: '0 8px', color: 'rgba(255,255,255,0.7)' }}>{row.date}</div>
                     <div style={{ fontSize: 15, padding: '0 8px' }}>{row.desc}</div>
@@ -570,20 +513,16 @@ export default function SubscriptionPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div style={{ background: BG2, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '18px 20px' }}>
                   <div style={{ fontFamily: BEBAS, fontSize: 22, letterSpacing: 0.5, color: GOLD, marginBottom: 14 }}>Saved Payment Methods</div>
-                  {PAYMENT_METHODS.map((pm, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, background: BG3, borderRadius: 10, padding: '14px 16px', border: '1px solid rgba(255,255,255,0.08)', marginBottom: 10 }}>
-                      <div style={{ width: 48, height: 30, background: '#fff', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <span style={{ fontSize: 13, fontWeight: 900, color: '#000' }}>UPI</span>
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 15, fontWeight: 700 }}>{pm.label}</div>
-                        <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>{pm.value}</div>
-                      </div>
-                      {pm.primary && (
-                        <span style={{ background: 'rgba(212,166,74,0.15)', border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 6, padding: '3px 10px', fontSize: 13, fontWeight: 700 }}>Primary</span>
-                      )}
+                  <div style={{ background: BG3, borderRadius: 10, padding: '14px 16px', border: '1px solid rgba(255,255,255,0.08)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div style={{ width: 48, height: 30, background: '#fff', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <span style={{ fontSize: 13, fontWeight: 900, color: '#000' }}>UPI</span>
                     </div>
-                  ))}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 15, fontWeight: 700 }}>UPI / Razorpay</div>
+                      <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>Managed via Razorpay</div>
+                    </div>
+                    <span style={{ background: 'rgba(212,166,74,0.15)', border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 6, padding: '3px 10px', fontSize: 13, fontWeight: 700 }}>Primary</span>
+                  </div>
                   <button onClick={() => alert('Add payment method flow would open here.')} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 8, padding: '9px 18px', fontSize: 15, fontWeight: 600, fontFamily: BARLOW, cursor: 'pointer', marginTop: 6 }}>
                     + Add Payment Method
                   </button>
@@ -656,7 +595,7 @@ export default function SubscriptionPage() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: 700 }}>UPI ID</div>
-                  <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>arjun.malhotra@upi</div>
+                  <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>Managed via Razorpay</div>
                 </div>
                 <span style={{ background: 'rgba(212,166,74,0.15)', color: GOLD, borderRadius: 5, padding: '2px 8px', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>Primary</span>
               </div>

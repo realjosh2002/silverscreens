@@ -148,8 +148,8 @@ export default function AgencyDashboardPage() {
   const [agencyInitials, setAgencyInitials] = useState('AG');
   const [agencyId,       setAgencyId]       = useState('AGE·········');
   const [agencyType,     setAgencyType]     = useState('Production House');
-  const [msgCount,       setMsgCount]       = useState(12);
-  const [notifCount,     setNotifCount]     = useState(3);
+  const [msgCount,       setMsgCount]       = useState(0);
+  const [notifCount,     setNotifCount]     = useState(0);
   const [stats,          setStats]          = useState(FALLBACK_STATS);
   const [castings,       setCastings]       = useState(FALLBACK_CASTINGS);
   const [topCastings,    setTopCastings]    = useState(FALLBACK_TOP_CASTINGS);
@@ -255,7 +255,7 @@ export default function AgencyDashboardPage() {
 
     fetch('/api/notifications',{headers:h}).then(r=>r.ok?r.json():null).then(data=>{
       if(!data) return; const list=data.data?.notifications??data.notifications??data;
-      if(Array.isArray(list)) setNotifCount(list.filter((n:any)=>!n.is_read&&!n.read&&!n.isRead).length);
+      if(Array.isArray(list)) setNotifCount(list.filter((n:any)=>!n.is_read).length);
     }).catch(()=>{});
 
     fetch('/api/messages/conversations',{headers:h}).then(r=>r.ok?r.json():null).then(data=>{

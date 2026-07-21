@@ -34,8 +34,8 @@ const NAV_ITEMS = [
   { icon: Star,            label: 'Shortlisted Talents',     href: '/agency/shortlisted' },
   { icon: CalendarCheck,   label: 'Audition Management',     href: '/agency/auditions' },
   { icon: Bookmark,        label: 'Saved Talents',           href: '/agency/saved-talents' },
-  { icon: MessageSquare,   label: 'Messages',  badge: 12,    href: '/agency/messages' },
-  { icon: Bell,            label: 'Notifications', badge: 3, href: '/agency/notifications' },
+  { icon: MessageSquare,   label: 'Messages',    href: '/agency/messages' },
+  { icon: Bell,            label: 'Notifications', href: '/agency/notifications' },
 ];
 
 const PROFILE_MENU = [
@@ -618,7 +618,7 @@ export default function AgencyProfilePage() {
       .then(data => {
         if (!data) return;
         const list = data.data?.notifications ?? data.notifications ?? data;
-        if (Array.isArray(list)) setNotifCount(list.filter((n) => !n.read && !n.isRead).length);
+        if (Array.isArray(list)) setNotifCount(list.filter((n) => !n.is_read).length);
       }).catch(() => {});
     fetch('/api/messages/conversations', { headers: h })
       .then(r => r.ok ? r.json() : null)

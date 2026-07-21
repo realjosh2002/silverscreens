@@ -198,8 +198,8 @@ export default function TalentSearchPage() {
   const [agencyName,     setAgencyName]     = useState('My Agency');
   const [agencyInitials, setAgencyInitials] = useState('AG');
   const [agencyType,     setAgencyType]     = useState('Production House');
-  const [msgCount,       setMsgCount]       = useState(12);
-  const [notifCount,     setNotifCount]     = useState(3);
+  const [msgCount,       setMsgCount]       = useState(0);
+  const [notifCount,     setNotifCount]     = useState(0);
 
   /* ── Load agency identity from ss_user instantly ── */
   useEffect(() => {
@@ -260,7 +260,7 @@ export default function TalentSearchPage() {
       .then(data => {
         if (!data) return;
         const list = data.notifications ?? data;
-        if (Array.isArray(list)) setNotifCount(list.filter((n: any) => !n.read && !n.isRead).length);
+        if (Array.isArray(list)) setNotifCount(list.filter((n: any) => !n.is_read).length);
       }).catch(() => {});
 
     // Messages count

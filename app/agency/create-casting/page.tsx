@@ -393,8 +393,8 @@ function CreateCastingCallInner() {
   const [agencyInitials, setAgencyInitials] = useState('AG');
   const [agencyId,       setAgencyId]       = useState('AGE·········');
   const [agencyType,     setAgencyType]     = useState('Production House');
-  const [msgCount,       setMsgCount]       = useState(12);
-  const [notifCount,     setNotifCount]     = useState(3);
+  const [msgCount,       setMsgCount]       = useState(0);
+  const [notifCount,     setNotifCount]     = useState(0);
 
   const activeDraftKey = editId ? `${DRAFT_KEY}_edit_${editId}` : DRAFT_KEY;
 
@@ -418,7 +418,7 @@ function CreateCastingCallInner() {
       .then(data => {
         if (!data) return;
         const list = data.notifications ?? data;
-        if (Array.isArray(list)) setNotifCount(list.filter((n: any) => !n.read && !n.isRead).length);
+        if (Array.isArray(list)) setNotifCount(list.filter((n: any) => !n.is_read).length);
       }).catch(() => {});
     fetch('/api/messages/conversations', { headers: h })
       .then(r => r.ok ? r.json() : null)

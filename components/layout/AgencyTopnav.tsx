@@ -1,133 +1,176 @@
 'use client'
 
-import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
-import { Bell, MessageSquare } from 'lucide-react'
+import { Bell, MessageSquare, ChevronDown } from 'lucide-react'
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo'
 
 const PROFILE_MENU = [
-  { label: 'Reports & Analytics',   href: '/agency/reports' },
-  { label: 'Subscription & Billing', href: '/agency/subscription' },
-  { label: 'Company Profile',        href: '/agency/profile' },
-  { label: 'Documents',              href: '/agency/documents' },
-  { label: 'Calendar',               href: '/agency/calendar' },
-  { label: 'Settings',               href: '/agency/settings' },
-  { label: 'Support',                href: '/agency/support' },
+  { label: 'Reports & Analytics',   href: '/agency/reports'       },
+  { label: 'Subscription & Billing', href: '/agency/subscription'  },
+  { label: 'Company Profile',        href: '/agency-profile'       },
+  { label: 'Documents',              href: '/agency/documents'     },
+  { label: 'Calendar',               href: '/agency/calendar'      },
+  { label: 'Settings',               href: '/agency/settings'      },
+  { label: 'Support',                href: '/contact'              },
 ]
 
-export default function AgencyTopnav() {
-  const router = useRouter()
-  const pathname = usePathname()
-  const [profileOpen, setProfileOpen] = useState(false)
-  const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 })
-  const profileBtnRef = useRef<HTMLButtonElement>(null)
+const GOLD = '#D4A64A'
+const RED  = '#C8202A'
 
-  const openProfile = () => {
-    if (profileBtnRef.current) {
-      const r = profileBtnRef.current.getBoundingClientRect()
-      setDropdownPos({ top: r.bottom + 8, right: window.innerWidth - r.right })
-    }
-    setProfileOpen(v => !v)
-  }
+function getAuthHeaders(): Record<string, string> {
+  try {
+    const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
+    return u.token ? { Authorization: `Bearer ${u.token}` } : {}
+  } catch { return {} }
+}
+
+export default function AgencyTopnav() {
+  const router   = useRouter()
+  const pathname = usePathname()
+
+  const [profileOpen,    setProfileOpen]    = useState(false)
+  const [msgCount,       setMsgCount]       = useState(0)
+  const [notifCount,     setNotifCount]     = useState(0)
+  const [agencyName,     setAgencyName]     = useState('My Agency')
+  const [agencyInitials, setAgencyInitials] = useState('AG')
+  const [agencyId,       setAgencyId]       = useState('AGE·········')
+  const [agencyType,     setAgencyType]     = useState('Production House')
+
+  const profileBtnRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const h = (e: MouseEvent) => {
+    const handler = (e: MouseEvent) => {
       if (profileBtnRef.current && !profileBtnRef.current.contains(e.target as Node)) {
         setProfileOpen(false)
       }
     }
-    document.addEventListener('mousedown', h)
-    return () => document.removeEventListener('mousedown', h)
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  useEffect(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
+      if (u.name) {
+        setAgencyName(u.name)
+        setAgencyInitials(u.name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase())
+      }
+      if (u.profileNumber) setAgencyId(u.profileNumber)
+    } catch {}
+
+    const h = getAuthHeaders()
+
+    fetch('/api/notifications', { headers: h })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return
+        const count = data.data?.unread_count ?? data.unread_count
+        if (count != null) { setNotifCount(count); return }
+        const list = data.data?.notifications ?? data.notifications ?? []
+        if (Array.isArray(list)) setNotifCount(list.filter((n: any) => !n.is_read).length)
+      }).catch(() => {})
+
+    fetch('/api/messages/conversations', { headers: h })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return
+        const list = data.data?.conversations ?? data.conversations ?? []
+        if (Array.isArray(list)) setMsgCount(list.filter((c: any) => c.unreadCount > 0).length)
+      }).catch(() => {})
+
+    fetch('/api/profile/agency', { headers: h })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return
+        const p = data.data?.profile ?? data.profile ?? data
+        if (p.company_name || p.name) {
+          const name = p.company_name ?? p.name
+          setAgencyName(name)
+          setAgencyInitials(name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase())
+        }
+        if (p.profile_number ?? p.profileNumber) setAgencyId(p.profile_number ?? p.profileNumber)
+        if (p.company_type  ?? p.companyType)    setAgencyType(p.company_type ?? p.companyType)
+      }).catch(() => {})
+  }, [])
+
+  const handleLogout = () => {
+    localStorage.removeItem('ss_user')
+    window.location.replace('/login')
+  }
+
   return (
-    <>
-      {/* ── Header bar ─────────────────────────────────────────────────────── */}
-      <header className="h-14 bg-[#0B0F14] border-b border-[rgba(212,166,74,0.15)] flex items-center px-5 gap-4 flex-shrink-0">
-        <SilverScreensLogo size="sm" href="/agency/dashboard" showTagline={false} />
-        <div className="flex-1" />
+    <header style={{ height: 60, background: '#0B0F14', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', padding: '0 24px', gap: 14, flexShrink: 0, position: 'relative', zIndex: 100 }}>
+      <SilverScreensLogo size="md" href="/" showTagline={false} />
+      <div style={{ flex: 1 }} />
 
-        {/* Post a Casting */}
-        <Link
-          href="/agency/casting-calls/new"
-          className="bg-[#C8202A] text-white text-[14px] font-semibold px-[14px] py-[7px] rounded-md hover:bg-[#a81a22] transition-colors no-underline"
-        >
-          + Post a Casting
-        </Link>
+      {/* Post a Casting */}
+      <button onClick={() => router.push('/agency/create-casting')} style={{ display: 'flex', alignItems: 'center', gap: 7, background: RED, color: '#fff', border: 'none', borderRadius: 8, padding: '0 18px', height: 36, fontSize: 15, fontWeight: 700, fontFamily: "'Barlow Condensed', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}>
+        Post a Casting <span style={{ fontSize: 16, fontWeight: 400 }}>+</span>
+      </button>
 
-        {/* Messages */}
-        <Link href="/agency/messages" className="relative p-1 text-[#9CA3AF] hover:text-white transition-colors">
-          <MessageSquare size={20} />
-          <span className="absolute top-0 right-0 bg-[#C8202A] text-white text-[10px] rounded-full px-[4px] py-[1px] leading-none">
-            12
-          </span>
-        </Link>
-
-        {/* Notifications */}
-        <Link href="/agency/notifications" className="relative p-1 text-[#9CA3AF] hover:text-white transition-colors">
-          <Bell size={20} />
-          <span className="absolute top-0 right-0 bg-[#C8202A] text-white text-[10px] rounded-full px-[4px] py-[1px] leading-none">
-            3
-          </span>
-        </Link>
-
-        {/* Profile button */}
-        <button
-          ref={profileBtnRef}
-          onClick={openProfile}
-          className="flex items-center gap-2 bg-[#121821] border border-[rgba(212,166,74,0.2)] rounded-full px-3 py-[5px] hover:border-[#D4A64A] transition-colors cursor-pointer"
-        >
-          <div className="w-[26px] h-[26px] rounded-full bg-[#8B5CF6] flex items-center justify-center text-white text-[13px] font-semibold">
-            D
-          </div>
-          <span className="text-[14px] text-white font-medium">Dharma Productions</span>
-          <span className="text-[#6B7280] text-[12px]">▾</span>
-        </button>
-      </header>
-
-      {/* ── Profile Dropdown ───────────────────────────────────────────────── */}
-      {profileOpen && (
-        <div
-          style={{ position: 'fixed', top: dropdownPos.top, right: dropdownPos.right, zIndex: 1000 }}
-          className="bg-[#121821] border border-[rgba(212,166,74,0.2)] rounded-xl min-w-[220px] shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden"
-        >
-          {/* Agency ID row */}
-          <div className="px-4 py-[10px] border-b border-[rgba(212,166,74,0.15)]">
-            <div className="text-[12px] text-[#6B7280]">Agency ID</div>
-            <div className="text-[14px] text-[#D4A64A] font-bold">AGE062600001</div>
-          </div>
-
-          {/* Menu items */}
-          {PROFILE_MENU.map(item => {
-            const active = pathname === item.href
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setProfileOpen(false)}
-                className={`block px-4 py-[10px] text-[14px] transition-colors no-underline ${
-                  active
-                    ? 'text-[#D4A64A] bg-[rgba(212,166,74,0.08)]'
-                    : 'text-[#9CA3AF] hover:bg-[#1C2030] hover:text-white'
-                }`}
-              >
-                {item.label}
-              </Link>
-            )
-          })}
-
-          {/* Logout */}
-          <div className="border-t border-[rgba(212,166,74,0.15)]">
-            <button
-              onClick={() => { setProfileOpen(false); router.push('/') }}
-              className="w-full text-left px-4 py-[10px] text-[14px] text-[#C8202A] hover:bg-[#1C2030] transition-colors cursor-pointer bg-transparent border-none"
-            >
-              Logout
-            </button>
-          </div>
+      {/* Messages */}
+      <div onClick={() => router.push('/agency/messages')} style={{ position: 'relative', cursor: 'pointer' }}>
+        <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <MessageSquare size={15} color="rgba(255,255,255,0.7)" />
         </div>
-      )}
-    </>
+        {msgCount > 0 && (
+          <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', pointerEvents: 'none' }}>
+            {msgCount}
+          </div>
+        )}
+      </div>
+
+      {/* Notifications */}
+      <div onClick={() => router.push('/agency/notifications')} style={{ position: 'relative', cursor: 'pointer' }}>
+        <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Bell size={15} color="rgba(255,255,255,0.7)" />
+        </div>
+        {notifCount > 0 && (
+          <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', pointerEvents: 'none' }}>
+            {notifCount}
+          </div>
+        )}
+      </div>
+
+      {/* Profile */}
+      <div ref={profileBtnRef} style={{ position: 'relative' }}>
+        <div onClick={() => setProfileOpen(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer' }}>
+          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#1a1410,#2a1e0e)', border: `2px solid ${GOLD}60`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: GOLD, fontFamily: "'Bebas Neue', sans-serif" }}>
+            {agencyInitials}
+          </div>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#F5F5F5', lineHeight: 1.2 }}>{agencyName}</div>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>{agencyType}</div>
+          </div>
+          <ChevronDown size={12} color="rgba(255,255,255,0.4)" />
+        </div>
+
+        {profileOpen && (
+          <>
+            <div onClick={() => setProfileOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 150 }} />
+            <div style={{ position: 'absolute', top: 46, right: 0, width: 220, background: '#121821', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', zIndex: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
+              <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>Agency ID</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: GOLD }}>{agencyId}</span>
+              </div>
+              {PROFILE_MENU.map(({ label, href }) => (
+                <div key={label} onClick={() => { router.push(href); setProfileOpen(false) }}
+                  style={{ padding: '10px 16px', fontSize: 15, cursor: 'pointer', color: pathname === href ? GOLD : '#F5F5F5', background: pathname === href ? 'rgba(212,166,74,0.08)' : 'transparent', fontFamily: "'Barlow Condensed', sans-serif" }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = pathname === href ? 'rgba(212,166,74,0.08)' : 'transparent')}
+                >{label}</div>
+              ))}
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+                <div onClick={handleLogout} style={{ padding: '10px 16px', fontSize: 15, cursor: 'pointer', color: '#ff6b6b', fontFamily: "'Barlow Condensed', sans-serif" }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >Logout</div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </header>
   )
 }

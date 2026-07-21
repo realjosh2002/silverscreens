@@ -4,6 +4,8 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
+import AspirantHeader from '@/components/layout/AspirantHeader'
+
   LayoutDashboard, FileText, MessageSquare, Mic2, Bookmark, Star, Bell,
   ChevronDown, ChevronRight, ChevronLeft, Menu, Check, Eye, Film, Info,
   ShieldCheck, CalendarDays, ExternalLink, SlidersHorizontal,
@@ -279,55 +281,7 @@ export default function NotificationsPage() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: BG, color: '#F5F5F5', fontFamily: BARLOW }}>
 
       {/* ══ HEADER ══ */}
-      <header style={{ height: 60, flexShrink: 0, background: BG2, borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', gap: 16, padding: '0 24px', position: 'relative', zIndex: 100 }}>
-        <SilverScreensLogo size="md" href="/" showTagline={false} />
-
-        <div style={{ flex: 1 }} />
-
-        <button style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 8, padding: '0 18px', height: 36, fontSize: 15, fontWeight: 600, fontFamily: BARLOW, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-          + Find Casting Calls
-        </button>
-
-        <div style={{ position: 'relative', cursor: 'pointer' }}>
-          <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(200,32,42,0.15)', border: `1px solid ${RED}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Bell size={16} color={RED} />
-          </div>
-          {unreadCount > 0 && <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>{unreadCount}</div>}
-        </div>
-
-        <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => router.push('/messages')}>
-          <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <MessageSquare size={16} />
-          </div>
-          {msgCount > 0 && <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>{msgCount}</div>}
-        </div>
-
-        <div ref={dropRef} style={{ position: 'relative' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} onClick={() => setDropdownOpen(v => !v)}>
-            <img src={avatarUrl} alt={userName}
-              style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${GOLD}` }} />
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2, fontFamily: BARLOW }}>{userName}</div>
-              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', fontFamily: BARLOW }}>Aspirant</div>
-            </div>
-            <ChevronRight size={12} color="rgba(255,255,255,0.4)" style={{ transform: 'rotate(90deg)' }} />
-          </div>
-          {dropdownOpen && (
-            <div style={{ position: 'absolute', top: 46, right: 0, width: 190, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', zIndex: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
-              {DROPDOWN_LINKS.map(item => (
-                <div key={item} style={{ padding: '10px 16px', fontSize: 16, fontFamily: BARLOW, cursor: 'pointer', color: item === 'Logout' ? '#ff6b6b' : '#fff', borderTop: item === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
-                  onClick={() => {
-                    if (item === 'Logout') { localStorage.removeItem('ss_user'); window.location.replace('/login'); }
-                    else router.push(`/${item.toLowerCase()}`);
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >{item}</div>
-              ))}
-            </div>
-          )}
-        </div>
-      </header>
+      <AspirantHeader />
 
       {/* ══ BODY ══ */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
