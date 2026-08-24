@@ -195,11 +195,11 @@ export default function AdminSettingsPage() {
   const [gstNumber,        setGstNumber]        = useState('33AAAAA0000A1Z5');
   const [dataRetentionDays, setDataRetentionDays] = useState('365 Days');
   const [passwordPolicy] = useState([
-    { label: 'Minimum 8 characters',          active: true  },
-    { label: 'Require uppercase letter',       active: true  },
-    { label: 'Require number',                 active: true  },
-    { label: 'Require special character (!@#)', active: false },
-    { label: 'No reuse of last 5 passwords',   active: true  },
+    { label: 'Minimum 8 characters',           value: 'enabled'  },
+    { label: 'Require uppercase letter',        value: 'enabled'  },
+    { label: 'Require number',                  value: 'enabled'  },
+    { label: 'Require special character (!@#)', value: 'disabled' },
+    { label: 'No reuse of last 5 passwords',    value: 'enabled'  },
   ]);
   const [whitelistedIps, setWhitelistedIps] = useState(['192.168.1.0/24', '10.0.0.1']);
   const [blockedIps, setBlockedIps] = useState(['103.41.205.0/24']);
