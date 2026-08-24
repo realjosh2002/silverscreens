@@ -113,12 +113,13 @@ interface Agency {
 }
 
 /* ─── Helpers ────────────────────────────────────────────────── */
-function getAuthHeaders() {
+function getAuthHeaders(): Record<string, string> {
   try {
-    const raw = localStorage.getItem('ss_user') || sessionStorage.getItem('ss_user') || '{}';
-    const u = JSON.parse(raw);
-    const t = u.token ?? u.access_token ?? '';
-    return t ? { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+    const key = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+    const token = key ? JSON.parse(localStorage.getItem(key) || '{}')?.access_token || '' : '';
+    return token
+      ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+      : { 'Content-Type': 'application/json' };
   } catch { return { 'Content-Type': 'application/json' }; }
 }
 
