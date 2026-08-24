@@ -150,6 +150,13 @@ const FALLBACK_ENTITIES: TopEntity[] = [
 ];
 
 /* ─── SVG Line Chart ─────────────────────────────────────────── */
+function getToken(): string {
+  try {
+    const key = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+    return key ? JSON.parse(localStorage.getItem(key) || '{}')?.access_token || '' : '';
+  } catch { return ''; }
+}
+
 function FraudTrendChart({ period, data, apiLabels }: { period: string; data: number[]; apiLabels?: string[] }) {
   /* Fixed pixel canvas — no CSS height:'100%' dependency */
   const W=560, H=200, padL=48, padR=16, padT=14, padB=36;
