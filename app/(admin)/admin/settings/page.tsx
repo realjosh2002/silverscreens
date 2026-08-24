@@ -1109,11 +1109,13 @@ function GeneralPanel({
   setters,
   toggles,
   toggle,
+  router,
 }: {
   values: any;
   setters: any;
   toggles: any;
   toggle: (k: any) => void;
+  router?: any;
 }) {
   return (
     <>
@@ -1702,11 +1704,13 @@ function SmsPanel({
   setShowWaAccessToken,
   onTestSms,
   onTestWa,
+  router,
 }: {
   values: any;
   setters: any;
   toggles: any;
   toggle: (k: any) => void;
+  router?: any;
   showSmsAuthToken: boolean;
   setShowSmsAuthToken: (v: boolean) => void;
   showWaAccessToken: boolean;
@@ -2991,6 +2995,12 @@ function NotificationsPanel({
   setEventSearch,
   notificationEvents,
   toggleEventChannel,
+  quietHoursEnabled,
+  setQuietHoursEnabled,
+  quietStart,
+  setQuietStart,
+  quietEnd,
+  setQuietEnd,
   router,
 }: {
   channelToggles: any;
@@ -3001,6 +3011,12 @@ function NotificationsPanel({
   setEventSearch: (v: string) => void;
   notificationEvents: any[];
   toggleEventChannel: (id: string, channel: "inApp" | "email" | "sms" | "whatsapp") => void;
+  quietHoursEnabled?: boolean;
+  setQuietHoursEnabled?: (v: boolean) => void;
+  quietStart?: string;
+  setQuietStart?: (v: string) => void;
+  quietEnd?: string;
+  setQuietEnd?: (v: string) => void;
   router: ReturnType<typeof useRouter>;
 }) {
   const modules = ["All Modules", "User", "Casting", "Application", "Payment", "Subscription"];
