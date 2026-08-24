@@ -7,7 +7,7 @@ import {
   ChevronRight, User, Mail, Phone, MapPin, Calendar,
   Shield, CheckCircle, XCircle, Clock, Star, Eye,
   Download, RefreshCw, AlertTriangle, Edit2,
-  Instagram, Twitter, Youtube, Globe, Award,
+  Globe, Award,
   Camera, Video, FileText, Activity, CreditCard,
 } from 'lucide-react'
 
@@ -104,14 +104,8 @@ function DeleteConfirmModal({ name, onConfirm, onCancel }: { name: string; onCon
           You are about to permanently delete <strong style={{ color: '#F5F5F5' }}>{name}</strong>'s account. This action <strong style={{ color: RED }}>cannot be undone</strong>. All profile data, applications, and media will be permanently removed.
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
-          <button onClick={onCancel}
-            style={{ flex: 1, padding: '10px 0', background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: 'rgba(255,255,255,0.6)', fontFamily: BARLOW, fontSize: 15, cursor: 'pointer' }}>
-            Cancel
-          </button>
-          <button onClick={onConfirm}
-            style={{ flex: 1, padding: '10px 0', background: 'rgba(200,32,42,0.2)', border: '1px solid rgba(200,32,42,0.45)', borderRadius: 8, color: RED, fontFamily: BEBAS, fontSize: 18, letterSpacing: 1, cursor: 'pointer' }}>
-            Delete Permanently
-          </button>
+          <button onClick={onCancel} style={{ flex: 1, padding: '10px 0', background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: 'rgba(255,255,255,0.6)', fontFamily: BARLOW, fontSize: 15, cursor: 'pointer' }}>Cancel</button>
+          <button onClick={onConfirm} style={{ flex: 1, padding: '10px 0', background: 'rgba(200,32,42,0.2)', border: '1px solid rgba(200,32,42,0.45)', borderRadius: 8, color: RED, fontFamily: BEBAS, fontSize: 18, letterSpacing: 1, cursor: 'pointer' }}>Delete Permanently</button>
         </div>
       </div>
     </div>
@@ -123,13 +117,13 @@ export default function AspProfilePage() {
   const params      = useSearchParams()
   const userId      = params.get('user_id') || ''
 
-  const [loading,       setLoading]       = useState(true)
-  const [error,         setError]         = useState('')
-  const [profile,       setProfile]       = useState<any>(null)
-  const [asp,           setAsp]           = useState<any>(null)
-  const [sub,           setSub]           = useState<any>(null)
-  const [actionMsg,     setActionMsg]     = useState('')
-  const [actColor,      setActColor]      = useState(GREEN)
+  const [loading,         setLoading]         = useState(true)
+  const [error,           setError]           = useState('')
+  const [profile,         setProfile]         = useState<any>(null)
+  const [asp,             setAsp]             = useState<any>(null)
+  const [sub,             setSub]             = useState<any>(null)
+  const [actionMsg,       setActionMsg]       = useState('')
+  const [actColor,        setActColor]        = useState(GREEN)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
 
   const toast = (msg: string, color = GREEN) => {
@@ -215,7 +209,6 @@ export default function AspProfilePage() {
             <span style={{ color: 'rgba(255,255,255,0.7)' }}>Aspirant Profile</span>
           </div>
 
-          {/* Loading */}
           {loading && (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300, flexDirection: 'column', gap: 12 }}>
               <RefreshCw size={24} color={GOLD} style={{ animation: 'spin 1s linear infinite' }} />
@@ -223,39 +216,26 @@ export default function AspProfilePage() {
             </div>
           )}
 
-          {/* Error */}
           {!loading && error && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 48 }}>
               <AlertTriangle size={32} color={RED} />
               <div style={{ fontSize: 16, color: RED }}>{error}</div>
-              <button onClick={() => router.push('/admin/users')}
-                style={{ padding: '8px 20px', background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7, color: '#F5F5F5', fontFamily: BARLOW, fontSize: 15, cursor: 'pointer' }}>
-                Back to Users
-              </button>
+              <button onClick={() => router.push('/admin/users')} style={{ padding: '8px 20px', background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7, color: '#F5F5F5', fontFamily: BARLOW, fontSize: 15, cursor: 'pointer' }}>Back to Users</button>
             </div>
           )}
 
-          {/* Profile */}
           {!loading && !error && profile && (
             <>
-              {/* ── HERO BANNER ── */}
+              {/* HERO */}
               <div style={{ background: '#121821', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '20px 22px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' as const, gap: 16 }}>
-
-                  {/* Left: Avatar + Info */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
                     <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(212,166,74,0.15)', border: '2px solid rgba(212,166,74,0.3)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', fontSize: 30, fontFamily: BEBAS, color: GOLD }}>
-                      {asp?.profile_image_url
-                        ? <img src={asp.profile_image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        : (profile.name || 'U').charAt(0).toUpperCase()}
+                      {asp?.profile_image_url ? <img src={asp.profile_image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (profile.name || 'U').charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <div style={{ fontFamily: BEBAS, fontSize: 28, letterSpacing: 1, color: '#F5F5F5', lineHeight: 1.1 }}>
-                        {profile.name || [asp?.first_name, asp?.last_name].filter(Boolean).join(' ') || 'Unknown'}
-                      </div>
-                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>
-                        {asp?.profile_number || profile.profile_number || userId.slice(0, 8)}
-                      </div>
+                      <div style={{ fontFamily: BEBAS, fontSize: 28, letterSpacing: 1, color: '#F5F5F5', lineHeight: 1.1 }}>{profile.name || [asp?.first_name, asp?.last_name].filter(Boolean).join(' ') || 'Unknown'}</div>
+                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{asp?.profile_number || profile.profile_number || userId.slice(0, 8)}</div>
                       <div style={{ display: 'flex', gap: 7, marginTop: 8, flexWrap: 'wrap' as const }}>
                         <span style={{ padding: '3px 10px', borderRadius: 6, fontSize: 12, fontWeight: 700, background: (VSTATUS_COLOR[vStatus] || ORANGE) + '22', color: VSTATUS_COLOR[vStatus] || ORANGE, border: '1px solid ' + (VSTATUS_COLOR[vStatus] || ORANGE) + '44' }}>{VSTATUS_LABEL[vStatus] || vStatus}</span>
                         <span style={{ padding: '3px 10px', borderRadius: 6, fontSize: 12, fontWeight: 700, background: isActive ? 'rgba(34,197,94,0.15)' : 'rgba(200,32,42,0.15)', color: isActive ? GREEN : RED, border: isActive ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(200,32,42,0.3)' }}>{isActive ? 'Active' : 'Suspended'}</span>
@@ -265,49 +245,32 @@ export default function AspProfilePage() {
                       </div>
                     </div>
                   </div>
-
-                  {/* Right: Action Buttons */}
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const, alignItems: 'center' }}>
                     {vStatus === 'pending' && <>
-                      <button onClick={() => updateVerification('approve')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 7, color: GREEN, fontFamily: BARLOW, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-                        <CheckCircle size={14} /> Approve
-                      </button>
-                      <button onClick={() => updateVerification('reject')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'rgba(200,32,42,0.12)', border: '1px solid rgba(200,32,42,0.3)', borderRadius: 7, color: RED, fontFamily: BARLOW, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-                        <XCircle size={14} /> Reject
-                      </button>
+                      <button onClick={() => updateVerification('approve')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 7, color: GREEN, fontFamily: BARLOW, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}><CheckCircle size={14} /> Approve</button>
+                      <button onClick={() => updateVerification('reject')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'rgba(200,32,42,0.12)', border: '1px solid rgba(200,32,42,0.3)', borderRadius: 7, color: RED, fontFamily: BARLOW, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}><XCircle size={14} /> Reject</button>
                     </>}
-                    {vStatus === 'approved' && (
-                      <button onClick={() => updateVerification('suspend')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.3)', borderRadius: 7, color: ORANGE, fontFamily: BARLOW, fontSize: 14, cursor: 'pointer' }}>
-                        <AlertTriangle size={14} /> Suspend Verification
-                      </button>
-                    )}
+                    {vStatus === 'approved' && <button onClick={() => updateVerification('suspend')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.3)', borderRadius: 7, color: ORANGE, fontFamily: BARLOW, fontSize: 14, cursor: 'pointer' }}><AlertTriangle size={14} /> Suspend Verification</button>}
                     <button onClick={() => doAction(isActive ? 'suspend' : 'activate')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: isActive ? 'rgba(200,32,42,0.12)' : 'rgba(34,197,94,0.12)', border: isActive ? '1px solid rgba(200,32,42,0.3)' : '1px solid rgba(34,197,94,0.3)', borderRadius: 7, color: isActive ? RED : GREEN, fontFamily: BARLOW, fontSize: 14, cursor: 'pointer' }}>
                       {isActive ? <><XCircle size={14} /> Suspend</> : <><CheckCircle size={14} /> Activate</>}
                     </button>
-                    <button onClick={() => doAction('reset_password')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7, color: 'rgba(255,255,255,0.6)', fontFamily: BARLOW, fontSize: 14, cursor: 'pointer' }}>
-                      <Shield size={14} /> Reset Password
-                    </button>
-                    <button onClick={fetchProfile} style={{ padding: '8px 10px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7, color: 'rgba(255,255,255,0.4)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                      <RefreshCw size={13} />
-                    </button>
+                    <button onClick={() => doAction('reset_password')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7, color: 'rgba(255,255,255,0.6)', fontFamily: BARLOW, fontSize: 14, cursor: 'pointer' }}><Shield size={14} /> Reset Password</button>
+                    <button onClick={fetchProfile} style={{ padding: '8px 10px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7, color: 'rgba(255,255,255,0.4)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><RefreshCw size={13} /></button>
                   </div>
-
                 </div>
               </div>
 
-              {/* ── STATS ROW ── */}
+              {/* STATS */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 10 }}>
-                <StatBox label="Profile Views"    value={asp?.profile_views    || 0}              color={BLUE}   />
-                <StatBox label="Profile Complete" value={`${asp?.profile_completion || 0}%`}      color={GOLD}   />
-                <StatBox label="Trust Score"      value={asp?.trust_score      ?? '—'}            color={GREEN}  />
-                <StatBox label="Search Appears."  value={asp?.search_appearances || 0}            color={PURPLE} />
-                <StatBox label="Subscription"     value={sub?.plan_name || 'None'}                color={TEAL}   />
+                <StatBox label="Profile Views"    value={asp?.profile_views    || 0}         color={BLUE}   />
+                <StatBox label="Profile Complete" value={`${asp?.profile_completion || 0}%`} color={GOLD}   />
+                <StatBox label="Trust Score"      value={asp?.trust_score      ?? '—'}       color={GREEN}  />
+                <StatBox label="Search Appears."  value={asp?.search_appearances || 0}       color={PURPLE} />
+                <StatBox label="Subscription"     value={sub?.plan_name || 'None'}           color={TEAL}   />
               </div>
 
-              {/* ── MAIN GRID ── */}
+              {/* MAIN GRID */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-
-                {/* Personal Info */}
                 <Card title="Personal Information">
                   <InfoRow label="Full Name"      value={`${asp?.title || ''} ${asp?.first_name || ''} ${asp?.last_name || ''}`.trim() || profile.name || '—'} />
                   <InfoRow label="Email"          value={fmt(profile.email)} />
@@ -319,8 +282,6 @@ export default function AspProfilePage() {
                   <InfoRow label="Member Since"   value={fmtDate(profile.created_at)} />
                   <InfoRow label="Last Login"     value={fmtDate(profile.last_login_at)} />
                 </Card>
-
-                {/* Location */}
                 <Card title="Location">
                   <InfoRow label="Address Line 1" value={fmt(asp?.address_line1)} />
                   <InfoRow label="Address Line 2" value={fmt(asp?.address_line2)} />
@@ -329,8 +290,6 @@ export default function AspProfilePage() {
                   <InfoRow label="Pincode"        value={fmt(asp?.pincode)} />
                   <InfoRow label="Country"        value={fmt(asp?.country)} />
                 </Card>
-
-                {/* Physical Stats */}
                 <Card title="Physical Attributes">
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
                     {[
@@ -347,113 +306,67 @@ export default function AspProfilePage() {
                     ].map(r => <InfoRow key={r.label} label={r.label} value={r.value} />)}
                   </div>
                 </Card>
-
-                {/* Professional Info */}
                 <Card title="Professional Details">
-                  <InfoRow label="Category"          value={fmt(asp?.category)} />
-                  <InfoRow label="Role"              value={fmt(asp?.role)} />
-                  <InfoRow label="Experience Level"  value={fmt(asp?.experience_level)} />
-                  <InfoRow label="Available"         value={asp?.is_available ? '✓ Yes' : '✗ No'} color={asp?.is_available ? GREEN : ORANGE} />
-                  {arr(asp?.skills).length > 0 && (
-                    <div style={{ marginTop: 12 }}>
-                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>Skills</div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                        {arr(asp?.skills).map((s: string) => <Tag key={s} label={s} color={BLUE} />)}
-                      </div>
-                    </div>
-                  )}
-                  {arr(asp?.languages).length > 0 && (
-                    <div style={{ marginTop: 12 }}>
-                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>Languages</div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                        {arr(asp?.languages).map((l: string) => <Tag key={l} label={l} color={TEAL} />)}
-                      </div>
-                    </div>
-                  )}
-                  {arr(asp?.availability).length > 0 && (
-                    <div style={{ marginTop: 12 }}>
-                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>Available For</div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                        {arr(asp?.availability).map((a: string) => <Tag key={a} label={a} color={PURPLE} />)}
-                      </div>
-                    </div>
-                  )}
+                  <InfoRow label="Category"         value={fmt(asp?.category)} />
+                  <InfoRow label="Role"             value={fmt(asp?.role)} />
+                  <InfoRow label="Experience Level" value={fmt(asp?.experience_level)} />
+                  <InfoRow label="Available"        value={asp?.is_available ? '✓ Yes' : '✗ No'} color={asp?.is_available ? GREEN : ORANGE} />
+                  {arr(asp?.skills).length > 0 && <div style={{ marginTop: 12 }}><div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>Skills</div><div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{arr(asp?.skills).map((s: string) => <Tag key={s} label={s} color={BLUE} />)}</div></div>}
+                  {arr(asp?.languages).length > 0 && <div style={{ marginTop: 12 }}><div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>Languages</div><div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{arr(asp?.languages).map((l: string) => <Tag key={l} label={l} color={TEAL} />)}</div></div>}
+                  {arr(asp?.availability).length > 0 && <div style={{ marginTop: 12 }}><div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>Available For</div><div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{arr(asp?.availability).map((a: string) => <Tag key={a} label={a} color={PURPLE} />)}</div></div>}
                 </Card>
-
               </div>
 
-              {/* ── ABOUT + SUBSCRIPTION ── */}
+              {/* ABOUT + SUBSCRIPTION */}
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14 }}>
-
                 <Card title="About Me">
-                  {asp?.about_me
-                    ? <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', lineHeight: 1.7, margin: 0 }}>{asp.about_me}</p>
-                    : <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', fontStyle: 'italic', margin: 0 }}>No bio added yet.</p>}
+                  {asp?.about_me ? <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', lineHeight: 1.7, margin: 0 }}>{asp.about_me}</p> : <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', fontStyle: 'italic', margin: 0 }}>No bio added yet.</p>}
                 </Card>
-
                 <Card title="Subscription">
-                  {sub ? <>
-                    <InfoRow label="Plan"       value={fmt(sub.plan_name)} />
-                    <InfoRow label="Status"     value={fmt(sub.status)}    color={sub.status === 'active' ? GREEN : ORANGE} />
-                    <InfoRow label="Expires"    value={fmtDate(sub.ends_at)} />
-                  </> : <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', fontStyle: 'italic', margin: 0 }}>No active subscription.</p>}
-                  <button onClick={() => router.push(`/admin/subscriptions?search=${profile.email}`)}
-                    style={{ marginTop: 14, width: '100%', padding: '8px', background: BG4, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7, color: 'rgba(255,255,255,0.6)', fontFamily: BARLOW, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                    <CreditCard size={13} /> View Full Subscription History
-                  </button>
+                  {sub ? <><InfoRow label="Plan" value={fmt(sub.plan_name)} /><InfoRow label="Status" value={fmt(sub.status)} color={sub.status === 'active' ? GREEN : ORANGE} /><InfoRow label="Expires" value={fmtDate(sub.ends_at)} /></> : <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', fontStyle: 'italic', margin: 0 }}>No active subscription.</p>}
+                  <button onClick={() => router.push(`/admin/subscriptions?search=${profile.email}`)} style={{ marginTop: 14, width: '100%', padding: '8px', background: BG4, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7, color: 'rgba(255,255,255,0.6)', fontFamily: BARLOW, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><CreditCard size={13} /> View Full Subscription History</button>
                 </Card>
               </div>
 
-              {/* ── SOCIAL LINKS ── */}
+              {/* SOCIAL LINKS */}
               {asp?.social_links && Object.keys(asp.social_links).length > 0 && (
                 <Card title="Social Media Links">
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                    {Object.entries(asp.social_links).map(([platform, url]) => (
-                      url ? (
-                        <a key={platform} href={String(url)} target="_blank" rel="noopener noreferrer"
-                          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: BG4, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: GOLD, fontFamily: BARLOW, fontSize: 14, textDecoration: 'none' }}>
-                          <Globe size={13} /> {platform}
-                        </a>
-                      ) : null
-                    ))}
+                    {Object.entries(asp.social_links).map(([platform, url]) => url ? (
+                      <a key={platform} href={String(url)} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: BG4, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: GOLD, fontFamily: BARLOW, fontSize: 14, textDecoration: 'none' }}>
+                        <Globe size={13} /> {platform}
+                      </a>
+                    ) : null)}
                   </div>
                 </Card>
               )}
 
-              {/* ── ADMIN ACTIONS ── */}
+              {/* ADMIN ACTIONS */}
               <Card title="Admin Actions">
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
                   {[
                     { label: 'View Applications', color: BLUE,   action: () => router.push(`/admin/applications?aspirant_id=${userId}`) },
-                    { label: 'View Reports',       color: ORANGE, action: () => router.push(`/admin/reports?user_id=${userId}`) },
-                    { label: 'View Audit Logs',    color: PURPLE, action: () => router.push(`/admin/audit?user_id=${userId}`) },
-                    { label: 'Reset Password',     color: TEAL,   action: () => doAction('reset_password') },
+                    { label: 'View Reports',      color: ORANGE, action: () => router.push(`/admin/reports?user_id=${userId}`) },
+                    { label: 'View Audit Logs',   color: PURPLE, action: () => router.push(`/admin/audit?user_id=${userId}`) },
+                    { label: 'Reset Password',    color: TEAL,   action: () => doAction('reset_password') },
                     { label: isActive ? 'Suspend Account' : 'Activate Account', color: isActive ? RED : GREEN, action: () => doAction(isActive ? 'suspend' : 'activate') },
-                    { label: 'Delete Account',     color: RED,    action: () => setShowDeleteModal(true) },
+                    { label: 'Delete Account',    color: RED,    action: () => setShowDeleteModal(true) },
                   ].map(btn => (
-                    <button key={btn.label} onClick={btn.action}
-                      style={{ padding: '10px', background: `${btn.color}15`, border: `1px solid ${btn.color}33`, borderRadius: 8, color: btn.color, fontFamily: BARLOW, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-                      {btn.label}
-                    </button>
+                    <button key={btn.label} onClick={btn.action} style={{ padding: '10px', background: `${btn.color}15`, border: `1px solid ${btn.color}33`, borderRadius: 8, color: btn.color, fontFamily: BARLOW, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>{btn.label}</button>
                   ))}
                 </div>
               </Card>
-
             </>
           )}
 
-          {/* Back button */}
           {!loading && (
-            <button onClick={() => router.push('/admin/users')}
-              style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7, color: 'rgba(255,255,255,0.6)', fontFamily: BARLOW, fontSize: 14, cursor: 'pointer' }}>
+            <button onClick={() => router.push('/admin/users')} style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7, color: 'rgba(255,255,255,0.6)', fontFamily: BARLOW, fontSize: 14, cursor: 'pointer' }}>
               ← Back to User Management
             </button>
           )}
-
         </div>
       </div>
 
-      {/* Delete Confirm Modal */}
       {showDeleteModal && (
         <DeleteConfirmModal
           name={profile?.name || [asp?.first_name, asp?.last_name].filter(Boolean).join(' ') || 'this user'}
@@ -462,7 +375,6 @@ export default function AspProfilePage() {
         />
       )}
 
-      {/* Toast */}
       {actionMsg && (
         <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: actColor, color: '#000', padding: '12px 24px', borderRadius: 10, fontFamily: BARLOW, fontSize: 15, fontWeight: 700, zIndex: 500, boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
           {actionMsg}
