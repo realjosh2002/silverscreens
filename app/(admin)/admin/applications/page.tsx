@@ -100,8 +100,10 @@ type FlaggedApp = {
 
 /* ─── Auth helper ─────────────────────────────────────────────── */
 function getToken(): string {
-  try { const raw = localStorage.getItem('ss_user') || sessionStorage.getItem('ss_user') || '{}'; return JSON.parse(raw).token || ''; }
-  catch { return ''; }
+  try {
+    const key = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+    return key ? JSON.parse(localStorage.getItem(key) || '{}')?.access_token || '' : '';
+  } catch { return ''; }
 }
 
 /* ─── SVG Line Chart ─────────────────────────────────────────── */
@@ -565,7 +567,7 @@ export default function ApplicationMonitoringPage() {
                       {isSel?<CheckSquare size={15} color={RED}/>:<Square size={15} color="rgba(255,255,255,0.25)"/>}
                     </div>
                     <div>
-                      <div style={{fontSize:14,fontWeight:700,color:'#F5F5F5'}}>{app.app_id}</div>
+                      <div style={{fontSize:14,fontWeight:700,color:'#F5F5F5'}}>{app.id}</div>
                       <div style={{fontSize:12,color:'rgba(255,255,255,0.4)',marginTop:2}}>Applied {app.date}</div>
                     </div>
                     <div style={{display:'flex',alignItems:'center',gap:8}}>
