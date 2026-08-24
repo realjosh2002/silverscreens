@@ -95,7 +95,7 @@ type InsightRow = { icon: typeof ShieldAlert; iconBg: string; iconColor: string;
 type FlaggedApp = {
   id: string; date: string; time: string; applicant: string;
   uid: string; casting: string; project: string;
-  risk: string; reason: string; img: string;
+  risk: string; reason: string; img: string; status: string;
 };
 
 /* ─── Auth helper ─────────────────────────────────────────────── */
