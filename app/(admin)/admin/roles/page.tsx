@@ -431,7 +431,7 @@ export default function RolesPermissionsPage() {
               {rolesLoading ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
                   {Array.from({ length: 5 }).map(function(_, i) {
-                    return <div key={i} style={{ background: BG3, border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 20, height: 240, background: 'rgba(255,255,255,0.03)' }} />;
+                    return <div key={i} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 20, height: 240 }} />;
                   })}
                 </div>
               ) : null}
