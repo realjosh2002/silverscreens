@@ -99,6 +99,33 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   );
 }
 
+function ConfirmModal({ title, message, confirmLabel = "Confirm", confirmColor = RED, onConfirm, onCancel }: {
+  title: string; message: string; confirmLabel?: string; confirmColor?: string;
+  onConfirm: () => void; onCancel: () => void;
+}) {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ background: BG2, border: `1px solid ${BORDER}`, borderRadius: 12, width: 420, maxWidth: "94vw", padding: 28 }}>
+        <h2 style={{ fontFamily: BEBAS, fontSize: 20, color: GOLD, margin: "0 0 10px", letterSpacing: 1 }}>{title}</h2>
+        <p style={{ fontSize: 14, color: "#cfd3da", lineHeight: 1.6, margin: "0 0 22px" }}>{message}</p>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={onCancel} style={{ flex: 1, background: "transparent", border: `1px solid ${BORDER}`, color: "#cfd3da", borderRadius: 6, padding: "10px", fontSize: 14, cursor: "pointer" }}>Cancel</button>
+          <button onClick={onConfirm} style={{ flex: 1, background: "transparent", border: `1px solid ${confirmColor}`, color: confirmColor, borderRadius: 6, padding: "10px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>{confirmLabel}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InfoToast({ message, onClose }: { message: string; onClose: () => void }) {
+  useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t); }, [onClose]);
+  return (
+    <div style={{ position: "fixed", bottom: 28, right: 28, background: BG2, border: `1px solid ${GOLD}`, borderRadius: 10, padding: "14px 20px", color: "#F5F5F5", fontFamily: BARLOW, fontSize: 15, zIndex: 9999, maxWidth: 380, lineHeight: 1.5, boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }}>
+      {message}
+    </div>
+  );
+}
+
 const DEVICE_ICON_MAP: Record<string, React.ElementType> = {
   windows: Monitor, mac: Laptop, android: Smartphone, ios: Smartphone, tablet: Tablet,
 };
@@ -106,33 +133,45 @@ const DEVICE_ICON_MAP: Record<string, React.ElementType> = {
 export default function AccountSettingsPage() {
   const router = useRouter();
   const { refreshProfile, updateProfile: updateSharedProfile } = useAdminProfile();
-  const [saved,           setSaved]           = useState(false);
-  const [saving,          setSaving]          = useState(false);
-  const [loading,         setLoading]         = useState(true);
-  const [avatarSrc,       setAvatarSrc]       = useState("https://i.pravatar.cc/200?img=12");
-  const [signatureSrc,    setSignatureSrc]    = useState<string | null>(null);
-  const [backupCodesCount,setBackupCodesCount]= useState(8);
-  const [saveError,       setSaveError]       = useState("");
-  const [showUploadSig,   setShowUploadSig]   = useState(false);
-  const [showDeviceDetail,setShowDeviceDetail]= useState<any>(null);
-  const [showDownloadData,setShowDownloadData]= useState(false);
+  const [saved,            setSaved]            = useState(false);
+  const [saving,           setSaving]           = useState(false);
+  const [loading,          setLoading]          = useState(true);
+  const [avatarSrc,        setAvatarSrc]        = useState("https://i.pravatar.cc/200?img=12");
+  const [signatureSrc,     setSignatureSrc]     = useState<string | null>(null);
+  const [backupCodesCount, setBackupCodesCount] = useState(8);
+  const [saveError,        setSaveError]        = useState("");
+  const [showUploadSig,    setShowUploadSig]    = useState(false);
+  const [showDeviceDetail, setShowDeviceDetail] = useState<any>(null);
+  const [showDownloadData, setShowDownloadData] = useState(false);
   const [showExportHistory,setShowExportHistory]= useState(false);
-  const [firstName,       setFirstName]       = useState("Arun");
-  const [lastName,        setLastName]        = useState("Kumar");
-  const [displayName,     setDisplayName]     = useState("Arun Kumar");
-  const [designation,     setDesignation]     = useState("Super Administrator");
-  const [department,      setDepartment]      = useState("Administration");
-  const [employeeId,      setEmployeeId]      = useState("SS-ADM-001");
-  const [email,           setEmail]           = useState("admin@silverscreens.in");
-  const [mobile,          setMobile]          = useState("+91 98765 43210");
-  const [memberSince,     setMemberSince]     = useState("—");
-  const [lastLogin,       setLastLogin]       = useState("—");
-  const [theme,           setTheme]           = useState("Dark");
-  const [language,        setLanguage]        = useState("English");
-  const [timezone,        setTimezone]        = useState("(GMT+05:30) Asia/Kolkata");
-  const [dateFormat,      setDateFormat]      = useState("24 Jun 2026");
-  const [timeFormat,      setTimeFormat]      = useState("12 Hour (hh:mm AM/PM)");
-  const [deviceMenuOpen,  setDeviceMenuOpen]  = useState<string | null>(null);
+  const [firstName,        setFirstName]        = useState("Arun");
+  const [lastName,         setLastName]         = useState("Kumar");
+  const [displayName,      setDisplayName]      = useState("Arun Kumar");
+  const [designation,      setDesignation]      = useState("Super Administrator");
+  const [department,       setDepartment]       = useState("Administration");
+  const [employeeId,       setEmployeeId]       = useState("SS-ADM-001");
+  const [email,            setEmail]            = useState("admin@silverscreens.in");
+  const [mobile,           setMobile]           = useState("+91 98765 43210");
+  const [memberSince,      setMemberSince]      = useState("—");
+  const [lastLogin,        setLastLogin]        = useState("—");
+  const [theme,            setTheme]            = useState("Dark");
+  const [language,         setLanguage]         = useState("English");
+  const [timezone,         setTimezone]         = useState("(GMT+05:30) Asia/Kolkata");
+  const [dateFormat,       setDateFormat]       = useState("24 Jun 2026");
+  const [timeFormat,       setTimeFormat]       = useState("12 Hour (hh:mm AM/PM)");
+  const [deviceMenuOpen,   setDeviceMenuOpen]   = useState<string | null>(null);
+  const [infoToast,        setInfoToast]        = useState("");
+  const [photoError,       setPhotoError]       = useState("");
+  const [sigError,         setSigError]         = useState("");
+
+  // Confirm modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    title: string; message: string; confirmLabel?: string; confirmColor?: string; onConfirm: () => void;
+  } | null>(null);
+
+  function showConfirm(title: string, message: string, onConfirm: () => void, confirmLabel = "Confirm", confirmColor = RED) {
+    setConfirmModal({ title, message, confirmLabel, confirmColor, onConfirm });
+  }
 
   const [sessions, setSessions] = useState([
     { id: "s1", device: "Windows PC",    icon: "windows", browser: "Chrome 126",    location: "Chennai, India",   ip: "103.21.244.0",        lastActive: "Now",                 status: "This Device", current: true  },
@@ -155,27 +194,39 @@ export default function AccountSettingsPage() {
   }
 
   function terminateSession(id: string) {
-    if (window.confirm("Terminate this session? The device will be signed out immediately.")) {
-      setSessions(function(s) { return s.filter(function(sess) { return sess.id !== id; }); });
-    }
+    showConfirm(
+      "Terminate Session",
+      "Terminate this session? The device will be signed out immediately.",
+      () => setSessions(function(s) { return s.filter(function(sess) { return sess.id !== id; }); }),
+      "Terminate"
+    );
   }
 
   function terminateAllOthers() {
-    if (window.confirm("Terminate all other sessions? Only this device will remain signed in.")) {
-      setSessions(function(s) { return s.filter(function(sess) { return sess.current; }); });
-    }
+    showConfirm(
+      "Terminate All Other Sessions",
+      "Terminate all other sessions? Only this device will remain signed in.",
+      () => setSessions(function(s) { return s.filter(function(sess) { return sess.current; }); }),
+      "Terminate All"
+    );
   }
 
   function removeDevice(id: string) {
-    if (window.confirm("Remove this device? It will need to sign in again.")) {
-      setDevices(function(d) { return d.filter(function(dev) { return dev.id !== id; }); });
-    }
+    showConfirm(
+      "Remove Device",
+      "Remove this device? It will need to sign in again.",
+      () => setDevices(function(d) { return d.filter(function(dev) { return dev.id !== id; }); }),
+      "Remove"
+    );
   }
 
   function removeAllDevices() {
-    if (window.confirm("Remove all trusted devices except this one?")) {
-      setDevices(function(d) { return d.filter(function(dev) { return dev.current; }); });
-    }
+    showConfirm(
+      "Remove All Devices",
+      "Remove all trusted devices except this one?",
+      () => setDevices(function(d) { return d.filter(function(dev) { return dev.current; }); }),
+      "Remove All"
+    );
   }
 
   const loadProfile = useCallback(async function() {
@@ -188,7 +239,10 @@ export default function AccountSettingsPage() {
       if (!uid) { setLoading(false); return; }
       const { data: sessData } = await supabase.auth.getSession();
       const freshToken = sessData?.session?.access_token;
-      const authHeaders = freshToken ? { Authorization: "Bearer " + freshToken } : {};
+      // ─── FIX: explicit type so TypeScript knows Authorization is always string ───
+      const authHeaders: Record<string, string> = freshToken
+        ? { Authorization: "Bearer " + freshToken }
+        : {};
       const { createClient: cc } = await import("@supabase/supabase-js");
       const db = cc(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { global: { headers: authHeaders } });
       const { data, error } = await db.from("profiles").select("id, name, email, phone, profile_number, two_fa_enabled, created_at, last_login_at, avatar_url").eq("id", uid).single();
@@ -219,7 +273,10 @@ export default function AccountSettingsPage() {
       if (!uid) { setSaveError("Could not find your user ID. Please log out and back in."); setSaving(false); return; }
       const { data: sessData2 } = await supabase.auth.getSession();
       const freshToken2 = sessData2?.session?.access_token;
-      const authHeaders2 = freshToken2 ? { Authorization: "Bearer " + freshToken2 } : {};
+      // ─── FIX: explicit type ───────────────────────────────────────────────────
+      const authHeaders2: Record<string, string> = freshToken2
+        ? { Authorization: "Bearer " + freshToken2 }
+        : {};
       const { createClient: cc2 } = await import("@supabase/supabase-js");
       const db2 = cc2(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { global: { headers: authHeaders2 } });
       const fullName = (firstName + " " + lastName).trim();
@@ -247,13 +304,19 @@ export default function AccountSettingsPage() {
   }
 
   function handleCancel() {
-    if (window.confirm("Discard unsaved changes and reload from server?")) { loadProfile(); }
+    showConfirm(
+      "Discard Changes",
+      "Discard unsaved changes and reload from server?",
+      () => loadProfile(),
+      "Discard"
+    );
   }
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { window.alert("File too large. Maximum size is 5MB."); return; }
+    if (file.size > 5 * 1024 * 1024) { setPhotoError("File too large. Maximum size is 5MB."); return; }
+    setPhotoError("");
     const reader = new FileReader();
     reader.onload = function(ev) { if (ev.target?.result) setAvatarSrc(ev.target.result as string); };
     reader.readAsDataURL(file);
@@ -262,7 +325,8 @@ export default function AccountSettingsPage() {
   function handleSigChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { window.alert("File too large. Maximum size is 2MB."); return; }
+    if (file.size > 2 * 1024 * 1024) { setSigError("File too large. Maximum size is 2MB."); return; }
+    setSigError("");
     const reader = new FileReader();
     reader.onload = function(ev) { if (ev.target?.result) { setSignatureSrc(ev.target.result as string); setShowUploadSig(false); } };
     reader.readAsDataURL(file);
@@ -286,9 +350,17 @@ export default function AccountSettingsPage() {
           <input id="photo-file-input" type="file" accept="image/jpeg,image/png,image/gif" style={{ display: "none" }} onChange={handlePhotoChange} />
           <input id="sig-file-input"   type="file" accept="image/png,image/jpeg"           style={{ display: "none" }} onChange={handleSigChange} />
 
+          {/* Photo size error */}
+          {photoError && (
+            <div style={{ position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)", background: "rgba(200,32,42,0.15)", border: `1px solid ${RED}`, borderRadius: 8, padding: "12px 20px", color: RED, fontFamily: BARLOW, fontSize: 14, zIndex: 9999 }}>
+              {photoError} <span onClick={() => setPhotoError("")} style={{ marginLeft: 12, cursor: "pointer" }}>✕</span>
+            </div>
+          )}
+
           {showUploadSig && (
-            <Modal title="Upload Digital Signature" onClose={function() { setShowUploadSig(false); }}>
+            <Modal title="Upload Digital Signature" onClose={function() { setShowUploadSig(false); setSigError(""); }}>
               <div style={{ fontSize: 13, color: TEXT_MUTED, marginBottom: 18 }}>Upload your digital signature image. PNG or JPG only. Maximum 2MB.</div>
+              {sigError && <div style={{ fontSize: 13, color: RED, marginBottom: 12 }}>{sigError}</div>}
               {signatureSrc && (
                 <div style={{ background: "#fff", borderRadius: 8, padding: "14px 20px", marginBottom: 16, textAlign: "center" }}>
                   <img src={signatureSrc} alt="Signature" style={{ maxHeight: 80, maxWidth: "100%" }} />
@@ -299,7 +371,7 @@ export default function AccountSettingsPage() {
                 <Upload size={14} />
                 {signatureSrc ? "Replace Signature" : "Choose Signature File"}
               </label>
-              <button onClick={function() { setShowUploadSig(false); }} style={btnBorder}>Cancel</button>
+              <button onClick={function() { setShowUploadSig(false); setSigError(""); }} style={btnBorder}>Cancel</button>
             </Modal>
           )}
 
@@ -350,7 +422,7 @@ export default function AccountSettingsPage() {
               </div>
               <div style={{ display: "flex", gap: 10 }}>
                 <button onClick={function() { setShowDownloadData(false); }} style={{ flex: 1, background: "transparent", border: `1px solid ${BORDER}`, color: "#cfd3da", borderRadius: 6, padding: "10px", fontSize: 14, cursor: "pointer" }}>Cancel</button>
-                <button onClick={function() { setShowDownloadData(false); window.alert("Your data export has been initiated. A download link will be sent to " + email + " within 24 hours."); }} style={{ flex: 1, background: GOLD, border: "none", color: BG, borderRadius: 6, padding: "10px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Request Export</button>
+                <button onClick={function() { setShowDownloadData(false); setInfoToast("Your data export has been initiated. A download link will be sent to " + email + " within 24 hours."); }} style={{ flex: 1, background: GOLD, border: "none", color: BG, borderRadius: 6, padding: "10px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Request Export</button>
               </div>
             </Modal>
           )}
@@ -365,10 +437,25 @@ export default function AccountSettingsPage() {
               </Field>
               <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
                 <button onClick={function() { setShowExportHistory(false); }} style={{ flex: 1, background: "transparent", border: `1px solid ${BORDER}`, color: "#cfd3da", borderRadius: 6, padding: "10px", fontSize: 14, cursor: "pointer" }}>Cancel</button>
-                <button onClick={function() { setShowExportHistory(false); window.alert("Login history export initiated. You will receive an email with the download link."); }} style={{ flex: 1, background: GOLD, border: "none", color: BG, borderRadius: 6, padding: "10px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Export</button>
+                <button onClick={function() { setShowExportHistory(false); setInfoToast("Login history export initiated. You will receive an email with the download link."); }} style={{ flex: 1, background: GOLD, border: "none", color: BG, borderRadius: 6, padding: "10px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Export</button>
               </div>
             </Modal>
           )}
+
+          {/* Confirm Modal */}
+          {confirmModal && (
+            <ConfirmModal
+              title={confirmModal.title}
+              message={confirmModal.message}
+              confirmLabel={confirmModal.confirmLabel}
+              confirmColor={confirmModal.confirmColor}
+              onConfirm={() => { confirmModal.onConfirm(); setConfirmModal(null); }}
+              onCancel={() => setConfirmModal(null)}
+            />
+          )}
+
+          {/* Info Toast */}
+          {infoToast && <InfoToast message={infoToast} onClose={() => setInfoToast("")} />}
 
           {/* Page Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
@@ -712,7 +799,15 @@ export default function AccountSettingsPage() {
                     </div>
                   );
                 })}
-                <div onClick={function() { if (window.confirm("Deactivate your account? You will be signed out and will need another admin to reactivate it.")) { window.alert("Account deactivation request submitted. A senior administrator will process it within 24 hours."); } }}
+                <div onClick={function() {
+                  showConfirm(
+                    "Deactivate Account",
+                    "Deactivate your account? You will be signed out and will need another admin to reactivate it.",
+                    () => setInfoToast("Account deactivation request submitted. A senior administrator will process it within 24 hours."),
+                    "Deactivate",
+                    RED
+                  );
+                }}
                   style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", cursor: "pointer", color: RED }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
                     <Zap size={15} color={RED} />Deactivate Account
