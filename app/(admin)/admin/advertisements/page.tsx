@@ -1141,10 +1141,11 @@ function SendAdModal({ ad, onClose, getToken, showToast }: {
   ad: Ad; onClose: () => void;
   getToken: () => string; showToast: (m: string) => void;
 }) {
-  const [sending,    setSending]    = useState(false);
-  const [preview,    setPreview]    = useState<{ matched: number; sample: string[] } | null>(null);
-  const [previewing, setPreviewing] = useState(false);
-  const [docFile,    setDocFile]    = useState<File | null>(null);
+  const [sending,     setSending]     = useState(false);
+  const [preview,     setPreview]     = useState<{ matched: number; sample: string[] } | null>(null);
+  const [previewing,  setPreviewing]  = useState(false);
+  const [docFile,     setDocFile]     = useState<File | null>(null);
+  const [confirmSend, setConfirmSend] = useState(false);
 
   const handleDocSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -1189,7 +1190,12 @@ function SendAdModal({ ad, onClose, getToken, showToast }: {
   const handleSend = async () => {
     if (!preview) { showToast('Click Preview first'); return; }
     if (preview.matched === 0) { showToast('No matching users found'); return; }
-    if (!confirm(`Send this ad to ${preview.matched} user(s)?`)) return;
+    setConfirmSend(true);
+  };
+
+  const handleConfirmedSend = async () => {
+    setConfirmSend(false);
+    if (!preview) return;
     setSending(true);
     try {
       let attachmentData = null;
@@ -1237,7 +1243,7 @@ function SendAdModal({ ad, onClose, getToken, showToast }: {
           {/* Targeting summary — read only */}
           <div style={{ background: BG3, borderRadius: 10, padding: '14px 16px' }}>
             <div style={{ fontFamily: BEBAS, fontSize: 15, letterSpacing: 1, color: TEAL, marginBottom: 10 }}>🎯 SENDING TO</div>
-            {row('User Type',    (ad.target_user_type === 'aspirant' ? 'Aspirants' : ad.target_user_type === 'agency' ? 'Agencies' : 'All Users') || 'Aspirants')}
+            {row('User Type',    ad.target_user_type === 'aspirant' ? 'Aspirants' : ad.target_user_type === 'agency' ? 'Agencies' : 'All Users')}
             {row('Category',     ad.target_category)}
             {row('Role',         ad.target_role)}
             {row('Age Range',    ad.target_age_min && ad.target_age_max ? `${ad.target_age_min} – ${ad.target_age_max} yrs` : ad.target_age_min ? `${ad.target_age_min}+ yrs` : ad.target_age_max ? `Up to ${ad.target_age_max} yrs` : null)}
@@ -1295,6 +1301,29 @@ function SendAdModal({ ad, onClose, getToken, showToast }: {
           </button>
         </div>
       </div>
+
+      {/* Confirm Send Modal */}
+      {confirmSend && preview && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: BG2, border: '1px solid rgba(20,184,166,0.3)', borderRadius: 12, width: '100%', maxWidth: 400, padding: 28 }}>
+            <div style={{ fontFamily: BEBAS, fontSize: 22, letterSpacing: 1, color: TEAL, marginBottom: 10 }}>CONFIRM SEND</div>
+            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', lineHeight: 1.7, marginBottom: 24 }}>
+              You are about to send <strong style={{ color: '#F5F5F5' }}>{ad.name}</strong> to{' '}
+              <strong style={{ color: TEAL }}>{preview.matched} user(s)</strong>. This action cannot be undone.
+            </div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button onClick={() => setConfirmSend(false)}
+                style={{ flex: 1, padding: '10px 0', background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: 'rgba(255,255,255,0.6)', fontFamily: BARLOW, fontSize: 15, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={handleConfirmedSend}
+                style={{ flex: 2, padding: '10px 0', background: GREEN, border: 'none', borderRadius: 8, color: '#000', fontFamily: BEBAS, fontSize: 18, letterSpacing: 1, cursor: 'pointer', fontWeight: 700 }}>
+                Confirm Send
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
