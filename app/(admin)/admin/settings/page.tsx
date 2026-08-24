@@ -2084,6 +2084,7 @@ function PaymentsPanel({
   onAddTax?: () => void;
   onEditCurrency?: (c: any) => void;
   onEditGateway?: (g: any) => void;
+  onGoToLocalization?: () => void;
   router: ReturnType<typeof useRouter>;
 }) {
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
