@@ -1,7 +1,14 @@
 import { NextRequest } from 'next/server'
-import { supabase, supabaseAdmin } from '@/lib/supabase-admin'
+import { createClient } from '@supabase/supabase-js'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
+
+// Regular Supabase client for auth only
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 // POST /api/media/upload — upload image or video
 // DELETE /api/media/upload — delete a media file
