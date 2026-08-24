@@ -19,7 +19,7 @@ async function verifyAdmin(token: string) {
 // Actions: approve | reject | suspend | activate | request_info
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = req.headers.get('authorization')?.replace('Bearer ', '')
@@ -28,7 +28,7 @@ export async function POST(
     const admin = await verifyAdmin(token)
     if (!admin) return errorResponse('Admin access required', 403)
 
-    const agencyId = params.id
+    const { id: agencyId } = await params
     if (!agencyId) return errorResponse('Agency ID is required', 400)
 
     const body = await req.json()
