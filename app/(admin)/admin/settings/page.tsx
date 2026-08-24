@@ -2083,6 +2083,7 @@ function PaymentsPanel({
   onAddCurrency?: () => void;
   onAddTax?: () => void;
   onEditCurrency?: (c: any) => void;
+  onEditGateway?: (g: any) => void;
   router: ReturnType<typeof useRouter>;
 }) {
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
