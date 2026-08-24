@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabase-admin'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
 
@@ -34,10 +34,22 @@ export async function GET(req: NextRequest) {
           },
         },
         profiles_conversations_participant_1_idToprofiles: {
-          select: { id: true, name: true, role: true },
+          select: {
+            id:                true,
+            name:              true,
+            role:              true,
+            phone:             true,
+            aspirant_profiles: { select: { id: true } },
+          },
         },
         profiles_conversations_participant_2_idToprofiles: {
-          select: { id: true, name: true, role: true },
+          select: {
+            id:                true,
+            name:              true,
+            role:              true,
+            phone:             true,
+            aspirant_profiles: { select: { id: true } },
+          },
         },
       },
     })
@@ -59,9 +71,11 @@ export async function GET(req: NextRequest) {
         participant_2_id: conv.participant_2_id,
         last_message_at:  conv.last_message_at,
         otherParty: {
-          id:   otherParty?.id   ?? '',
-          name: otherParty?.name ?? 'Unknown',
-          role: otherParty?.role ?? '',
+          id:               otherParty?.id   ?? '',
+          name:             otherParty?.name ?? 'Unknown',
+          role:             otherParty?.role ?? '',
+          phone:            (otherParty as any)?.phone ?? null,
+          aspirantProfileId: (otherParty as any)?.aspirant_profiles?.id ?? null,
         },
         lastMessage: lastMsg
           ? { content: lastMsg.content, sent_at: lastMsg.created_at }

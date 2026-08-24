@@ -38,7 +38,7 @@ const DROPDOWN_LINKS = [
   { label: 'Analytics',      href: '/analytics' },
   { label: 'Calendar',       href: '/calendar' },
   { label: 'Settings',       href: '/settings' },
-  { label: 'Help & Support', href: '/contact' },
+  { label: 'Help & Support', href: '/settings?tab=support' },
   { label: 'Logout',         href: '/login' },
 ];
 
@@ -95,6 +95,8 @@ export default function SubscriptionPage() {
   const router = useRouter();
   const [sidebarOpen,  setSidebarOpen]  = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notifCount,   setNotifCount]   = useState(0);
+  const [msgCount,     setMsgCount]     = useState(0);
   const [userName,     setUserName]     = useState('My Account');
   const [avatarUrl,    setAvatarUrl]    = useState('');
   const [apiPlans,     setApiPlans]     = useState<ApiPlan[]>([]);
@@ -111,6 +113,32 @@ export default function SubscriptionPage() {
       if (u.profilePhoto) setAvatarUrl(u.profilePhoto);
     } catch {}
   }, []);
+
+  // Fetch live topnav badge counts
+  useEffect(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
+      const token = u.token
+      if (!token) return
+      const h = { Authorization: `Bearer ${token}` }
+      fetch('/api/notifications', { headers: h })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return
+          const count = data.data?.unread_count ?? data.unread_count
+          if (count != null) { setNotifCount(count); return }
+          const list = data.data?.notifications ?? data.notifications ?? []
+          if (Array.isArray(list)) setNotifCount(list.filter((n: any) => !n.is_read).length)
+        }).catch(() => {})
+      fetch('/api/messages/conversations', { headers: h })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return
+          const list = data.data?.conversations ?? data.conversations ?? []
+          if (Array.isArray(list)) setMsgCount(list.filter((c: any) => c.unreadCount > 0).length)
+        }).catch(() => {})
+    } catch {}
+  }, [])
 
   // Fetch plans dynamically — reflects any admin changes instantly
   useEffect(() => {
@@ -199,11 +227,11 @@ export default function SubscriptionPage() {
         <button onClick={() => router.push('/casting-calls')} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 8, padding: '0 18px', height: 36, fontSize: 15, fontWeight: 600, fontFamily: BARLOW, cursor: 'pointer', whiteSpace: 'nowrap' }}>+ Find Casting Calls</button>
         <div onClick={() => router.push('/messages')} style={{ position: 'relative', cursor: 'pointer' }}>
           <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><MessageSquare size={16} /></div>
-          <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 17, height: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>2</div>
+          {msgCount > 0 && <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 17, height: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>{msgCount}</div>}
         </div>
         <div onClick={() => router.push('/notifications')} style={{ position: 'relative', cursor: 'pointer' }}>
           <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Bell size={16} /></div>
-          <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 17, height: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>3</div>
+          {notifCount > 0 && <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 17, height: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>{notifCount}</div>}
         </div>
         <div style={{ position: 'relative' }}>
           <div onClick={() => setDropdownOpen(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>

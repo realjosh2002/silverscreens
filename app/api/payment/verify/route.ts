@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import crypto from 'crypto'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabase-admin'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
 

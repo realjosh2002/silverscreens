@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
-  MapPin, Clock, Users, Calendar, Bookmark, ChevronLeft,
+  MapPin, Clock, Users, Calendar, Bookmark, ChevronLeft, Flag,
   CheckCircle, Lock, Phone, Mail, Globe, AlertCircle,
   Star, Briefcase, Mic2, LayoutDashboard, FileText,
   Bell, MessageSquare, ChevronDown, Menu, Video, Radio,
@@ -616,7 +616,14 @@ export default function PublicCastingDetailPage() {
   const [applying,     setApplying]     = useState(false)
   const [applied,      setApplied]      = useState(false)
   const [applyError,   setApplyError]   = useState('')
-  const [applySuccess, setApplySuccess] = useState(false)
+  const [applySuccess,    setApplySuccess]    = useState(false)
+  const [reportOpen,      setReportOpen]      = useState(false)
+  const [reportReason,    setReportReason]    = useState('')
+  const [reportSubmitting, setReportSubmitting] = useState(false)
+  const [reportDone,      setReportDone]      = useState(false)
+  const [reportSuccess,   setReportSuccess]   = useState(false)
+  const [agencyUserId,    setAgencyUserId]    = useState('')
+  const [agencyProfileId, setAgencyProfileId] = useState('')
   const [showApplyModal, setShowApplyModal] = useState(false)
   const [coverLetter,  setCoverLetter]  = useState('')
   const [casting,      setCasting]      = useState<typeof CASTINGS[0] | null>(null)
@@ -691,6 +698,8 @@ export default function PublicCastingDetailPage() {
         const budgetMinNum = budgetMin ? Number(String(budgetMin)) : 0
         const budgetMaxNum = budgetMax ? Number(String(budgetMax)) : 0
         const rupee = '\u20B9'
+        setAgencyUserId(c.agency_profiles?.user_id ?? '')
+        setAgencyProfileId(c.agency_profiles?.id ?? '')
         setCasting({
           id:               c.id,
           title:            c.title ?? '',
@@ -1176,6 +1185,13 @@ export default function PublicCastingDetailPage() {
                   <Bookmark size={14} fill={saved ? GOLD : 'none'} color={saved ? GOLD : 'rgba(255,255,255,0.5)'} />
                   {saving ? '...' : saved ? 'Saved' : 'Save Casting'}
                 </button>
+                {isLoggedIn && (
+                  <button onClick={() => { setReportReason(''); setReportDone(false); setReportSuccess(false); setReportOpen(true); }}
+                    style={{ width: '100%', marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: 'transparent', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 8, padding: '10px 0', fontSize: 15, fontFamily: BARLOW, fontWeight: 600, color: 'rgba(239,68,68,0.7)', cursor: 'pointer' }}>
+                    <Flag size={13} color="rgba(239,68,68,0.7)" />
+                    Report Casting Call
+                  </button>
+                )}
               </div>
 
               {/* Studio card */}
@@ -1206,6 +1222,68 @@ export default function PublicCastingDetailPage() {
           </div>
         </div>
       </div>
+
+
+      {/* ── Report Casting Call Modal ── */}
+      {reportOpen && (
+        <>
+          <div onClick={() => { if (!reportSubmitting) { setReportOpen(false); setReportDone(false); setReportSuccess(false); } }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 400, backdropFilter: 'blur(4px)' }} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 420, background: '#0B0F14', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14, padding: 24, zIndex: 401, boxShadow: '0 24px 60px rgba(0,0,0,0.8)' }}>
+            {reportSuccess ? (
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+                <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, letterSpacing: 1, color: '#22C55E', marginBottom: 8 }}>Report Submitted</div>
+                <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 15, color: 'rgba(255,255,255,0.5)', marginBottom: 20, lineHeight: 1.6 }}>Your complaint against <strong style={{ color: '#fff' }}>{casting?.studio || 'this agency'}</strong> has been submitted. Our team will review it within 24-48 hours.</div>
+                <button onClick={() => { setReportOpen(false); setReportSuccess(false); }} style={{ background: '#22C55E', border: 'none', borderRadius: 8, padding: '10px 28px', color: '#000', fontFamily: "'Bebas Neue',sans-serif", fontSize: 17, letterSpacing: 1, cursor: 'pointer' }}>CLOSE</button>
+              </div>
+            ) : reportDone ? (
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+                <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, letterSpacing: 1, color: '#fff', marginBottom: 8 }}>Already Reported</div>
+                <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 15, color: 'rgba(255,255,255,0.5)', marginBottom: 20, lineHeight: 1.6 }}>You have already raised a complaint against this agency. Our team is reviewing it within 24-48 hours.</div>
+                <button onClick={() => { setReportOpen(false); setReportDone(false); }} style={{ background: '#D4A64A', border: 'none', borderRadius: 8, padding: '10px 28px', color: '#000', fontFamily: "'Bebas Neue',sans-serif", fontSize: 17, letterSpacing: 1, cursor: 'pointer' }}>CLOSE</button>
+              </div>
+            ) : (
+              <>
+                <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, letterSpacing: 1, color: '#fff', marginBottom: 4 }}>Report Casting Call</div>
+                <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 14, color: 'rgba(255,255,255,0.45)', marginBottom: 18 }}>Reporting: <strong style={{ color: '#fff' }}>{casting?.title}</strong> by <strong style={{ color: '#fff' }}>{casting?.studio}</strong></div>
+                <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 14, color: 'rgba(255,255,255,0.6)', marginBottom: 8 }}>Reason for reporting</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+                  {['Scam or advance payment demand', 'Fake or misleading casting', 'Inappropriate content', 'Harassment or abuse', 'Other'].map(reason => (
+                    <div key={reason} onClick={() => setReportReason(reason)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, border: `1px solid ${reportReason === reason ? '#C8202A' : 'rgba(255,255,255,0.1)'}`, background: reportReason === reason ? 'rgba(200,32,42,0.1)' : 'transparent', cursor: 'pointer' }}>
+                      <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${reportReason === reason ? '#C8202A' : 'rgba(255,255,255,0.3)'}`, background: reportReason === reason ? '#C8202A' : 'transparent', flexShrink: 0 }} />
+                      <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 14, color: reportReason === reason ? '#fff' : 'rgba(255,255,255,0.6)' }}>{reason}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={() => { setReportOpen(false); setReportReason(''); }} disabled={reportSubmitting} style={{ flex: 1, background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '10px 0', color: 'rgba(255,255,255,0.6)', fontFamily: "'Barlow Condensed',sans-serif", fontSize: 15, cursor: 'pointer' }}>Cancel</button>
+                  <button disabled={!reportReason || reportSubmitting} onClick={async () => {
+                    if (!reportReason) return
+                    setReportSubmitting(true)
+                    try {
+                      const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
+                      const token = u.token ?? u.access_token ?? ''
+                      const h: Record<string,string> = { 'Content-Type': 'application/json' }
+                      if (token) h['Authorization'] = `Bearer ${token}`
+                      const reasonMap: Record<string,string> = { 'Scam or advance payment demand': 'scam_casting', 'Fake or misleading casting': 'fraud', 'Inappropriate content': 'inappropriate_content', 'Harassment or abuse': 'harassment', 'Other': 'other' }
+                      const res = await fetch('/api/reports', { method: 'POST', headers: h, body: JSON.stringify({ reported_user_id: null, reported_entity_type: 'casting_call', reported_entity_id: casting?.id ? String(casting.id) : '', reason: reasonMap[reportReason] || 'other', description: `Reported casting call: ${casting?.title}. Agency: ${casting?.studio}. Reason: ${reportReason}.` }) })
+                      const data = await res.json()
+                      if (res.status === 409) { setReportDone(true); return }
+                      if (!res.ok) { alert(data.error || 'Failed to submit report.'); return }
+                      setReportSuccess(true)
+                    } catch { alert('Network error. Please try again.') }
+                    finally { setReportSubmitting(false) }
+                  }} style={{ flex: 2, background: reportReason ? '#C8202A' : 'rgba(200,32,42,0.3)', border: 'none', borderRadius: 8, padding: '10px 0', color: '#fff', fontFamily: "'Bebas Neue',sans-serif", fontSize: 17, letterSpacing: 1, cursor: reportReason ? 'pointer' : 'default' }}>
+                    {reportSubmitting ? 'SUBMITTING...' : 'SUBMIT REPORT'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </>
+      )}
     </div>
   )
 }

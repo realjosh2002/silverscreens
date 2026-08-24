@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
 
@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     const token = req.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return errorResponse('Authentication required', 401)
 
-    const { data: { user }, error } = await supabase.auth.getUser(token)
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
     if (error || !user) return errorResponse('Invalid session', 401)
 
     // ─── 2. Fetch profile ─────────────────────────────────────

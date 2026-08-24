@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
 
@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
     const token = req.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return errorResponse('Authentication required', 401)
 
-    const { data: { user }, error } = await supabase.auth.getUser(token)
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
     if (error || !user) return errorResponse('Invalid session', 401)
 
     const { searchParams } = new URL(req.url)
@@ -76,8 +76,12 @@ export async function GET(req: NextRequest) {
         prisma.applications.count({ where }),
       ])
     } else {
+      // When admin views an agency profile, agency_user_id is passed in query
+      const agencyUserId   = searchParams.get('agency_user_id') || ''
+      const lookupUserId   = agencyUserId || user.id
+
       const agencyProfile = await prisma.agency_profiles.findUnique({
-        where:  { user_id: user.id },
+        where:  { user_id: lookupUserId },
         select: { id: true },
       })
 
@@ -160,7 +164,7 @@ export async function POST(req: NextRequest) {
     const token = req.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return errorResponse('Authentication required', 401)
 
-    const { data: { user }, error } = await supabase.auth.getUser(token)
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
     if (error || !user) return errorResponse('Invalid session', 401)
 
     const userProfile = await prisma.profiles.findUnique({
@@ -193,6 +197,11 @@ export async function POST(req: NextRequest) {
     })
 
     if (!aspirantProfile) return errorResponse('Aspirant profile not found', 404)
+
+    // PRD: Only approved aspirants can apply to casting calls
+    if (aspirantProfile.verification_status !== 'approved') {
+      return errorResponse('Your profile must be verified by admin before you can apply to casting calls. Please complete your profile and wait for verification.', 403)
+    }
 
     const castingCall = await prisma.casting_calls.findUnique({
       where:  { id: casting_call_id },

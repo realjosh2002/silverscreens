@@ -1,9 +1,11 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
+import ProtectedMedia from '@/components/ui/ProtectedMedia'
 import { useRouter } from 'next/navigation';
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
+
   Search, MapPin, Eye, Bookmark, X,
   MessageSquare, Bell, ChevronDown,
   LayoutGrid, List, ChevronLeft, ChevronRight,
@@ -11,6 +13,7 @@ import {
   UserSearch, Star, CalendarCheck, ChevronRight as NavArrow,
   Menu,
 } from 'lucide-react';
+import AgencyVerificationBanner from '@/components/layout/AgencyVerificationBanner';
 
 /* ─── Design tokens ───────────────────────────────────────────── */
 const RED    = '#C8202A';
@@ -24,6 +27,15 @@ const BEBAS  = "'Bebas Neue', sans-serif";
 const BARLOW = "'Barlow Condensed', sans-serif";
 
 /* ─── Sidebar nav items ───────────────────────────────────────── */
+function getIsApproved(): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
+    const ps = u?.profileStatus ?? 'pending';
+    return ps === 'approved' || ps === 'active';
+  } catch { return true; }
+}
+
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard',               href: '/agency/dashboard' },
   { icon: PlusCircle,      label: 'Create Casting Call',     href: '/agency/create-casting' },
@@ -33,8 +45,8 @@ const NAV_ITEMS = [
   { icon: Star,            label: 'Shortlisted Talents',     href: '/agency/shortlisted' },
   { icon: CalendarCheck,   label: 'Audition Management',     href: '/agency/auditions' },
   { icon: Bookmark,        label: 'Saved Talents',           href: '/agency/saved-talents' },
-  { icon: MessageSquare,   label: 'Messages',  badge: 12,    href: '/agency/messages' },
-  { icon: Bell,            label: 'Notifications', badge: 3, href: '/agency/notifications' },
+  { icon: MessageSquare,   label: 'Messages',               href: '/agency/messages' },
+  { icon: Bell,            label: 'Notifications',           href: '/agency/notifications' },
 ];
 
 /* ─── Filter / sort options ───────────────────────────────────── */
@@ -78,7 +90,7 @@ const DEPARTMENTS_AND_ROLES = [
 ];
 const ALL_DEPARTMENTS = DEPARTMENTS_AND_ROLES.map(d => d.department);
 const getRoles = (dept: string) => DEPARTMENTS_AND_ROLES.find(d => d.department === dept)?.roles ?? [];
-const SKILL_OPTIONS     = ['Acting', 'Dialogue Delivery', 'Dancing', 'Action', 'Singing', 'Modelling', 'Yoga', 'Fighting', 'Mimicry', 'Horse Riding'];
+const SKILL_OPTIONS     = ['Acting', 'Dialogue Delivery', 'Dancing', 'Action', 'Singing', 'Modelling', 'Yoga', 'Fighting', 'Mimicry', 'Horse Riding', 'Direction', 'Photography', 'Videography', 'Editing', 'Choreography', 'Make Up', 'Hair Styling', 'Costume Design', 'Script Writing', 'Voice Over', 'Anchoring', 'News Reading', 'Animation', 'VFX', 'Sound Design', 'Music Composition', 'Stunt', 'Production Management', 'Casting', 'Art Direction', 'Set Design', 'Cinematography', 'Dubbing', 'Influencing', 'Fashion Modelling'];
 const LANGUAGE_OPTIONS  = ['Hindi', 'English', 'Tamil', 'Telugu', 'Malayalam', 'Kannada', 'Marathi', 'Punjabi', 'Bengali', 'Gujarati'];
 const SORT_OPTIONS      = ['Most Relevant', 'Highest Rated', 'Most Experienced', 'Newest'];
 
@@ -90,28 +102,10 @@ interface Aspirant {
   skills: string[]; rating: number; reviews: number; views: string;
   experience: string; languages: string[];
   availability: 'Available Now' | 'Available Soon' | 'Not Available';
-  photo: string;
+  photo: string; photoUrl: string;
 }
 
-const MOCK_ASPIRANTS: Aspirant[] = [
-  { id: 'a1',  name: 'Arjun Malhotra',  verified: true,  department: 'Acting',         role: 'Hero',              gender: 'Male',   age: 26, location: 'Mumbai, Maharashtra',  skills: ['Acting', 'Dialogue Delivery', 'Dancing', 'Action', 'Mimicry'],       rating: 4.8, reviews: 32, views: '3.2K', experience: '2 Years', languages: ['Hindi', 'English', 'Punjabi'],          availability: 'Available Now',  photo: 'AM' },
-  { id: 'a2',  name: 'Meera Iyer',      verified: true,  department: 'Acting',         role: 'Heroine',           gender: 'Female', age: 24, location: 'Mumbai, Maharashtra',  skills: ['Acting', 'Modelling', 'Dancing', 'Yoga'],                            rating: 4.9, reviews: 48, views: '5.1K', experience: '3 Years', languages: ['Hindi', 'English', 'Tamil'],            availability: 'Available Now',  photo: 'MI' },
-  { id: 'a3',  name: 'Rohan Verma',     verified: true,  department: 'Acting',         role: 'Villain',           gender: 'Male',   age: 30, location: 'Delhi, India',         skills: ['Acting', 'Action', 'Dialogue Delivery'],                             rating: 4.6, reviews: 27, views: '2.7K', experience: '4 Years', languages: ['Hindi', 'English'],                     availability: 'Available Soon', photo: 'RV' },
-  { id: 'a4',  name: 'Ananya Sharma',   verified: true,  department: 'Acting',         role: 'Character Artist',  gender: 'Female', age: 21, location: 'Bengaluru, Karnataka', skills: ['Acting', 'Dancing', 'Yoga', 'Modelling'],                            rating: 4.7, reviews: 19, views: '1.8K', experience: '1 Year',  languages: ['Hindi', 'English', 'Kannada'],          availability: 'Available Now',  photo: 'AS' },
-  { id: 'a5',  name: 'Kabir Singh',     verified: true,  department: 'Acting',         role: 'Supporting Roles',  gender: 'Male',   age: 28, location: 'Pune, Maharashtra',    skills: ['Acting', 'Dialogue Delivery', 'Action'],                             rating: 4.5, reviews: 14, views: '1.5K', experience: '2 Years', languages: ['Hindi', 'English', 'Marathi'],          availability: 'Available Soon', photo: 'KS' },
-  { id: 'a6',  name: 'Priya Nair',      verified: true,  department: 'Dancing',        role: 'Dancer',            gender: 'Female', age: 23, location: 'Chennai, Tamil Nadu',  skills: ['Dancing', 'Choreography', 'Acting', 'Singing'],                      rating: 4.8, reviews: 41, views: '4.2K', experience: '5 Years', languages: ['Tamil', 'Malayalam', 'English'],        availability: 'Available Now',  photo: 'PN' },
-  { id: 'a7',  name: 'Vikram Reddy',    verified: false, department: 'Acting',         role: 'Hero',              gender: 'Male',   age: 32, location: 'Hyderabad, Telangana', skills: ['Acting', 'Action', 'Dialogue Delivery'],                             rating: 4.3, reviews: 9,  views: '890',  experience: '6 Years', languages: ['Telugu', 'Hindi', 'English'],           availability: 'Available Now',  photo: 'VR' },
-  { id: 'a8',  name: 'Sunita Menon',    verified: true,  department: 'Modelling',      role: 'Model',             gender: 'Female', age: 22, location: 'Kochi, Kerala',        skills: ['Ramp Walk', 'Portfolio Shoots', 'Acting', 'Dancing'],                rating: 4.6, reviews: 23, views: '2.1K', experience: '2 Years', languages: ['Malayalam', 'English', 'Hindi'],        availability: 'Available Soon', photo: 'SM' },
-  { id: 'a9',  name: 'Aditya Kumar',    verified: true,  department: 'Stunt',          role: 'Stunt Coordinator', gender: 'Male',   age: 27, location: 'Jaipur, Rajasthan',    skills: ['Martial Arts', 'Wire Work', 'Vehicle Stunts', 'High Falls'],         rating: 4.4, reviews: 16, views: '1.2K', experience: '3 Years', languages: ['Hindi', 'English', 'Rajasthani'],       availability: 'Available Now',  photo: 'AK' },
-  { id: 'a10', name: 'Deepika Rao',     verified: true,  department: 'Singing',        role: 'Singer',            gender: 'Female', age: 25, location: 'Bengaluru, Karnataka', skills: ['Playback Singing', 'Classical Singing', 'Recording Studio Experience'], rating: 4.9, reviews: 56, views: '6.8K', experience: '4 Years', languages: ['Kannada', 'Hindi', 'English', 'Tamil'], availability: 'Available Now',  photo: 'DR' },
-  { id: 'a11', name: 'Rahul Khanna',    verified: true,  department: 'Direction',      role: 'Assistant Director',gender: 'Male',   age: 29, location: 'Mumbai, Maharashtra',  skills: ['Script Analysis', 'Shot Composition', 'Actor Direction'],            rating: 4.5, reviews: 12, views: '980',  experience: '4 Years', languages: ['Hindi', 'English'],                     availability: 'Available Now',  photo: 'RK' },
-  { id: 'a12', name: 'Kavya Pillai',    verified: true,  department: 'Hair & Make Up', role: 'Make Up Artist',    gender: 'Female', age: 26, location: 'Chennai, Tamil Nadu',  skills: ['Bridal Make Up', 'SFX Make Up', 'Airbrush', 'Hair Styling'],         rating: 4.7, reviews: 34, views: '2.4K', experience: '3 Years', languages: ['Tamil', 'English'],                     availability: 'Available Now',  photo: 'KP' },
-  { id: 'a13', name: 'Sanjay Mehta',    verified: false, department: 'Camera & Lighting', role: 'Camera Operator', gender: 'Male',  age: 33, location: 'Mumbai, Maharashtra',  skills: ['Camera Operation', 'Lens Selection', 'Lighting Design'],             rating: 4.2, reviews: 8,  views: '650',  experience: '7 Years', languages: ['Hindi', 'English'],                     availability: 'Available Soon', photo: 'SM' },
-  { id: 'a14', name: 'Nisha Thomas',    verified: true,  department: 'Dubbing',        role: 'Dubbing Artist',    gender: 'Female', age: 28, location: 'Kochi, Kerala',        skills: ['Voice Modulation', 'Lip Sync', 'Language Fluency', 'Accent Adaptation'], rating: 4.6, reviews: 29, views: '2.0K', experience: '4 Years', languages: ['Malayalam', 'Tamil', 'Hindi', 'English'], availability: 'Available Now', photo: 'NT' },
-  { id: 'a15', name: 'Aryan Kapoor',    verified: true,  department: 'Acting',         role: 'Comedian',          gender: 'Male',   age: 24, location: 'Delhi, India',         skills: ['Comedy Timing', 'Improvisation', 'Dialogue Delivery', 'Mimicry'],    rating: 4.4, reviews: 21, views: '1.9K', experience: '2 Years', languages: ['Hindi', 'Punjabi', 'English'],          availability: 'Available Now',  photo: 'AK' },
-  { id: 'a16', name: 'Sneha Patil',     verified: false, department: 'Acting',         role: 'Heroine',           gender: 'Female', age: 20, location: 'Pune, Maharashtra',    skills: ['Acting', 'Dancing', 'Modelling'],                                     rating: 4.0, reviews: 3,  views: '210',  experience: 'Fresher', languages: ['Hindi', 'Marathi', 'English'],          availability: 'Available Now',  photo: 'SP' },
-  { id: 'a17', name: 'Rohan Das',       verified: false, department: 'Dancing',        role: 'Dancer',            gender: 'Male',   age: 19, location: 'Kolkata, West Bengal', skills: ['Dancing', 'Choreography'],                                            rating: 3.9, reviews: 2,  views: '180',  experience: 'Fresher', languages: ['Bengali', 'Hindi', 'English'],          availability: 'Available Now',  photo: 'RD' },
-];
+const MOCK_ASPIRANTS: Aspirant[] = [];
 
 const AVATAR_GRADIENTS = [
   'linear-gradient(135deg,#667eea,#764ba2)', 'linear-gradient(135deg,#f093fb,#f5576c)',
@@ -133,6 +127,31 @@ function getAuthHeaders(): Record<string, string> {
   } catch { return {}; }
 }
 
+async function getFreshHeaders(): Promise<Record<string, string>> {
+  try {
+    const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
+    const refreshToken = u.refreshToken ?? u.refresh_token ?? '';
+    if (refreshToken) {
+      const res = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        const newToken = d?.data?.access_token ?? '';
+        if (newToken) {
+          const newRefresh = d?.data?.refresh_token ?? refreshToken;
+          localStorage.setItem('ss_user', JSON.stringify({ ...u, token: newToken, refreshToken: newRefresh }));
+          return { Authorization: `Bearer ${newToken}` };
+        }
+      }
+    }
+    if (u.token) return { Authorization: `Bearer ${u.token}` };
+  } catch {}
+  return {};
+}
+
 /* ── Normalise API talent → Aspirant shape ── */
 function apiToAspirant(t: any, idx: number): Aspirant {
   const fullName = [t.first_name, t.last_name].filter(Boolean).join(' ') || t.name || 'Unknown';
@@ -151,14 +170,15 @@ function apiToAspirant(t: any, idx: number): Aspirant {
     gender:       (t.gender      ?? 'Other') as Aspirant['gender'],
     age,
     location:     [t.city, t.state].filter(Boolean).join(', ') || t.location || '',
-    skills:       Array.isArray(t.skills)    ? t.skills    : [],
+    skills:       Array.isArray(t.skills) ? t.skills : [],
     rating:       t.trust_score ? parseFloat((t.trust_score / 20).toFixed(1)) : (t.rating ?? 0),
     reviews:      t.reviews      ?? t.reviewCount   ?? 0,
     views:        t.profile_views ? String(t.profile_views) : (t.views ?? '0'),
-    experience:   t.experience_level ?? t.experience ?? t.yearsOfExperience ?? '',
+    experience:   t.experience_level ?? t.experience ?? t.yearsOfExperience ?? 'Fresher',
     languages:    Array.isArray(t.languages) ? t.languages : [],
     availability: t.is_available === true ? 'Available Now' : t.is_available === false ? 'Not Available' : (availMap[String(t.is_available)] ?? t.availability ?? t.availabilityStatus ?? 'Not Available') as Aspirant['availability'],
     photo:        fullName.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase(),
+    photoUrl:     t.profile_image_url ?? '',
   };
 }
 
@@ -169,7 +189,7 @@ export default function TalentSearchPage() {
   /* ui state */
   const [profileOpen,  setProfileOpen]  = useState(false);
   const [sidebarOpen,  setSidebarOpen]  = useState(false);
-  const [viewMode,     setViewMode]     = useState<'list' | 'grid'>('list');
+  const [viewMode,     setViewMode]     = useState<'list' | 'grid'>(() => { try { const v = localStorage.getItem('agency_default_view'); return v === 'Grid View' ? 'grid' : 'list'; } catch { return 'list'; } });
   const [sortBy,       setSortBy]       = useState('Most Relevant');
   const [sortOpen,     setSortOpen]     = useState(false);
 
@@ -191,10 +211,46 @@ export default function TalentSearchPage() {
   const [page,              setPage]              = useState(1);
   const PER_PAGE = 10;
 
+  /* ── Approval gate — read synchronously before any fetch ── */
+  const isApproved = (() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
+      const ps = u?.profileStatus ?? 'pending';
+      return ps === 'approved' || ps === 'active';
+    } catch { return true; }
+  })();
+
   /* ── Live data ── */
-  const [aspirants,      setAspirants]      = useState<Aspirant[]>(MOCK_ASPIRANTS);
+  const [aspirants,      setAspirants]      = useState<Aspirant[]>([]);
   const [loading,        setLoading]        = useState(false);
   const [searchTrigger,  setSearchTrigger]  = useState(0);
+  const [shortlistedIds, setShortlistedIds] = useState<Set<string>>(new Set());
+  const [shortlisting,   setShortlisting]   = useState<string | null>(null);
+
+  const handleShortlist = async (talentId: string) => {
+    if (shortlisting) return;
+    setShortlisting(talentId);
+    try {
+      const h = getAuthHeaders();
+      const isShortlisted = shortlistedIds.has(talentId);
+      if (isShortlisted) {
+        await fetch(`/api/shortlisted?aspirant_id=${talentId}`, { method: 'DELETE', headers: h });
+        setShortlistedIds(prev => { const n = new Set(prev); n.delete(talentId); return n; });
+      } else {
+        const ccId = new URLSearchParams(window.location.search).get('casting_call_id');
+        const res = await fetch('/api/shortlisted', {
+          method: 'POST',
+          headers: { ...h, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ aspirant_id: talentId, ...(ccId ? { casting_call_id: ccId } : {}) }),
+        });
+        if (res.ok || res.status === 409) {
+          setShortlistedIds(prev => new Set([...prev, talentId]));
+        }
+      }
+    } catch {}
+    finally { setShortlisting(null); }
+  };
   const [agencyName,     setAgencyName]     = useState('My Agency');
   const [agencyInitials, setAgencyInitials] = useState('AG');
   const [agencyType,     setAgencyType]     = useState('Production House');
@@ -214,8 +270,8 @@ export default function TalentSearchPage() {
 
   /* ── Fetch talents + badge counts on mount and on search ── */
   useEffect(() => {
-    const h = getAuthHeaders();
     setLoading(true);
+    getFreshHeaders().then(h => {
 
     // Talents
     const params = new URLSearchParams({ limit: '100' });
@@ -225,9 +281,12 @@ export default function TalentSearchPage() {
     if (department)          params.set('category',   department);
     if (selectedLanguages.length) params.set('language', selectedLanguages[0]);
     if (availNow)            params.set('available',  'true');
+    if (selectedSkills.length) params.set('skills', selectedSkills.join(','));
     if (ageMin > 18)         params.set('age_min', String(ageMin));
     if (ageMax < 45)         params.set('age_max', String(ageMax));
 
+    if (!isApproved) { setLoading(false); return; }
+    if (!getIsApproved()) { setLoading(false); return; }
     fetch(`/api/talents?${params}`, { headers: h })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
@@ -244,13 +303,13 @@ export default function TalentSearchPage() {
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data) return;
-        const p = data.profile ?? data;
-        if (p.companyName || p.name) {
-          const name = p.companyName ?? p.name;
+        const p = data.data?.profile ?? data.profile ?? data;
+        const name = p.company_name ?? p.companyName ?? p.name;
+        if (name) {
           setAgencyName(name);
           setAgencyInitials(name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase());
         }
-        if (p.companyType) setAgencyType(p.companyType);
+        if (p.company_type ?? p.companyType) setAgencyType(p.company_type ?? p.companyType);
       })
       .catch(() => {});
 
@@ -259,7 +318,9 @@ export default function TalentSearchPage() {
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data) return;
-        const list = data.notifications ?? data;
+        const count = data.data?.unread_count ?? data.unread_count;
+        if (count != null) { setNotifCount(count); return; }
+        const list = data.data?.notifications ?? data.notifications ?? [];
         if (Array.isArray(list)) setNotifCount(list.filter((n: any) => !n.is_read).length);
       }).catch(() => {});
 
@@ -268,9 +329,12 @@ export default function TalentSearchPage() {
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data) return;
-        const list = data.conversations ?? data;
-        if (Array.isArray(list)) setMsgCount(list.filter((c: any) => c.unreadCount > 0).length);
+        const list = data.data?.conversations ?? data.conversations ?? [];
+        if (Array.isArray(list)) setMsgCount(list.filter((c: any) => c.unreadCount > 0 || c.unread_count > 0).length);
       }).catch(() => {});
+
+    }); // end getFreshHeaders
+
   }, [searchTrigger]);
 
   /* derived list — runs on live aspirants */
@@ -283,7 +347,7 @@ export default function TalentSearchPage() {
     if (a.age > 0 && (a.age < ageMin || a.age > ageMax)) return false;
     if (department && a.department !== department) return false;
     if (role && a.role !== role) return false;
-    if (selectedSkills.length > 0 && !selectedSkills.some(s => a.skills.includes(s))) return false;
+    if (selectedSkills.length > 0 && !selectedSkills.some(s => a.skills.some(sk => sk.toLowerCase() === s.toLowerCase()))) return false;
     if (selectedLanguages.length > 0 && !selectedLanguages.some(l => a.languages.includes(l))) return false;
     if (availNow && !availSoon && a.availability !== 'Available Now') return false;
     if (!availNow && availSoon && a.availability !== 'Available Soon') return false;
@@ -302,7 +366,22 @@ export default function TalentSearchPage() {
     return true;
   });
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
-  const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+
+  // Apply sort
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortBy === 'Highest Rated')    return b.rating - a.rating;
+    if (sortBy === 'Most Experienced') {
+      // experience is like "1 - 2 Years", "5 - 10 Years", "Fresher", "10+ Years"
+      const parseExp = (e: string) => { const m = e.match(/(\d+)/); return m ? parseInt(m[1]) : 0; };
+      const aYrs = parseExp(a.experience);
+      const bYrs = parseExp(b.experience);
+      return bYrs - aYrs;
+    }
+    if (sortBy === 'Newest') return Number(b.id) - Number(a.id);
+    return 0; // Most Relevant — keep API order
+  });
+
+  const paged = sorted.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   const clearAll = () => {
     setKeyword(''); setGender('All'); setAgeMin(18); setAgeMax(45); setLocation('');
@@ -332,7 +411,7 @@ export default function TalentSearchPage() {
       <header style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, padding: '0 24px', height: 60, background: BG2, borderBottom: '1px solid rgba(255,255,255,0.06)', position: 'relative', zIndex: 100 }}>
         <SilverScreensLogo size="md" href="/" showTagline={false} />
         <div style={{ flex: 1 }} />
-        <button onClick={() => router.push('/agency/create-casting')} style={{ display: 'flex', alignItems: 'center', gap: 7, background: RED, color: '#fff', border: 'none', borderRadius: 8, padding: '0 18px', height: 36, fontSize: 15, fontWeight: 700, fontFamily: BARLOW, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+        <button onClick={() => { if (!getIsApproved()) return; router.push('/agency/create-casting'); }} title={!getIsApproved() ? 'Available after agency verification' : undefined} style={{ display: 'flex', alignItems: 'center', gap: 7, background: getIsApproved() ? RED : 'rgba(200,32,42,0.3)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 18px', height: 36, fontSize: 15, fontWeight: 700, fontFamily: BARLOW, cursor: getIsApproved() ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap', opacity: getIsApproved() ? 1 : 0.5 }}>
           Post a Casting <span style={{ fontSize: 16, fontWeight: 400 }}>+</span>
         </button>
         <div onClick={() => router.push('/agency/messages')} style={{ position: 'relative', cursor: 'pointer' }}>
@@ -360,21 +439,15 @@ export default function TalentSearchPage() {
             <>
               <div onClick={() => setProfileOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 150 }} />
               <div style={{ position: 'absolute', top: 46, right: 0, width: 200, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', zIndex: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
-                {[
-                  { label: 'Reports & Analytics',    href: '/agency/reports' },
-                  { label: 'Subscription & Billing', href: '/pricing' },
-                  { label: 'Company Profile',        href: '/agency-profile' },
-                  { label: 'Documents',              href: '/agency/documents' },
-                  { label: 'Calendar',               href: '/agency/calendar' },
-                  { label: 'Settings',               href: '/agency/settings' },
-                  { label: 'Support',                href: '/contact' },
-                  { label: 'Logout',                 href: '/login' },
-                ].map(({ label, href }) => (
-                  <div key={label} onClick={() => { if (label === 'Logout') { localStorage.removeItem('ss_user'); window.location.replace('/login'); } else { router.push(href); setProfileOpen(false); } }} style={{ padding: '10px 16px', fontSize: 15, cursor: 'pointer', color: label === 'Logout' ? '#ff6b6b' : '#F5F5F5', borderTop: label === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >{label}</div>
-                ))}
+                {(()=>{
+                  const isApproved=(()=>{try{const u=JSON.parse(localStorage.getItem('ss_user')||'{}');const ps=u?.profileStatus??'pending';return ps==='approved'||ps==='active';}catch{return true;}})();
+                  const menuItems=isApproved
+                    ?[{label:'Reports & Analytics',href:'/agency/reports'},{label:'Subscription & Billing',href:'/pricing'},{label:'Company Profile',href:'/agency-profile'},{label:'Documents',href:'/agency/documents'},{label:'Calendar',href:'/agency/calendar'},{label:'Settings',href:'/agency/settings'},{label:'Support',href:'/agency/support'},{label:'Logout',href:'/login'}]
+                    :[{label:'Company Profile',href:'/create-company-profile'},{label:'Logout',href:'/login'}];
+                  return menuItems.map(({label,href})=>(
+                    <div key={label} onClick={()=>{if(label==='Logout'){localStorage.removeItem('ss_user');window.location.replace('/login');}else{router.push(href);setProfileOpen(false);}}} style={{padding:'10px 16px',fontSize:15,cursor:'pointer',color:label==='Logout'?'#ff6b6b':'#F5F5F5',borderTop:label==='Logout'?'1px solid rgba(255,255,255,0.07)':'none'}} onMouseEnter={e=>(e.currentTarget.style.background='rgba(255,255,255,0.05)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>{label}</div>
+                  ));
+                })()}
               </div>
             </>
           )}
@@ -410,7 +483,9 @@ export default function TalentSearchPage() {
 
           {/* Nav items */}
           <nav style={{ flex: 1, padding: sidebarOpen ? '8px 6px' : '8px 4px', overflowY: 'auto', scrollbarWidth: 'none' }}>
-            {NAV_ITEMS.map(({ icon: Icon, label, active, badge, href }) => (
+            {NAV_ITEMS.map(({ icon: Icon, label, active, href }) => {
+                const badge = label === 'Messages' ? (msgCount > 0 ? msgCount : undefined) : label === 'Notifications' ? (notifCount > 0 ? notifCount : undefined) : undefined;
+                return (
               <div key={label} onClick={() => router.push(href)} title={!sidebarOpen ? label : undefined}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'space-between' : 'center', padding: sidebarOpen ? '8px 10px' : '10px 0', marginBottom: 2, borderRadius: 6, cursor: 'pointer', background: active ? 'rgba(200,32,42,0.12)' : 'transparent', borderLeft: sidebarOpen && active ? `3px solid ${RED}` : sidebarOpen ? '3px solid transparent' : 'none', position: 'relative' }}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
@@ -420,10 +495,13 @@ export default function TalentSearchPage() {
                   <Icon size={15} color={active ? RED : 'rgba(255,255,255,0.42)'} strokeWidth={active ? 2.5 : 1.8} />
                   {sidebarOpen && <span style={{ fontSize: 14, fontWeight: active ? 600 : 400, color: active ? '#F5F5F5' : 'rgba(255,255,255,0.6)', whiteSpace: 'nowrap' }}>{label}</span>}
                 </div>
-                {sidebarOpen && badge && <div style={{ background: RED, color: '#fff', borderRadius: 10, fontSize: 14, fontWeight: 700, padding: '1px 6px', minWidth: 18, textAlign: 'center' }}>{badge}</div>}
-                {!sidebarOpen && badge && <div style={{ position: 'absolute', top: 6, right: 4, background: RED, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: '#fff' }}>{badge}</div>}
+                {sidebarOpen && label === 'Messages' && msgCount > 0 && <div style={{ background: RED, color: '#fff', borderRadius: 10, fontSize: 14, fontWeight: 700, padding: '1px 6px', minWidth: 18, textAlign: 'center' }}>{msgCount}</div>}
+                {sidebarOpen && label === 'Notifications' && notifCount > 0 && <div style={{ background: RED, color: '#fff', borderRadius: 10, fontSize: 14, fontWeight: 700, padding: '1px 6px', minWidth: 18, textAlign: 'center' }}>{notifCount}</div>}
+                {!sidebarOpen && label === 'Messages' && msgCount > 0 && <div style={{ position: 'absolute', top: 6, right: 4, background: RED, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: '#fff' }}>{msgCount}</div>}
+                {!sidebarOpen && label === 'Notifications' && notifCount > 0 && <div style={{ position: 'absolute', top: 6, right: 4, background: RED, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: '#fff' }}>{notifCount}</div>}
               </div>
-            ))}
+                );
+              })}
           </nav>
 
           {/* Upgrade to Pro — only shown when expanded */}
@@ -598,7 +676,9 @@ export default function TalentSearchPage() {
           </div>
 
           {/* ── RESULTS PANEL ── */}
-          <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '20px 24px 32px' }} onClick={() => { setSkillsOpen(false); setLangsOpen(false); setSortOpen(false); }}>
+          <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '20px 24px 32px' }} onClick={() => { setSkillsOpen(false); setLangsOpen(false); }}>
+          <AgencyVerificationBanner />
+
 
             {/* Results header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
@@ -631,10 +711,10 @@ export default function TalentSearchPage() {
                 </div>
                 {/* View toggle */}
                 <div style={{ display: 'flex', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, overflow: 'hidden' }}>
-                  <button onClick={() => setViewMode('grid')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: viewMode === 'grid' ? BG3 : 'transparent', border: 'none', cursor: 'pointer', color: viewMode === 'grid' ? '#fff' : 'rgba(255,255,255,0.45)', fontSize: 14, fontFamily: BARLOW, borderRight: '1px solid rgba(255,255,255,0.12)' }}>
+                  <button onClick={() => { setViewMode('grid'); try { localStorage.setItem('agency_default_view', 'Grid View'); } catch {} }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: viewMode === 'grid' ? BG3 : 'transparent', border: 'none', cursor: 'pointer', color: viewMode === 'grid' ? '#fff' : 'rgba(255,255,255,0.45)', fontSize: 14, fontFamily: BARLOW, borderRight: '1px solid rgba(255,255,255,0.12)' }}>
                     <LayoutGrid size={14} /> Grid View
                   </button>
-                  <button onClick={() => setViewMode('list')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: viewMode === 'list' ? BG3 : 'transparent', border: 'none', cursor: 'pointer', color: viewMode === 'list' ? '#fff' : 'rgba(255,255,255,0.45)', fontSize: 14, fontFamily: BARLOW }}>
+                  <button onClick={() => { setViewMode('list'); try { localStorage.setItem('agency_default_view', 'List View'); } catch {} }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: viewMode === 'list' ? BG3 : 'transparent', border: 'none', cursor: 'pointer', color: viewMode === 'list' ? '#fff' : 'rgba(255,255,255,0.45)', fontSize: 14, fontFamily: BARLOW }}>
                     <List size={14} /> List View
                   </button>
                 </div>
@@ -655,10 +735,12 @@ export default function TalentSearchPage() {
                   >
                     {/* Photo */}
                     <div style={{ position: 'relative', flexShrink: 0 }}>
-                      <div style={{ width: 80, height: 96, borderRadius: 8, background: AVATAR_GRADIENTS[idx % AVATAR_GRADIENTS.length], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800, color: '#fff', fontFamily: BEBAS, letterSpacing: 1 }}>{a.photo}</div>
+                      <div style={{ width: 80, height: 96, borderRadius: 8, background: AVATAR_GRADIENTS[idx % AVATAR_GRADIENTS.length], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800, color: '#fff', fontFamily: BEBAS, letterSpacing: 1, overflow: 'hidden', flexShrink: 0 }}>
+                        {a.photoUrl ? <ProtectedMedia type="image" src={a.photoUrl} alt={a.name} width="100%" height="100%" style={{ objectFit: 'cover' }} /> : a.photo}
+                      </div>
                       {a.verified && <div style={{ position: 'absolute', bottom: 6, left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.75)', borderRadius: 10, padding: '2px 8px', fontSize: 14, fontFamily: BARLOW, fontWeight: 700, color: '#60a5fa', whiteSpace: 'nowrap' }}>Verified</div>}
-                      <div onClick={() => router.push('/agency/shortlisted')} style={{ position: 'absolute', top: 6, right: 6, width: 22, height: 22, borderRadius: 4, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                        title="Shortlist this talent"
+                      <div onClick={async (e) => { e.stopPropagation(); try { const h = getAuthHeaders(); const res = await fetch('/api/saved-talents', { method: 'POST', headers: { ...h, 'Content-Type': 'application/json' }, body: JSON.stringify({ aspirant_id: t.id }) }); if (res.status === 409) { alert('Already saved.'); return; } if (!res.ok) { alert('Failed to save.'); return; } router.push('/agency/saved-talents'); } catch { alert('Network error.'); } }} style={{ position: 'absolute', top: 6, right: 6, width: 22, height: 22, borderRadius: 4, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                        title="Save to Talent Pool"
                         onMouseEnter={e => (e.currentTarget.style.background = `${GOLD}40`)}
                         onMouseLeave={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.5)')}
                       >
@@ -702,7 +784,7 @@ export default function TalentSearchPage() {
                     <div style={{ flexShrink: 0, minWidth: 170 }}>
                       <div style={{ marginBottom: 10 }}>
                         <div style={{ fontSize: 14, fontFamily: BARLOW, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Experience</div>
-                        <div style={{ fontSize: 15, fontFamily: BARLOW, fontWeight: 600, color: '#fff' }}>{a.experience}</div>
+                        <div style={{ fontSize: 15, fontFamily: BARLOW, fontWeight: 600, color: '#fff' }}>{a.experience || 'Fresher'}</div>
                       </div>
                       <div style={{ marginBottom: 10 }}>
                         <div style={{ fontSize: 14, fontFamily: BARLOW, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Languages</div>
@@ -719,11 +801,13 @@ export default function TalentSearchPage() {
                       <button onClick={() => router.push(`/agency/talent/${a.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'none', border: `1px solid ${GOLD}`, borderRadius: 8, padding: '8px 16px', color: GOLD, fontSize: 14, fontFamily: BARLOW, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                         <Eye size={13} color={GOLD} /> View Profile
                       </button>
-                      <button onClick={() => router.push('/agency/shortlisted')} style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '8px 16px', color: 'rgba(255,255,255,0.7)', fontSize: 14, fontFamily: BARLOW, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = `${GOLD}60`; e.currentTarget.style.color = GOLD; }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}
+                      <button onClick={() => handleShortlist(a.id)} disabled={shortlisting === a.id}
+                        style={{ display: 'flex', alignItems: 'center', gap: 7, background: shortlistedIds.has(a.id) ? `${GOLD}18` : 'none', border: `1px solid ${shortlistedIds.has(a.id) ? GOLD : 'rgba(255,255,255,0.15)'}`, borderRadius: 8, padding: '8px 16px', color: shortlistedIds.has(a.id) ? GOLD : 'rgba(255,255,255,0.7)', fontSize: 14, fontFamily: BARLOW, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}
+                        onMouseEnter={e => { if (!shortlistedIds.has(a.id)) { e.currentTarget.style.borderColor = `${GOLD}60`; e.currentTarget.style.color = GOLD; } }}
+                        onMouseLeave={e => { if (!shortlistedIds.has(a.id)) { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; } }}
                       >
-                        <Bookmark size={13} /> Shortlist
+                        <Bookmark size={13} fill={shortlistedIds.has(a.id) ? GOLD : 'none'} color={shortlistedIds.has(a.id) ? GOLD : 'currentColor'} />
+                        {shortlisting === a.id ? '...' : shortlistedIds.has(a.id) ? 'Shortlisted' : 'Shortlist'}
                       </button>
                     </div>
                   </div>
@@ -742,14 +826,16 @@ export default function TalentSearchPage() {
                     onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)')}
                   >
                     <div style={{ position: 'relative' }}>
-                      <div style={{ width: '100%', height: 160, background: AVATAR_GRADIENTS[idx % AVATAR_GRADIENTS.length], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, fontWeight: 800, color: '#fff', fontFamily: BEBAS, letterSpacing: 1 }}>{a.photo}</div>
+                      <div style={{ width: '100%', height: 160, background: AVATAR_GRADIENTS[idx % AVATAR_GRADIENTS.length], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, fontWeight: 800, color: '#fff', fontFamily: BEBAS, letterSpacing: 1, overflow: 'hidden' }}>
+                        {a.photoUrl ? <ProtectedMedia type="image" src={a.photoUrl} alt={a.name} width="100%" height="100%" style={{ objectFit: 'cover' }} /> : a.photo}
+                      </div>
                       {a.verified && <div style={{ position: 'absolute', bottom: 8, left: 10, background: 'rgba(0,0,0,0.7)', borderRadius: 10, padding: '2px 8px', fontSize: 14, fontFamily: BARLOW, fontWeight: 700, color: '#60a5fa' }}>Verified</div>}
-                      <div onClick={() => router.push('/agency/shortlisted')} style={{ position: 'absolute', top: 8, right: 8, width: 26, height: 26, borderRadius: 6, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                        title="Shortlist this talent"
+                      <div onClick={() => handleShortlist(a.id)} style={{ position: 'absolute', top: 8, right: 8, width: 26, height: 26, borderRadius: 6, background: shortlistedIds.has(a.id) ? `${GOLD}40` : 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                        title={shortlistedIds.has(a.id) ? 'Remove from shortlist' : 'Shortlist this talent'}
                         onMouseEnter={e => (e.currentTarget.style.background = `${GOLD}40`)}
-                        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.5)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = shortlistedIds.has(a.id) ? `${GOLD}40` : 'rgba(0,0,0,0.5)')}
                       >
-                        <Bookmark size={13} color={GOLD} />
+                        <Bookmark size={13} color={GOLD} fill={shortlistedIds.has(a.id) ? GOLD : 'none'} />
                       </div>
                     </div>
                     <div style={{ padding: '12px 14px 14px' }}>
@@ -769,12 +855,13 @@ export default function TalentSearchPage() {
                         <button onClick={() => router.push(`/agency/talent/${a.id}`)} style={{ flex: 1, background: 'none', border: `1px solid ${GOLD}`, borderRadius: 7, padding: '7px 0', color: GOLD, fontSize: 14, fontFamily: BARLOW, fontWeight: 600, cursor: 'pointer' }}>
                           View Profile
                         </button>
-                        <button onClick={() => router.push('/agency/shortlisted')} style={{ width: 34, background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                          title="Shortlist"
+                        <button onClick={() => handleShortlist(a.id)} disabled={shortlisting === a.id}
+                          style={{ width: 34, background: shortlistedIds.has(a.id) ? `${GOLD}18` : 'none', border: `1px solid ${shortlistedIds.has(a.id) ? GOLD : 'rgba(255,255,255,0.15)'}`, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.15s' }}
+                          title={shortlistedIds.has(a.id) ? 'Remove from shortlist' : 'Shortlist'}
                           onMouseEnter={e => { e.currentTarget.style.borderColor = `${GOLD}60`; }}
-                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}
+                          onMouseLeave={e => { if (!shortlistedIds.has(a.id)) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}
                         >
-                          <Bookmark size={13} color="rgba(255,255,255,0.6)" />
+                          <Bookmark size={13} color={shortlistedIds.has(a.id) ? GOLD : 'rgba(255,255,255,0.6)'} fill={shortlistedIds.has(a.id) ? GOLD : 'none'} />
                         </button>
                       </div>
                     </div>

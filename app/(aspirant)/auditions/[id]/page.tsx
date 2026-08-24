@@ -23,11 +23,11 @@ const BEBAS  = "'Bebas Neue', sans-serif";
 const SIDEBAR_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard',            href: '/dashboard'      },
   { icon: FileText,        label: 'My Applications',      href: '/my-applications'},
-  { icon: MessageSquare,   label: 'Messages',             href: '/messages',       badge: 2 },
+  { icon: MessageSquare,   label: 'Messages',             href: '/messages',       },
   { icon: Mic2,            label: 'Auditions',            href: '/auditions',      active: true },
   { icon: Bookmark,        label: 'Saved Castings',       href: '/saved-castings' },
   { icon: Star,            label: 'Recommended Castings', href: '/recommended'    },
-  { icon: Bell,            label: 'Notifications',        href: '/notifications',  badge: 3 },
+  { icon: Bell,            label: 'Notifications',        href: '/notifications',  },
 ];
 
 const DROPDOWN_LINKS = ['Subscription', 'Analytics', 'Calendar', 'Settings', 'Support', 'Logout'];
@@ -81,6 +81,15 @@ export default function AuditionsPage() {
   const id = typeof params?.id === 'string' ? params.id : Array.isArray(params?.id) ? params.id[0] : '';
 
   const [sidebarOpen,  setSidebarOpen]  = useState(false);
+  const [notifCount,   setNotifCount]   = useState(0);
+  const [msgCount,     setMsgCount]     = useState(0);
+
+  // Inject live badge counts into sidebar items
+  const navItems = SIDEBAR_ITEMS.map(item => {
+    if (item.label === 'Messages')      return { ...item, badge: msgCount     || undefined }
+    if (item.label === 'Notifications') return { ...item, badge: notifCount   || undefined }
+    return item
+  })
   const [userName,   setUserName]   = useState('My Account');
   const [avatarUrl,  setAvatarUrl]  = useState('');
   const [castingCallId, setCastingCallId] = useState('');
@@ -94,6 +103,32 @@ export default function AuditionsPage() {
       if (u.profilePhoto) setAvatarUrl(u.profilePhoto);
     } catch {}
   }, []);
+
+  // Fetch live badge counts
+  useEffect(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
+      const token = u.token
+      if (!token) return
+      const h = { Authorization: `Bearer ${token}` }
+      fetch('/api/notifications', { headers: h })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return
+          const count = data.data?.unread_count ?? data.unread_count
+          if (count != null) { setNotifCount(count); return }
+          const list = data.data?.notifications ?? data.notifications ?? []
+          if (Array.isArray(list)) setNotifCount(list.filter((n: any) => !n.is_read).length)
+        }).catch(() => {})
+      fetch('/api/messages/conversations', { headers: h })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return
+          const list = data.data?.conversations ?? data.conversations ?? []
+          if (Array.isArray(list)) setMsgCount(list.filter((c: any) => c.unreadCount > 0).length)
+        }).catch(() => {})
+    } catch {}
+  }, [])
 
   const [audition,     setAudition]     = useState(AUDITION);
 

@@ -1,26 +1,28 @@
 'use client';
+import AdminSidebar from '@/components/layout/AdminSidebar';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
+import AdminTopnav from '@/components/layout/AdminTopnav';
 import {
   LayoutDashboard, Users, Building2, Megaphone, FileText,
-  BarChart2, ShieldCheck, Flag, CreditCard, Wallet,
-  Database, Settings, ScrollText, Bell, ChevronRight,
-  TrendingUp, TrendingDown, Download, UserPlus,
+  BarChart2, ShieldCheck, Flag, CreditCard,
+  Database, Settings, ScrollText, ChevronRight,
   BadgeCheck, UserCheck, BellRing, Ticket, KeyRound,
-  ChevronLeft, Menu, MessageSquare, ChevronDown,
-  Search, Filter, Eye, Edit, Power, MoreVertical,
-  X, Check, AlertTriangle, Calendar, Phone, Mail,
+  ChevronLeft, Menu,
+  Search, Eye, Power, MoreVertical, Edit2,
+  X, Check, Calendar, Phone, Mail,
   Shield, Clock, RefreshCw,
 } from 'lucide-react';
 
 /* ── Design Tokens ── */
-const BG     = '#0D1117';
-const BG2    = '#131720';
-const BG3    = '#181E2A';
-const BG4    = '#1C2338';
+const BG     = '#050505';
+const BG2    = '#0B0F14';
+const BG3    = '#121821';
+const BG4    = 'rgba(255,255,255,0.03)';
 const GOLD   = '#D4A64A';
+const GOLD_DIM = 'rgba(212,166,74,0.12)';
+const GOLD_BDR = 'rgba(212,166,74,0.22)';
 const RED    = '#C8202A';
 const GREEN  = '#22C55E';
 const BLUE   = '#3B82F6';
@@ -30,7 +32,6 @@ const TEAL   = '#14B8A6';
 const BEBAS  = "'Bebas Neue', sans-serif";
 const BARLOW = "'Barlow Condensed', sans-serif";
 
-/* ── Admin Nav ── */
 const ADMIN_NAV = [
   { icon: LayoutDashboard, label: 'Dashboard',                href: '/admin/dashboard'              },
   { icon: Users,           label: 'User Management',          href: '/admin/users',     active: true },
@@ -50,66 +51,72 @@ const ADMIN_NAV = [
   { icon: Settings,        label: 'Settings',                 href: '/admin/settings'               },
 ];
 
-const PROFILE_MENU = [
-  { label: 'My Profile',               href: '/admin/profile'       },
-  { label: 'Account Settings',         href: '/admin/settings'      },
-  { label: 'Security Settings',        href: '/admin/settings'      },
-  { label: 'Notification Preferences', href: '/admin/notifications' },
-  { label: 'Activity Logs',            href: '/admin/audit'         },
-  { label: 'Help & Support',           href: '/contact'             },
-  { label: 'Logout',                   href: '/login'               },
-];
+const TABS = ['All Users','Aspirants','Agencies','Suspended Users','Blocked Users'];
 
-/* ── Users Data ── */
-const USERS = [
-  { id:'USR123456', name:'Ananya Sharma',         type:'Aspirant', email:'ananya.sharma@email.com',     phone:'+91 98765 43210', verification:'Verified',  status:'Active',    joined:'May 20, 2025', lastActive:'2 hours ago',  avatar:'AS', avatarColor:'#8B5CF6', department:'Acting',         role:'Heroine'            },
-  { id:'USR123457', name:'Rohit Verma',            type:'Aspirant', email:'rohit.verma@email.com',       phone:'+91 98765 43211', verification:'Pending',   status:'Active',    joined:'May 20, 2025', lastActive:'1 day ago',    avatar:'RV', avatarColor:'#3B82F6', department:'Acting',         role:'Hero'               },
-  { id:'AGC98765',  name:'DreamWorks Films',        type:'Agency',   email:'contact@dreamworks.com',      phone:'+91 99887 66554', verification:'Verified',  status:'Active',    joined:'May 19, 2025', lastActive:'3 hours ago',  avatar:'DW', avatarColor:'#F97316', department:'',               role:''                   },
-  { id:'USR123458', name:'Karan Mehta',             type:'Aspirant', email:'karan.mehta@email.com',       phone:'+91 98765 43212', verification:'Rejected',  status:'Suspended', joined:'May 18, 2025', lastActive:'5 days ago',   avatar:'KM', avatarColor:'#EF4444', department:'Dancing',        role:'Dancer'             },
-  { id:'AGC98766',  name:'Future Frame Pvt. Ltd.',  type:'Agency',   email:'info@futureframe.com',        phone:'+91 99887 66555', verification:'Pending',   status:'Active',    joined:'May 18, 2025', lastActive:'1 day ago',    avatar:'FF', avatarColor:'#14B8A6', department:'',               role:''                   },
-  { id:'USR123459', name:'Neha Iyer',               type:'Aspirant', email:'neha.iyer@email.com',         phone:'+91 98765 43213', verification:'Verified',  status:'Active',    joined:'May 17, 2025', lastActive:'Just now',     avatar:'NI', avatarColor:'#22C55E', department:'Hair & Make Up', role:'Make Up Artist'     },
-  { id:'AGC98767',  name:'Silver Screen Casting',   type:'Agency',   email:'team@silverscreencasting.com',phone:'+91 99887 66556', verification:'Verified',  status:'Active',    joined:'May 16, 2025', lastActive:'4 hours ago',  avatar:'SC', avatarColor:'#D4A64A', department:'',               role:''                   },
-  { id:'USR123460', name:'Vikram Singh',             type:'Aspirant', email:'vikram.singh@email.com',      phone:'+91 98765 43214', verification:'Verified',  status:'Blocked',   joined:'May 15, 2025', lastActive:'2 weeks ago',  avatar:'VS', avatarColor:'#8B5CF6', department:'Stunt',          role:'Stunt Coordinator'  },
-  { id:'USR123461', name:'Priya Nair',               type:'Aspirant', email:'priya.nair@email.com',        phone:'+91 98765 43215', verification:'Verified',  status:'Active',    joined:'May 14, 2025', lastActive:'30 min ago',   avatar:'PN', avatarColor:'#EC4899', department:'Singing',        role:'Singer'             },
-  { id:'AGC98768',  name:'Reel Vision Studios',      type:'Agency',   email:'hello@reelvision.com',        phone:'+91 99887 66557', verification:'Pending',   status:'Active',    joined:'May 13, 2025', lastActive:'2 days ago',   avatar:'RV', avatarColor:'#6366F1', department:'',               role:''                   },
-  { id:'USR123462', name:'Arjun Kapoor',             type:'Aspirant', email:'arjun.kapoor@email.com',      phone:'+91 98765 43216', verification:'Verified',  status:'Active',    joined:'May 12, 2025', lastActive:'1 hour ago',   avatar:'AK', avatarColor:'#F59E0B', department:'Acting',         role:'Hero'               },
-  { id:'USR123463', name:'Meera Pillai',             type:'Aspirant', email:'meera.pillai@email.com',      phone:'+91 98765 43217', verification:'Pending',   status:'Suspended', joined:'May 11, 2025', lastActive:'1 week ago',   avatar:'MP', avatarColor:'#10B981', department:'Modelling',      role:'Model'              },
-];
+/* ── Helpers ── */
+function getAuthHeaders(): Record<string,string> {
+  try {
+    const raw = localStorage.getItem('ss_user');
+    if (!raw) return { 'Content-Type': 'application/json' };
+    const u = JSON.parse(raw);
+    const token = u.token ?? u.access_token ?? u.accessToken ?? '';
+    if (!token) return { 'Content-Type': 'application/json' };
+    return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  } catch {
+    return { 'Content-Type': 'application/json' };
+  }
+}
 
-const TABS = ['All Users','Aspirants','Agencies','Suspended Users','Blocked Users','Deleted Accounts'];
+function fmtDate(iso: string) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
 
-const STATS = [
-  { label:'Total Users',      value:'24,568', change:'+12.5%', up:true,  color:RED,    icon:'👥' },
-  { label:'Aspirants',        value:'21,348', change:'+10.3%', up:true,  color:PURPLE, icon:'🎭' },
-  { label:'Agencies',         value:'2,845',  change:'+8.7%',  up:true,  color:ORANGE, icon:'🏢' },
-  { label:'Suspended Users',  value:'187',    change:'-3.2%',  up:false, color:GOLD,   icon:'⏸️' },
-  { label:'Blocked Users',    value:'95',     change:'-1.4%',  up:false, color:BLUE,   icon:'🚫' },
-];
+function timeAgo(iso: string) {
+  if (!iso) return 'Never';
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1)   return 'Just now';
+  if (mins < 60)  return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)   return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7)   return `${days}d ago`;
+  return fmtDate(iso);
+}
 
+function initials(name: string) {
+  return (name || 'U').split(' ').map((w:string) => w[0]).join('').toUpperCase().slice(0,2);
+}
+
+const AVATAR_COLORS = [PURPLE, BLUE, ORANGE, TEAL, GREEN, '#EC4899', '#6366F1', '#F59E0B'];
+function avatarColor(id: string) {
+  let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) & 0xffffffff;
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+
+/* ── Badges ── */
 function verificationBadge(v: string) {
-  const map: Record<string,{bg:string,color:string,icon:string}> = {
-    'Verified': { bg:'rgba(34,197,94,0.12)',  color:'#22C55E', icon:'✓' },
-    'Pending':  { bg:'rgba(245,158,11,0.12)', color:'#F59E0B', icon:'⏳' },
-    'Rejected': { bg:'rgba(239,68,68,0.12)',  color:'#EF4444', icon:'✗' },
+  const map: Record<string,{bg:string;color:string;icon:string}> = {
+    approved: { bg:'rgba(34,197,94,0.12)',  color:'#22C55E', icon:'✓' },
+    pending:  { bg:'rgba(245,158,11,0.12)', color:'#F59E0B', icon:'⏳' },
+    rejected: { bg:'rgba(239,68,68,0.12)',  color:'#EF4444', icon:'✗' },
   };
-  const s = map[v] || map['Pending'];
-  return <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', background:s.bg, border:`1px solid ${s.color}40`, borderRadius:20, fontFamily:BARLOW, fontSize:14, fontWeight:700, color:s.color }}>{s.icon} {v}</span>;
+  const key = (v||'pending').toLowerCase();
+  const s = map[key] || map['pending'];
+  const label = key.charAt(0).toUpperCase() + key.slice(1);
+  return <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', background:s.bg, border:`1px solid ${s.color}40`, borderRadius:20, fontFamily:BARLOW, fontSize:13, fontWeight:700, color:s.color }}>{s.icon} {label}</span>;
 }
 
-function statusBadge(s: string) {
-  const map: Record<string,{bg:string,color:string}> = {
-    'Active':    { bg:'rgba(34,197,94,0.12)',  color:'#22C55E' },
-    'Suspended': { bg:'rgba(245,158,11,0.12)', color:'#F59E0B' },
-    'Blocked':   { bg:'rgba(239,68,68,0.12)',  color:'#EF4444' },
-    'Deleted':   { bg:'rgba(107,114,128,0.12)',color:'#6B7280' },
-  };
-  const st = map[s] || map['Active'];
-  return <span style={{ display:'inline-block', padding:'3px 10px', background:st.bg, border:`1px solid ${st.color}40`, borderRadius:20, fontFamily:BARLOW, fontSize:14, fontWeight:700, color:st.color }}>{s}</span>;
+function statusBadge(active: boolean) {
+  return active
+    ? <span style={{ display:'inline-block', padding:'3px 10px', background:'rgba(34,197,94,0.12)', border:'1px solid rgba(34,197,94,0.3)', borderRadius:20, fontFamily:BARLOW, fontSize:13, fontWeight:700, color:GREEN }}>Active</span>
+    : <span style={{ display:'inline-block', padding:'3px 10px', background:'rgba(245,158,11,0.12)', border:'1px solid rgba(245,158,11,0.3)', borderRadius:20, fontFamily:BARLOW, fontSize:13, fontWeight:700, color:'#F59E0B' }}>Suspended</span>;
 }
 
-function typeBadge(t: string) {
-  const isAgency = t === 'Agency';
-  return <span style={{ display:'inline-block', padding:'2px 8px', background: isAgency?'rgba(139,92,246,0.12)':'rgba(59,130,246,0.12)', border:`1px solid ${isAgency?'rgba(139,92,246,0.3)':'rgba(59,130,246,0.3)'}`, borderRadius:20, fontFamily:BARLOW, fontSize: 14, fontWeight:700, color: isAgency?PURPLE:BLUE }}>{t}</span>;
+function typeBadge(role: string) {
+  const isAgency = role === 'agency';
+  return <span style={{ display:'inline-block', padding:'2px 8px', background:isAgency?'rgba(139,92,246,0.12)':'rgba(59,130,246,0.12)', border:`1px solid ${isAgency?'rgba(139,92,246,0.3)':'rgba(59,130,246,0.3)'}`, borderRadius:20, fontFamily:BARLOW, fontSize:13, fontWeight:700, color:isAgency?PURPLE:BLUE }}>{isAgency?'Agency':'Aspirant'}</span>;
 }
 
 /* ── Modal ── */
@@ -127,605 +134,700 @@ function Modal({ title, onClose, children, width=480 }: { title:string; onClose:
   );
 }
 
-function InputRow({ label, defaultValue, type='text', placeholder='' }: { label:string; defaultValue?:string; type?:string; placeholder?:string }) {
+function InputField({ label, value, onChange, type='text', placeholder='' }: { label:string; value:string; onChange:(v:string)=>void; type?:string; placeholder?:string }) {
   return (
     <div style={{ marginBottom:16 }}>
-      <label style={{ display:'block', fontFamily:BARLOW, fontSize: 14, color:'rgba(255,255,255,0.5)', marginBottom:5 }}>{label}</label>
-      <input type={type} defaultValue={defaultValue} placeholder={placeholder}
+      <label style={{ display:'block', fontFamily:BARLOW, fontSize:13, color:'rgba(255,255,255,0.5)', marginBottom:5 }}>{label}</label>
+      <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
         style={{ width:'100%', background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, padding:'10px 12px', color:'#F5F5F5', fontFamily:BARLOW, fontSize:15, outline:'none', boxSizing:'border-box' as const }} />
     </div>
   );
 }
 
-function MFooter({ onClose, label='Save Changes', danger=false }: { onClose:()=>void; label?:string; danger?:boolean }) {
+function Spinner() {
   return (
-    <div style={{ display:'flex', gap:10, marginTop:8 }}>
-      <button onClick={onClose} style={{ flex:1, padding:10, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, color:'rgba(255,255,255,0.6)', fontFamily:BARLOW, fontSize:15, cursor:'pointer' }}>Cancel</button>
-      <button onClick={onClose} style={{ flex:2, padding:10, background:danger?RED:GOLD, border:'none', borderRadius:7, color:danger?'#fff':BG, fontFamily:BEBAS, fontSize:17, letterSpacing:1, cursor:'pointer' }}>{label}</button>
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:40 }}>
+      <div style={{ width:24, height:24, border:`2px solid ${GOLD_BDR}`, borderTop:`2px solid ${GOLD}`, borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 }
 
-/* ── Main Page ── */
+function Toast({ msg, type }: { msg:string; type:'success'|'error' }) {
+  return (
+    <div style={{ position:'fixed', bottom:24, right:24, zIndex:999, padding:'12px 20px', borderRadius:10, background:type==='success'?'rgba(34,197,94,0.15)':'rgba(239,68,68,0.15)', border:`1px solid ${type==='success'?GREEN:RED}`, color:type==='success'?GREEN:RED, fontFamily:BARLOW, fontSize:15, fontWeight:600 }}>
+      {type==='success'?'✓':'✗'} {msg}
+    </div>
+  );
+}
+
+/* ── Types ── */
+interface UserRow {
+  id: string; name: string; email: string; phone: string; role: string;
+  profile_number: string; email_verified: boolean; is_active: boolean;
+  last_login_at: string; created_at: string;
+  aspirant_profiles?: { verification_status:string; profile_completion:number; trust_score:number; category:string } | { verification_status:string; profile_completion:number; trust_score:number; category:string }[] | null;
+  agency_profiles?: { company_name:string; verification_status:string; trust_score:number } | { company_name:string; verification_status:string; trust_score:number }[] | null;
+  subscriptions?: { plan_name:string; ends_at:string }[];
+}
+interface Stats {
+  total_aspirants:number; total_agencies:number;
+  total_active:number; total_suspended:number; total_verified:number;
+}
+
+/* ════════════════════════════════════════════════════════════
+   MAIN PAGE
+════════════════════════════════════════════════════════════ */
+/* ── Edit User Modal ── */
+function EditUserModal({ user, onClose, onSave }: {
+  user: any;
+  onClose: () => void;
+  onSave: (patch: any) => Promise<void>;
+}) {
+  const [name,    setName]    = useState(user.name    || '');
+  const [phone,   setPhone]   = useState(user.phone   || '');
+  const [saving,  setSaving]  = useState(false);
+
+  const BG2L = '#0B0F14', BG3L = '#121821', BG4L = '#1C2338';
+  const GOLD = '#D4A64A', GREEN = '#22C55E', BARLOW = "'Barlow Condensed', sans-serif", BEBAS = "'Bebas Neue', sans-serif";
+  const inp: React.CSSProperties = { width:'100%', background:BG4L, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, padding:'9px 12px', color:'#F5F5F5', fontFamily:BARLOW, fontSize:15, outline:'none', boxSizing:'border-box' as const };
+
+  const handleSave = async () => {
+    if (!name.trim()) return;
+    setSaving(true);
+    await onSave({ name: name.trim(), phone: phone.trim() });
+    setSaving(false);
+  };
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', zIndex:500, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+      <div style={{ background:BG2L, border:`1px solid ${GOLD}33`, borderRadius:14, width:'100%', maxWidth:460 }}>
+        {/* Header */}
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'18px 22px', borderBottom:'1px solid rgba(255,255,255,0.08)' }}>
+          <div>
+            <div style={{ fontFamily:BEBAS, fontSize:22, letterSpacing:1 }}>EDIT USER</div>
+            <div style={{ fontSize:13, color:'rgba(255,255,255,0.4)', marginTop:2 }}>{user.email} · {user.role}</div>
+          </div>
+          <button onClick={onClose} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.4)', cursor:'pointer' }}>
+            <X size={18}/>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding:'20px 22px', display:'flex', flexDirection:'column', gap:14 }}>
+
+          <div>
+            <label style={{ display:'block', fontSize:13, color:'rgba(255,255,255,0.45)', marginBottom:6 }}>Full Name <span style={{ color:'#EF4444' }}>*</span></label>
+            <input value={name} onChange={e=>setName(e.target.value)} style={inp} placeholder="Full name…"/>
+          </div>
+
+          <div>
+            <label style={{ display:'block', fontSize:13, color:'rgba(255,255,255,0.45)', marginBottom:6 }}>Phone Number</label>
+            <input value={phone} onChange={e=>setPhone(e.target.value)} style={inp} placeholder="+91 00000 00000"/>
+          </div>
+
+          <div style={{ padding:'10px 12px', background:'rgba(212,166,74,0.08)', border:'1px solid rgba(212,166,74,0.2)', borderRadius:7, fontSize:13, color:'rgba(255,255,255,0.5)', lineHeight:1.5 }}>
+            To edit profile-specific details (category, skills, verification etc.) use <strong style={{ color:GOLD }}>View Full Profile</strong> instead.
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{ display:'flex', gap:10, padding:'14px 22px', borderTop:'1px solid rgba(255,255,255,0.07)' }}>
+          <button onClick={onClose} style={{ flex:1, padding:10, background:BG3L, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, color:'rgba(255,255,255,0.6)', fontFamily:BARLOW, fontSize:15, cursor:'pointer' }}>
+            Cancel
+          </button>
+          <button onClick={handleSave} disabled={saving || !name.trim()}
+            style={{ flex:2, padding:10, background:saving||!name.trim()?`${GOLD}55`:GOLD, border:'none', borderRadius:7, color:'#000', fontFamily:BEBAS, fontSize:20, letterSpacing:1, cursor:saving||!name.trim()?'not-allowed':'pointer', fontWeight:700 }}>
+            {saving ? 'Saving…' : 'Save Changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminUsersPage() {
   const router = useRouter();
-  const [sidebarOpen,  setSidebarOpen]  = useState(false);
-  const [profileOpen,  setProfileOpen]  = useState(false);
-  const [activeTab,    setActiveTab]    = useState('All Users');
-  const [search,       setSearch]       = useState('');
-  const [userTypeFilter, setUserTypeFilter] = useState('-- Select --');
-  const [statusFilter, setStatusFilter] = useState('-- Select --');
-  const [verifyFilter, setVerifyFilter] = useState('-- Select --');
-  const [selected,     setSelected]     = useState<string[]>([]);
-  const [modal,        setModal]        = useState('');
-  const [activeUser,   setActiveUser]   = useState<typeof USERS[0]|null>(null);
-  const [menuUser,     setMenuUser]     = useState<string|null>(null);
-  const [menuPos,      setMenuPos]      = useState({ top:0, right:0 });
-  const [page,         setPage]         = useState(1);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeTab,      setActiveTab]      = useState('All Users');
+  const [search,         setSearch]         = useState('');
+  const [statusFilter,   setStatusFilter]   = useState('');
+  const [verifyFilter,   setVerifyFilter]   = useState('');
+  const [selected,       setSelected]       = useState<string[]>([]);
+  const [modal,          setModal]          = useState('');
+  const [activeUser,     setActiveUser]     = useState<UserRow|null>(null);
+  const [menuUser,       setMenuUser]       = useState<string|null>(null);
+  const [menuPos,        setMenuPos]        = useState({ top:0, right:0 });
+  const [page,           setPage]           = useState(1);
+  const [toast,          setToast]          = useState<{msg:string;type:'success'|'error'}|null>(null);
+  const [actionLoading,  setActionLoading]  = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const [suspendReason,  setSuspendReason]  = useState('Policy Violation');
+  const [suspendNotes,   setSuspendNotes]   = useState('');
   const PER_PAGE = 8;
 
-  const SB_W = sidebarOpen ? 220 : 52;
+  // Real data
+  const [users,       setUsers]       = useState<UserRow[]>([]);
+  const [stats,       setStats]       = useState<Stats|null>(null);
+  const [total,       setTotal]       = useState(0);
+  const [totalPages,  setTotalPages]  = useState(1);
+  const [loading,     setLoading]     = useState(true);
 
-  const filtered = USERS.filter(u => {
-    const matchTab = activeTab === 'All Users' ? true
-      : activeTab === 'Aspirants'       ? u.type === 'Aspirant'
-      : activeTab === 'Agencies'        ? u.type === 'Agency'
-      : activeTab === 'Suspended Users' ? u.status === 'Suspended'
-      : activeTab === 'Blocked Users'   ? u.status === 'Blocked'
-      : activeTab === 'Deleted Accounts'? u.status === 'Deleted'
-      : true;
-    const matchSearch = !search || u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()) || u.id.toLowerCase().includes(search.toLowerCase());
-    const matchType   = userTypeFilter === '-- Select --' || u.type === userTypeFilter;
-    const matchStatus = statusFilter === '-- Select --' || u.status === statusFilter;
-    const matchVerify = verifyFilter === '-- Select --' || u.verification === verifyFilter;
-    return matchTab && matchSearch && matchType && matchStatus && matchVerify;
-  });
 
-  const totalPages = Math.ceil(filtered.length / PER_PAGE);
-  const paginated  = filtered.slice((page-1)*PER_PAGE, page*PER_PAGE);
+  /* ── tab → API params ── */
+  function tabToParams(tab: string) {
+    if (tab === 'Aspirants')       return { role: 'aspirant', status: '' };
+    if (tab === 'Agencies')        return { role: 'agency',   status: '' };
+    if (tab === 'Suspended Users') return { role: '',         status: 'suspended' };
+    if (tab === 'Blocked Users')   return { role: '',         status: 'suspended' };
+    return { role: '', status: '' };
+  }
 
-  const toggleSelect = (id: string) => setSelected(s => s.includes(id) ? s.filter(x=>x!==id) : [...s,id]);
-  const toggleAll    = () => setSelected(s => s.length === paginated.length ? [] : paginated.map(u=>u.id));
+  const showToast = (msg: string, type: 'success'|'error') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
-  const openUserModal = (user: typeof USERS[0], type: string) => { setActiveUser(user); setModal(type); };
+  /* ── Fetch users ── */
+  const fetchUsers = useCallback(() => {
+    setLoading(true);
+    const h = getAuthHeaders();
+    const { role, status: tabStatus } = tabToParams(activeTab);
+    const params = new URLSearchParams({
+      page:     String(page),
+      limit:    String(PER_PAGE),
+      keyword:  search,
+      role,
+      status:   statusFilter || tabStatus,
+      verified: verifyFilter,
+    });
+
+    // Timeout after 15s to prevent infinite spinner
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
+    fetch(`/api/admin/users?${params}`, { headers: h, signal: controller.signal })
+      .then(r => {
+        clearTimeout(timeout);
+        if (r.status === 401 || r.status === 403) {
+          setSessionExpired(true);
+          setLoading(false);
+          return null;
+        }
+        return r.json();
+      })
+      .then(data => {
+        if (!data) return;
+        // Handle both { data: { users, stats, pagination } } and { users, stats, pagination }
+        const payload = data?.data ?? data;
+        setUsers(payload?.users || []);
+        setStats(payload?.stats || null);
+        setTotal(payload?.pagination?.total || 0);
+        setTotalPages(payload?.pagination?.total_pages || 1);
+      })
+      .catch(err => {
+        clearTimeout(timeout);
+        if (err?.name !== 'AbortError') {
+          console.error('[USERS FETCH ERROR]', err);
+        }
+      })
+      .finally(() => setLoading(false));
+  }, [page, search, activeTab, statusFilter, verifyFilter]);
+
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+
+  /* ── User action ── */
+  async function doAction(userId: string, action: string, reason?: string) {
+    setActionLoading(true);
+    const h = getAuthHeaders();
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'PUT',
+        headers: h,
+        body: JSON.stringify({ user_id: userId, action, reason }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`User ${action} successful`, 'success');
+        setModal('');
+        setActiveUser(null);
+        fetchUsers();
+      } else {
+        showToast(data.error || 'Action failed', 'error');
+      }
+    } catch {
+      showToast('Network error', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  const toggleSelect  = (id: string) => setSelected(s => s.includes(id) ? s.filter(x=>x!==id) : [...s,id]);
+  const toggleAll     = () => setSelected(s => s.length === users.length ? [] : users.map(u=>u.id));
+  const openModal     = (user: UserRow, type: string) => { setActiveUser(user); setModal(type); setMenuUser(null); };
 
   const selectStyle = { background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, padding:'8px 12px', color:'#F5F5F5', fontFamily:BARLOW, fontSize:15, outline:'none', cursor:'pointer' };
 
+  /* ── Stat cards ── */
+  const STAT_CARDS = [
+    { label:'Total Users',  value: (stats?.total_aspirants ?? 0) + (stats?.total_agencies ?? 0), color:RED, icon:'👥', onClick: () => { setActiveTab('All Users'); setStatusFilter(''); setVerifyFilter(''); setPage(1); } },
+    { label:'Aspirants',    value: stats?.total_aspirants ?? 0,   color:PURPLE, icon:'🎭', onClick: () => { setActiveTab('Aspirants');       setStatusFilter('');          setVerifyFilter('');          setPage(1); } },
+    { label:'Agencies',     value: stats?.total_agencies  ?? 0,   color:ORANGE, icon:'🏢', onClick: () => { setActiveTab('Agencies');        setStatusFilter('');          setVerifyFilter('');          setPage(1); } },
+    { label:'Suspended',    value: stats?.total_suspended ?? 0,   color:GOLD,   icon:'⏸️', onClick: () => { setActiveTab('Suspended Users'); setStatusFilter('suspended'); setVerifyFilter('');          setPage(1); } },
+    { label:'Verified',     value: stats?.total_verified  ?? 0,   color:GREEN,  icon:'✅', onClick: () => { setActiveTab('All Users');      setStatusFilter('');          setVerifyFilter('approved');  setPage(1); } },
+  ];
+
+  /* ── Page numbers ── */
+  function pageNums() {
+    const nums: (number|'…')[] = [];
+    if (totalPages <= 5) { for (let i=1;i<=totalPages;i++) nums.push(i); }
+    else {
+      nums.push(1);
+      if (page > 3) nums.push('…');
+      for (let i=Math.max(2,page-1); i<=Math.min(totalPages-1,page+1); i++) nums.push(i);
+      if (page < totalPages-2) nums.push('…');
+      nums.push(totalPages);
+    }
+    return nums;
+  }
+
+  /* ── Verification status for a user ── */
+  function verStatus(u: UserRow) {
+    if (u.role === 'aspirant') {
+      const ap = u.aspirant_profiles;
+      const status = Array.isArray(ap) ? ap[0]?.verification_status : (ap as any)?.verification_status;
+      return status || 'pending';
+    }
+    if (u.role === 'agency') {
+      const ag = u.agency_profiles;
+      const status = Array.isArray(ag) ? ag[0]?.verification_status : (ag as any)?.verification_status;
+      return status || 'pending';
+    }
+    return 'approved';
+  }
+
+  function companyName(u: UserRow) {
+    const ag = u.agency_profiles;
+    const name = Array.isArray(ag) ? ag[0]?.company_name : (ag as any)?.company_name;
+    return name || u.name;
+  }
+
+  function displayName(u: UserRow) {
+    return u.role === 'agency' ? companyName(u) : (u.name || u.email);
+  }
+
+  function planName(u: UserRow) {
+    return u.subscriptions?.[0]?.plan_name || '—';
+  }
+
+  /* ════════════════════════════════════════════════════════
+     RENDER
+  ════════════════════════════════════════════════════════ */
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100vh', overflow:'hidden', background:BG, fontFamily:BARLOW, color:'#F5F5F5' }}>
+      <AdminTopnav />
 
-      {/* ══ TOPNAV ══ */}
-      <header style={{ height:60, flexShrink:0, display:'flex', alignItems:'center', gap:14, padding:'0 24px', background:BG2, borderBottom:'1px solid rgba(255,255,255,0.06)', zIndex:100 }}>
-        <SilverScreensLogo size="md" href="/" showTagline={false} />
-        <div style={{ padding:'3px 10px', background:'rgba(200,32,42,0.15)', border:'1px solid rgba(200,32,42,0.3)', borderRadius:5 }}>
-          <span style={{ fontFamily:BARLOW, fontSize: 14, fontWeight:700, color:RED, letterSpacing:1 }}>ADMIN</span>
-        </div>
-        <div style={{ flex:1 }} />
-        <div onClick={() => router.push('/admin/support')} style={{ position:'relative', cursor:'pointer' }}>
-          <div style={{ width:36, height:36, borderRadius:8, background:'rgba(255,255,255,0.07)', display:'flex', alignItems:'center', justifyContent:'center' }}><MessageSquare size={15} color="rgba(255,255,255,0.7)"/></div>
-          <div style={{ position:'absolute', top:-5, right:-5, background:RED, borderRadius:'50%', width:18, height:18, display:'flex', alignItems:'center', justifyContent:'center', fontSize: 14, fontWeight:700, color:'#fff' }}>8</div>
-        </div>
-        <div onClick={() => router.push('/admin/notifications')} style={{ position:'relative', cursor:'pointer' }}>
-          <div style={{ width:36, height:36, borderRadius:8, background:'rgba(255,255,255,0.07)', display:'flex', alignItems:'center', justifyContent:'center' }}><Bell size={15} color="rgba(255,255,255,0.7)"/></div>
-          <div style={{ position:'absolute', top:-5, right:-5, background:RED, borderRadius:'50%', width:18, height:18, display:'flex', alignItems:'center', justifyContent:'center', fontSize: 14, fontWeight:700, color:'#fff' }}>3</div>
-        </div>
-        <div style={{ position:'relative' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:9, cursor:'pointer' }} onClick={() => setProfileOpen(v=>!v)}>
-            <div style={{ width:36, height:36, borderRadius:'50%', overflow:'hidden', border:'2px solid rgba(212,166,74,0.38)', flexShrink:0 }}>
-              <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face" style={{ width:'100%', height:'100%', objectFit:'cover' }} alt="" />
-            </div>
-            <div>
-              <div style={{ fontSize:15, fontWeight:700, lineHeight:1.2 }}>Super Admin</div>
-              <div style={{ fontSize: 14, color:'rgba(255,255,255,0.4)' }}>Administrator</div>
-            </div>
-            <ChevronDown size={12} color="rgba(255,255,255,0.4)"/>
-          </div>
-          {profileOpen && (
-            <>
-              <div onClick={() => setProfileOpen(false)} style={{ position:'fixed', inset:0, zIndex:150 }}/>
-              <div style={{ position:'absolute', top:46, right:0, width:210, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, overflow:'hidden', zIndex:200, boxShadow:'0 8px 32px rgba(0,0,0,0.6)' }}>
-                <div style={{ padding:'10px 16px', borderBottom:'1px solid rgba(255,255,255,0.07)', display:'flex', justifyContent:'space-between' }}>
-                  <span style={{ fontSize: 14, color:'rgba(255,255,255,0.4)' }}>Admin ID</span>
-                  <span style={{ fontSize: 14, fontWeight:700, color:RED }}>ADM000001</span>
-                </div>
-                {PROFILE_MENU.map(({ label, href }) => (
-                  <div key={label} onClick={() => { router.push(href); setProfileOpen(false); }}
-                    style={{ padding:'10px 16px', fontSize:15, cursor:'pointer', color:label==='Logout'?'#ff6b6b':'#F5F5F5', borderTop:label==='Logout'?'1px solid rgba(255,255,255,0.07)':'none' }}
-                    onMouseEnter={e => (e.currentTarget.style.background='rgba(255,255,255,0.05)')}
-                    onMouseLeave={e => (e.currentTarget.style.background='transparent')}
-                  >{label}</div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </header>
-
-      {/* ══ BODY ══ */}
       <div style={{ display:'flex', flex:1, overflow:'hidden' }}>
 
-        {/* ── SIDEBAR ── */}
-        <aside style={{ width:SB_W, flexShrink:0, background:BG2, borderRight:'1px solid rgba(255,255,255,0.06)', display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', transition:'width 0.2s ease', scrollbarWidth:'none' }}>
-          <div style={{ height:52, display:'flex', alignItems:'center', justifyContent:sidebarOpen?'flex-end':'center', padding:sidebarOpen?'0 12px':0, borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
-            <button onClick={() => setSidebarOpen(v=>!v)} style={{ background:'none', border:'none', cursor:'pointer', width:30, height:30, borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,0.5)' }}
-              onMouseEnter={e => (e.currentTarget.style.background='rgba(255,255,255,0.07)')}
-              onMouseLeave={e => (e.currentTarget.style.background='none')}
-            >{sidebarOpen ? <ChevronLeft size={16}/> : <Menu size={16}/>}</button>
-          </div>
-          {sidebarOpen && (
-            <div style={{ padding:'14px 16px', borderBottom:'1px solid rgba(255,255,255,0.06)', display:'flex', alignItems:'center', gap:12 }}>
-              <div style={{ width:38, height:38, borderRadius:9, overflow:'hidden', border:'1px solid rgba(212,166,74,0.25)', flexShrink:0 }}>
-                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face" style={{ width:'100%', height:'100%', objectFit:'cover' }} alt="" />
+        {/* SIDEBAR */}
+        <AdminSidebar onCollapse={(c) => setSidebarOpen(!c)} />
+
+        {/* MAIN */}
+        <div style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'column' as const }}>
+          <div style={{ flex:1, overflowY:'auto' as const, padding:'20px 24px 32px' }}>
+
+            {/* Header */}
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20 }}>
+              <div>
+                <h1 style={{ fontFamily:BEBAS, fontSize:30, letterSpacing:1, margin:'0 0 3px', color:'#F5F5F5' }}>USER MANAGEMENT</h1>
+                <p style={{ fontFamily:BARLOW, fontSize:15, color:'rgba(255,255,255,0.45)', margin:0 }}>Manage all platform users, review status, and take actions.</p>
               </div>
-              <div style={{ minWidth:0 }}>
-                <div style={{ fontSize:14, fontWeight:700, color:'#F5F5F5', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>Super Admin</div>
-                <div style={{ fontSize: 14, color:RED, fontWeight:600 }}>ADM000001</div>
+              <div style={{ display:'flex', gap:10 }}>
+                <button onClick={fetchUsers} style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 14px', background:'transparent', border:'1px solid rgba(255,255,255,0.12)', borderRadius:8, color:'rgba(255,255,255,0.6)', fontFamily:BARLOW, fontSize:14, cursor:'pointer' }}>
+                  <RefreshCw size={14}/> Refresh
+                </button>
+
               </div>
             </div>
-          )}
-          <nav style={{ flex:1, padding:sidebarOpen?'8px 6px':'8px 4px', overflowY:'auto', scrollbarWidth:'none' }}>
-            {ADMIN_NAV.map(({ icon:Icon, label, href, active }) => (
-              <div key={label} onClick={() => router.push(href)} title={!sidebarOpen?label:undefined}
-                style={{ display:'flex', alignItems:'center', justifyContent:sidebarOpen?'flex-start':'center', padding:sidebarOpen?'8px 10px':'10px 0', marginBottom:2, borderRadius:6, cursor:'pointer', background:active?'rgba(212,166,74,0.1)':'transparent', borderLeft:sidebarOpen&&active?`3px solid ${GOLD}`:sidebarOpen?'3px solid transparent':'none', gap:sidebarOpen?9:0 }}
-                onMouseEnter={e => { if(!active) e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}
-                onMouseLeave={e => { if(!active) e.currentTarget.style.background=active?'rgba(212,166,74,0.1)':'transparent'; }}
-              >
-                <Icon size={15} color={active?GOLD:'rgba(255,255,255,0.42)'} strokeWidth={active?2.5:1.8}/>
-                {sidebarOpen && <span style={{ fontSize:14, color:active?GOLD:'rgba(255,255,255,0.6)', fontWeight:active?700:400, whiteSpace:'nowrap', flex:1 }}>{label}</span>}
-                {sidebarOpen && active && <ChevronRight size={12} color={GOLD} opacity={0.6}/>}
-              </div>
-            ))}
-          </nav>
-        </aside>
 
-        {/* ── MAIN CONTENT ── */}
-        <div style={{ flex:1, minWidth:0, overflowY:'auto', overflowX:'hidden' }}>
-          <div style={{ display:'flex', alignItems:'flex-start', minHeight:'100%' }}>
-            <div style={{ flex:1, minWidth:0, padding:'24px 16px 40px' }}>
-
-              {/* Breadcrumb + Header */}
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20 }}>
-                <div>
-                  <div style={{ display:'flex', alignItems:'center', gap:6, fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.4)', marginBottom:8 }}>
-                    <span onClick={() => router.push('/admin/dashboard')} style={{ cursor:'pointer' }}
-                      onMouseEnter={e => (e.currentTarget.style.color='#F5F5F5')}
-                      onMouseLeave={e => (e.currentTarget.style.color='rgba(255,255,255,0.4)')}
-                    >Home</span>
-                    <ChevronRight size={12}/>
-                    <span style={{ color:'#F5F5F5' }}>User Management</span>
+            {/* Stats */}
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12, marginBottom:20 }}>
+              {STAT_CARDS.map(s => (
+                <div key={s.label} onClick={s.onClick} style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:'16px', cursor:s.onClick?'pointer':'default' }}
+                  onMouseEnter={e => { if(s.onClick) e.currentTarget.style.borderColor = s.color }}
+                  onMouseLeave={e => { if(s.onClick) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)' }}
+                >
+                  <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
+                    <div style={{ width:40, height:40, borderRadius:10, background:`${s.color}18`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>{s.icon}</div>
+                    <span style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.45)', lineHeight:1.3 }}>{s.label}</span>
                   </div>
-                  <h1 style={{ fontFamily:BARLOW, fontSize:28, fontWeight:700, color:'#F5F5F5', margin:0, display:'flex', alignItems:'center', gap:8 }}>
-                    User Management <span style={{ color:RED }}>.</span>
-                  </h1>
-                  <p style={{ fontFamily:BARLOW, fontSize:16, color:'rgba(255,255,255,0.45)', margin:'4px 0 0' }}>Manage all platform users, review status, and take actions.</p>
-                </div>
-                <div style={{ display:'flex', gap:10 }}>
-                  <button onClick={() => setModal('export')} style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', background:'transparent', border:'1px solid rgba(255,255,255,0.15)', borderRadius:8, color:'#F5F5F5', fontFamily:BARLOW, fontSize:14, fontWeight:600, cursor:'pointer' }}
-                    onMouseEnter={e => (e.currentTarget.style.borderColor=GOLD)}
-                    onMouseLeave={e => (e.currentTarget.style.borderColor='rgba(255,255,255,0.15)')}
-                  ><Download size={15}/> Export</button>
-                  <button onClick={() => setModal('addUser')} style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', background:RED, border:'none', borderRadius:8, color:'#fff', fontFamily:BARLOW, fontSize:14, fontWeight:700, cursor:'pointer' }}
-                    onMouseEnter={e => (e.currentTarget.style.background='#a01822')}
-                    onMouseLeave={e => (e.currentTarget.style.background=RED)}
-                  ><UserPlus size={15}/> Add User</button>
-                </div>
-              </div>
-
-              {/* Stats */}
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12, marginBottom:20 }}>
-                {STATS.map(s => (
-                  <div key={s.label} style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:'16px' }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
-                      <div style={{ width:40, height:40, borderRadius:10, background:`${s.color}18`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>{s.icon}</div>
-                      <span style={{ fontFamily:BARLOW, fontSize:15, color:'rgba(255,255,255,0.45)', lineHeight:1.3 }}>{s.label}</span>
-                    </div>
-                    <div style={{ display:'flex', alignItems:'baseline', gap:8 }}>
-                      <div style={{ fontFamily:BEBAS, fontSize:28, color:'#F5F5F5', letterSpacing:1 }}>{s.value}</div>
-                      <div style={{ display:'flex', alignItems:'center', gap:3 }}>
-                        {s.up ? <TrendingUp size={12} color={GREEN}/> : <TrendingDown size={12} color={RED}/>}
-                        <span style={{ fontFamily:BARLOW, fontSize: 14, fontWeight:700, color:s.up?GREEN:RED }}>{s.change}</span>
-                      </div>
-                    </div>
-                    <div style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.3)', marginTop:2 }}>from last month</div>
+                  <div style={{ fontFamily:BEBAS, fontSize:28, color:'#F5F5F5', letterSpacing:1 }}>
+                    {loading ? '—' : s.value.toLocaleString('en-IN')}
                   </div>
-                ))}
-              </div>
+                  <div style={{ fontFamily:BARLOW, fontSize:13, color:'rgba(255,255,255,0.3)', marginTop:2 }}>Live count</div>
+                </div>
+              ))}
+            </div>
 
-              {/* Tabs + Actions */}
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:10 }}>
-                <div style={{ display:'flex', gap:0, borderBottom:'2px solid rgba(255,255,255,0.07)' }}>
-                  {TABS.map(tab => (
-                    <button key={tab} onClick={() => { setActiveTab(tab); setPage(1); }}
-                      style={{ padding:'10px 16px', background:'none', border:'none', cursor:'pointer', fontFamily:BARLOW, fontSize:16, fontWeight:activeTab===tab?700:400, color:activeTab===tab?'#F5F5F5':'rgba(255,255,255,0.45)', borderBottom:activeTab===tab?`2px solid ${RED}`:'2px solid transparent', marginBottom:-2, whiteSpace:'nowrap' as const }}>
-                      {tab}
+            {/* Tabs */}
+            <div style={{ display:'flex', gap:0, borderBottom:'2px solid rgba(255,255,255,0.07)', marginBottom:16 }}>
+              {TABS.map(tab => (
+                <button key={tab} onClick={() => { setActiveTab(tab); setPage(1); setSelected([]); }}
+                  style={{ padding:'10px 16px', background:'none', border:'none', cursor:'pointer', fontFamily:BARLOW, fontSize:15, fontWeight:activeTab===tab?700:400, color:activeTab===tab?'#F5F5F5':'rgba(255,255,255,0.45)', borderBottom:activeTab===tab?`2px solid ${RED}`:'2px solid transparent', marginBottom:-2, whiteSpace:'nowrap' as const }}>
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            {/* Filters */}
+            <div style={{ display:'flex', flexDirection:'column' as const, gap:10, marginBottom:16 }}>
+              <div style={{ position:'relative' }}>
+                <Search size={15} color="rgba(255,255,255,0.3)" style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)' }}/>
+                <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search name, email, profile number..."
+                  style={{ width:'100%', background:BG2, border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, padding:'9px 12px 9px 36px', color:'#F5F5F5', fontFamily:BARLOW, fontSize:15, outline:'none', boxSizing:'border-box' as const }}/>
+              </div>
+              <div style={{ display:'flex', gap:10 }}>
+                <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} style={{ ...selectStyle, width:160 }}>
+                  <option value="">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="suspended">Suspended</option>
+                </select>
+                <select value={verifyFilter} onChange={e => { setVerifyFilter(e.target.value); setPage(1); }} style={{ ...selectStyle, width:180 }}>
+                  <option value="">All Verification</option>
+                  <option value="approved">Verified</option>
+                  <option value="pending">Pending</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Bulk actions */}
+            {selected.length > 0 && (
+              <div style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 16px', background:'rgba(212,166,74,0.08)', border:'1px solid rgba(212,166,74,0.2)', borderRadius:8, marginBottom:12 }}>
+                <span style={{ fontFamily:BARLOW, fontSize:14, color:GOLD, fontWeight:600 }}>{selected.length} user{selected.length>1?'s':''} selected</span>
+                <div style={{ display:'flex', gap:8 }}>
+                  {[
+                    { label:'Suspend All', action:() => setModal('bulkSuspend'), danger:true  },
+                    { label:'Delete All',  action:() => setModal('bulkDelete'),  danger:true  },
+                  ].map(btn => (
+                    <button key={btn.label} onClick={btn.action} style={{ padding:'5px 12px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:6, color:btn.danger?RED:'#F5F5F5', fontFamily:BARLOW, fontSize:14, cursor:'pointer' }}>
+                      {btn.label}
                     </button>
                   ))}
                 </div>
+                <button onClick={() => setSelected([])} style={{ marginLeft:'auto', background:'none', border:'none', color:'rgba(255,255,255,0.4)', cursor:'pointer' }}><X size={14}/></button>
               </div>
+            )}
 
-              {/* Filters */}
-              <div style={{ display:'flex', gap:10, marginBottom:16, flexWrap:'wrap' as const, alignItems:'center' }}>
-                <div style={{ position:'relative', flex:1, minWidth:200 }}>
-                  <Search size={15} color="rgba(255,255,255,0.3)" style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)' }}/>
-                  <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search users..."
-                    style={{ width:'100%', background:BG2, border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, padding:'9px 12px 9px 36px', color:'#F5F5F5', fontFamily:BARLOW, fontSize:15, outline:'none', boxSizing:'border-box' as const }}/>
-                </div>
-                <select value={userTypeFilter} onChange={e => { setUserTypeFilter(e.target.value); setPage(1); }} style={selectStyle}>
-                  <option value='-- Select --'>-- Select --</option><option value='Aspirant'>Aspirant</option><option value='Agency'>Agency</option>
-                </select>
-                <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} style={selectStyle}>
-                  <option value="-- Select --">-- Select --</option><option>Active</option><option>Suspended</option><option>Blocked</option>
-                </select>
-                <select value={verifyFilter} onChange={e => { setVerifyFilter(e.target.value); setPage(1); }} style={selectStyle}>
-                  <option value='-- Select --'>-- Select --</option><option>Verified</option><option>Pending</option><option>Rejected</option>
-                </select>
-                <button onClick={() => setModal('filters')} style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 16px', background:BG2, border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, color:'rgba(255,255,255,0.7)', fontFamily:BARLOW, fontSize:14, cursor:'pointer' }}>
-                  <Filter size={14}/> More Filters
-                </button>
-              </div>
-
-              {/* Bulk actions */}
-              {selected.length > 0 && (
-                <div style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 16px', background:'rgba(212,166,74,0.08)', border:'1px solid rgba(212,166,74,0.2)', borderRadius:8, marginBottom:12 }}>
-                  <span style={{ fontFamily:BARLOW, fontSize:14, color:GOLD, fontWeight:600 }}>{selected.length} user{selected.length>1?'s':''} selected</span>
-                  <div style={{ display:'flex', gap:8 }}>
-                    {[
-                      { label:'Verify All',  action:() => setModal('bulkVerify')  },
-                      { label:'Suspend All', action:() => setModal('bulkSuspend') },
-                      { label:'Export',      action:() => setModal('export')      },
-                      { label:'Delete All',  action:() => setModal('bulkDelete')  },
-                    ].map(btn => (
-                      <button key={btn.label} onClick={btn.action} style={{ padding:'5px 12px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:6, color:btn.label.includes('Delete')?RED:'#F5F5F5', fontFamily:BARLOW, fontSize: 14, cursor:'pointer' }}>
-                        {btn.label}
-                      </button>
-                    ))}
+            {/* Table */}
+            <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, overflowX:'auto' as const }}>
+              <div style={{ display:'grid', gridTemplateColumns:'36px 1.6fr 90px 1.3fr 120px 100px 110px 120px 140px', padding:'12px 16px', borderBottom:'1px solid rgba(255,255,255,0.07)', background:'rgba(255,255,255,0.02)', borderRadius:'12px 12px 0 0' }}>
+                <div style={{ display:'flex', alignItems:'center' }}>
+                  <div onClick={toggleAll} style={{ width:18, height:18, borderRadius:4, border:`1px solid ${selected.length===users.length&&users.length>0?GOLD:'rgba(255,255,255,0.2)'}`, background:selected.length===users.length&&users.length>0?GOLD:'transparent', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    {selected.length===users.length&&users.length>0 && <Check size={12} color={BG}/>}
                   </div>
-                  <button onClick={() => setSelected([])} style={{ marginLeft:'auto', background:'none', border:'none', color:'rgba(255,255,255,0.4)', cursor:'pointer' }}><X size={14}/></button>
                 </div>
-              )}
-
-              {/* Table */}
-              <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, overflow:'hidden', overflowX:'auto' as const }}>
-                {/* Header */}
-                <div style={{ display:'grid', gridTemplateColumns:'36px 1.4fr 90px 1.2fr 120px 100px 110px 110px 140px', padding:'12px 16px', borderBottom:'1px solid rgba(255,255,255,0.07)', background:'rgba(255,255,255,0.02)' }}>
-                  <div style={{ display:'flex', alignItems:'center' }}>
-                    <div onClick={toggleAll} style={{ width:18, height:18, borderRadius:4, border:`1px solid ${selected.length===paginated.length&&paginated.length>0?GOLD:'rgba(255,255,255,0.2)'}`, background:selected.length===paginated.length&&paginated.length>0?GOLD:'transparent', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                      {selected.length===paginated.length&&paginated.length>0 && <Check size={12} color={BG}/>}
-                    </div>
-                  </div>
-                  {[{h:'User',pl:0},{h:'User Type',pl:0},{h:'Email / Phone',pl:20},{h:'Verification',pl:0},{h:'Status',pl:0},{h:'Joined On',pl:0},{h:'Last Active',pl:0},{h:'Actions',pl:0}].map(({h,pl}) => (
-                    <div key={h} style={{ fontFamily:BARLOW, fontSize:14, fontWeight:700, color:'rgba(255,255,255,0.5)', letterSpacing:0.5, textTransform:'uppercase' as const, paddingLeft:pl }}>{h}</div>
-                  ))}
-                </div>
-
-                {/* Rows */}
-                {paginated.length === 0 ? (
-                  <div style={{ textAlign:'center' as const, padding:48, color:'rgba(255,255,255,0.3)', fontFamily:BARLOW, fontSize:16 }}>No users found</div>
-                ) : paginated.map((user, i) => (
-                  <div key={user.id}
-                    style={{ display:'grid', gridTemplateColumns:'36px 1.4fr 90px 1.2fr 120px 100px 110px 110px 140px', padding:'14px 16px', borderBottom:i<paginated.length-1?'1px solid rgba(255,255,255,0.05)':'none', alignItems:'center' }}
-                    onMouseEnter={e => (e.currentTarget.style.background='rgba(255,255,255,0.02)')}
-                    onMouseLeave={e => (e.currentTarget.style.background='transparent')}
-                  >
-                    {/* Checkbox */}
-                    <div onClick={() => toggleSelect(user.id)} style={{ width:18, height:18, borderRadius:4, border:`1px solid ${selected.includes(user.id)?GOLD:'rgba(255,255,255,0.2)'}`, background:selected.includes(user.id)?GOLD:'transparent', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                      {selected.includes(user.id) && <Check size={12} color={BG}/>}
-                    </div>
-                    {/* User */}
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <div style={{ width:36, height:36, borderRadius:'50%', background:`${user.avatarColor}25`, border:`1px solid ${user.avatarColor}50`, display:'flex', alignItems:'center', justifyContent:'center', fontSize: 14, fontWeight:700, color:user.avatarColor, flexShrink:0 }}>{user.avatar}</div>
-                      <div style={{ minWidth:0 }}>
-                        <div style={{ fontFamily:BARLOW, fontSize:16, fontWeight:600, color:'#F5F5F5', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{user.name}</div>
-                        <div style={{ fontFamily:BARLOW, fontSize: 14, color:'rgba(255,255,255,0.4)' }}>{user.id}</div>
-                        {user.type === 'Aspirant' && user.department && (
-                          <div style={{ display:'flex', gap:4, marginTop:3 }}>
-                            <span style={{ fontSize:12, fontFamily:BARLOW, color:RED, background:'rgba(200,32,42,0.1)', border:'1px solid rgba(200,32,42,0.2)', borderRadius:10, padding:'1px 7px' }}>{user.department}</span>
-                            <span style={{ fontSize:12, fontFamily:BARLOW, color:'rgba(255,255,255,0.45)', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, padding:'1px 7px' }}>{user.role}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    {/* Type */}
-                    <div style={{ display:'flex', alignItems:'center' }}>{typeBadge(user.type)}</div>
-                    {/* Email/Phone */}
-                    <div style={{ paddingLeft:20 }}>
-                      <div style={{ fontFamily:BARLOW, fontSize:15, color:'rgba(255,255,255,0.7)' }}>{user.email}</div>
-                      <div style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.4)' }}>{user.phone}</div>
-                    </div>
-                    {/* Verification */}
-                    <div style={{ display:'flex', alignItems:'center' }}>{verificationBadge(user.verification)}</div>
-                    {/* Status */}
-                    <div style={{ display:'flex', alignItems:'center' }}>{statusBadge(user.status)}</div>
-                    {/* Joined */}
-                    <div style={{ fontFamily:BARLOW, fontSize:15, color:'rgba(255,255,255,0.6)' }}>{user.joined}</div>
-                    {/* Last Active */}
-                    <div style={{ fontFamily:BARLOW, fontSize:15, color:'rgba(255,255,255,0.6)' }}>{user.lastActive}</div>
-                    {/* Actions */}
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <button onClick={() => openUserModal(user,'view')} title="View" style={{ width:30, height:30, borderRadius:6, background:'rgba(59,130,246,0.1)', border:'1px solid rgba(59,130,246,0.2)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:BLUE }}>
-                        <Eye size={14}/>
-                      </button>
-                      <button onClick={() => openUserModal(user,'edit')} title="Edit" style={{ width:30, height:30, borderRadius:6, background:'rgba(212,166,74,0.1)', border:'1px solid rgba(212,166,74,0.2)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:GOLD }}>
-                        <Edit size={14}/>
-                      </button>
-                      <button onClick={() => openUserModal(user,'suspend')} title="Suspend/Block" style={{ width:30, height:30, borderRadius:6, background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.2)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#EF4444' }}>
-                        <Power size={14}/>
-                      </button>
-                      <button onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setMenuPos({ top:r.bottom+8, right:window.innerWidth-r.right }); setMenuUser(menuUser===user.id?null:user.id); }} style={{ width:30, height:30, borderRadius:6, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'rgba(255,255,255,0.6)' }}>
-                        <MoreVertical size={14}/>
-                      </button>
-                    </div>
-                  </div>
+                {['USER','TYPE','EMAIL / PHONE','VERIFICATION','STATUS','PLAN','JOINED ON','ACTIONS'].map(h => (
+                  <div key={h} style={{ fontFamily:BARLOW, fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.5)', letterSpacing:0.5, textTransform:'uppercase' as const }}>{h}</div>
                 ))}
+              </div>
 
-                {/* Pagination */}
+              {loading ? <Spinner/> :
+                sessionExpired
+                  ? <div style={{ textAlign:'center' as const, padding:48, fontFamily:BARLOW, fontSize:16 }}>
+                      <div style={{ color:'#EF4444', marginBottom:12 }}>⚠️ Session expired</div>
+                      <button onClick={() => { localStorage.removeItem('ss_user'); sessionStorage.removeItem('ss_user'); router.replace('/admin/login'); }} style={{ padding:'8px 20px', background:RED, border:'none', borderRadius:7, color:'#fff', fontFamily:BARLOW, fontSize:15, fontWeight:700, cursor:'pointer' }}>Login Again</button>
+                    </div>
+                : users.length === 0
+                  ? <div style={{ textAlign:'center' as const, padding:48, color:'rgba(255,255,255,0.3)', fontFamily:BARLOW, fontSize:16 }}>No users found</div>
+                  : users.map((user, i) => {
+                      const col = avatarColor(user.id);
+                      const vStatus = verStatus(user);
+                      return (
+                        <div key={user.id}
+                          style={{ display:'grid', gridTemplateColumns:'36px 1.6fr 90px 1.3fr 120px 100px 110px 120px 140px', padding:'14px 16px', borderBottom:i<users.length-1?'1px solid rgba(255,255,255,0.05)':'none', alignItems:'center' }}
+                          onMouseEnter={e=>(e.currentTarget.style.background='rgba(255,255,255,0.02)')}
+                          onMouseLeave={e=>(e.currentTarget.style.background='transparent')}
+                        >
+                          {/* Checkbox */}
+                          <div onClick={()=>toggleSelect(user.id)} style={{ width:18, height:18, borderRadius:4, border:`1px solid ${selected.includes(user.id)?GOLD:'rgba(255,255,255,0.2)'}`, background:selected.includes(user.id)?GOLD:'transparent', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                            {selected.includes(user.id) && <Check size={12} color={BG}/>}
+                          </div>
+                          {/* User */}
+                          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                            <div style={{ width:36, height:36, borderRadius:'50%', background:`${col}25`, border:`1px solid ${col}50`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700, color:col, flexShrink:0 }}>{initials(displayName(user))}</div>
+                            <div style={{ minWidth:0 }}>
+                              <div style={{ fontFamily:BARLOW, fontSize:15, fontWeight:600, color:'#F5F5F5', whiteSpace:'nowrap' as const, overflow:'hidden', textOverflow:'ellipsis' }}>{displayName(user)}</div>
+                              <div style={{ fontFamily:BARLOW, fontSize:13, color:'rgba(255,255,255,0.4)' }}>
+                                {user.role === 'agency'
+                                  ? (user.agency_profiles?.[0]?.profile_number || user.profile_number || user.id.slice(0,8))
+                                  : (user.aspirant_profiles?.[0]?.profile_number || user.profile_number || user.id.slice(0,8))}
+                              </div>
+                            </div>
+                          </div>
+                          {/* Type */}
+                          <div>{typeBadge(user.role)}</div>
+                          {/* Email/Phone */}
+                          <div>
+                            <div style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.7)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' as const }}>{user.email}</div>
+                            <div style={{ fontFamily:BARLOW, fontSize:13, color:'rgba(255,255,255,0.4)' }}>{user.phone || '—'}</div>
+                          </div>
+                          {/* Verification */}
+                          <div>{verificationBadge(vStatus)}</div>
+                          {/* Status */}
+                          <div>{statusBadge(user.is_active)}</div>
+                          {/* Plan */}
+                          <div style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.6)' }}>{planName(user)}</div>
+                          {/* Joined */}
+                          <div style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.6)' }}>{fmtDate(user.created_at)}</div>
+                          {/* Actions */}
+                          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                            <button onClick={() => {
+                              if (user.role === 'agency') {
+                                const agencyProfileId = Array.isArray(user.agency_profiles) ? user.agency_profiles[0]?.id : (user.agency_profiles as any)?.id;
+                                router.push(`/admin/agency-profile-view?id=${agencyProfileId || user.id}`);
+                              } else {
+                                router.push(`/admin/aspirant-profile?user_id=${user.id}`);
+                              }
+                            }} title="View Full Profile" style={{ width:30, height:30, borderRadius:6, background:'rgba(59,130,246,0.1)', border:'1px solid rgba(59,130,246,0.2)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:BLUE }}>
+                              <Eye size={14}/>
+                            </button>
+                            <button onClick={()=>openModal(user,'edit')} title="Edit User" style={{ width:30, height:30, borderRadius:6, background:'rgba(212,166,74,0.1)', border:'1px solid rgba(212,166,74,0.2)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:GOLD }}>
+                              <Edit2 size={14}/>
+                            </button>
+                            <button onClick={()=>{ const isDeleted=user.email?.includes('@silverscreens.deleted'); openModal(user, isDeleted?'activate':user.is_active?'suspend':'activate'); }} title={user.email?.includes('@silverscreens.deleted')?'Restore Account':user.is_active?'Suspend':'Activate'} style={{ width:30, height:30, borderRadius:6, background:user.email?.includes('@silverscreens.deleted')?'rgba(245,158,11,0.1)':user.is_active?'rgba(239,68,68,0.1)':'rgba(34,197,94,0.1)', border:`1px solid ${user.email?.includes('@silverscreens.deleted')?'rgba(245,158,11,0.3)':user.is_active?'rgba(239,68,68,0.2)':'rgba(34,197,94,0.2)'}`, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:user.email?.includes('@silverscreens.deleted')?'#F59E0B':user.is_active?'#EF4444':GREEN }}>
+                              <Power size={14}/>
+                            </button>
+                            <button onClick={e => { const r=e.currentTarget.getBoundingClientRect(); const menuH=280; const spaceBelow=window.innerHeight-r.bottom; const top=spaceBelow<menuH?r.top-menuH-4:r.bottom+8; setMenuPos({top,right:window.innerWidth-r.right}); setMenuUser(menuUser===user.id?null:user.id); setActiveUser(user); }} style={{ width:30, height:30, borderRadius:6, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'rgba(255,255,255,0.6)' }}>
+                              <MoreVertical size={14}/>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+              }
+
+              {/* Pagination */}
+              {!loading && total > 0 && (
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 16px', borderTop:'1px solid rgba(255,255,255,0.07)' }}>
                   <span style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.4)' }}>
-                    Showing {Math.min((page-1)*PER_PAGE+1, filtered.length)} to {Math.min(page*PER_PAGE, filtered.length)} of {filtered.length} users
+                    Showing {((page-1)*PER_PAGE)+1}–{Math.min(page*PER_PAGE,total)} of {total.toLocaleString('en-IN')} users
                   </span>
                   <div style={{ display:'flex', gap:6, alignItems:'center' }}>
-                    <button onClick={() => setPage(p=>Math.max(1,p-1))} disabled={page===1} style={{ width:32, height:32, borderRadius:6, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', cursor:page===1?'not-allowed':'pointer', color:page===1?'rgba(255,255,255,0.2)':'rgba(255,255,255,0.7)', opacity:page===1?0.5:1 }}>
+                    <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1} style={{ width:32, height:32, borderRadius:6, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', cursor:page===1?'not-allowed':'pointer', color:page===1?'rgba(255,255,255,0.2)':'rgba(255,255,255,0.7)', opacity:page===1?0.5:1 }}>
                       <ChevronLeft size={14}/>
                     </button>
-                    {Array.from({ length:Math.min(totalPages,5) }, (_,i) => i+1).map(p => (
-                      <button key={p} onClick={() => setPage(p)} style={{ width:32, height:32, borderRadius:6, background:page===p?RED:'rgba(255,255,255,0.05)', border:`1px solid ${page===p?RED:'rgba(255,255,255,0.08)'}`, fontFamily:BARLOW, fontSize:14, color:page===p?'#fff':'rgba(255,255,255,0.7)', cursor:'pointer', fontWeight:page===p?700:400 }}>{p}</button>
-                    ))}
-                    {totalPages > 5 && <span style={{ color:'rgba(255,255,255,0.3)' }}>...</span>}
-                    {totalPages > 5 && <button onClick={() => setPage(totalPages)} style={{ width:32, height:32, borderRadius:6, background:page===totalPages?RED:'rgba(255,255,255,0.05)', border:`1px solid ${page===totalPages?RED:'rgba(255,255,255,0.08)'}`, fontFamily:BARLOW, fontSize:14, color:page===totalPages?'#fff':'rgba(255,255,255,0.7)', cursor:'pointer' }}>{totalPages}</button>}
-                    <button onClick={() => setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages} style={{ width:32, height:32, borderRadius:6, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', cursor:page===totalPages?'not-allowed':'pointer', color:page===totalPages?'rgba(255,255,255,0.2)':'rgba(255,255,255,0.7)', opacity:page===totalPages?0.5:1 }}>
+                    {pageNums().map((p,i) =>
+                      p==='…'
+                        ? <span key={i} style={{ color:'rgba(255,255,255,0.3)', padding:'0 4px' }}>…</span>
+                        : <button key={i} onClick={()=>setPage(p as number)} style={{ width:32, height:32, borderRadius:6, background:page===p?RED:'rgba(255,255,255,0.05)', border:`1px solid ${page===p?RED:'rgba(255,255,255,0.08)'}`, fontFamily:BARLOW, fontSize:14, color:page===p?'#fff':'rgba(255,255,255,0.7)', cursor:'pointer', fontWeight:page===p?700:400 }}>{p}</button>
+                    )}
+                    <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages} style={{ width:32, height:32, borderRadius:6, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', cursor:page===totalPages?'not-allowed':'pointer', color:page===totalPages?'rgba(255,255,255,0.2)':'rgba(255,255,255,0.7)', opacity:page===totalPages?0.5:1 }}>
                       <ChevronRight size={14}/>
                     </button>
                   </div>
                 </div>
-              </div>
-
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* ══ THREE-DOT DROPDOWN MENU ══ */}
+      {/* THREE-DOT MENU */}
       {menuUser && (
         <>
-          <div onClick={() => setMenuUser(null)} style={{ position:'fixed', inset:0, zIndex:300 }}/>
-          <div style={{ position:'fixed', top:menuPos.top, right:menuPos.right, width:180, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, overflow:'hidden', zIndex:400, boxShadow:'0 8px 32px rgba(0,0,0,0.6)' }}>
+          <div onClick={()=>setMenuUser(null)} style={{ position:'fixed', inset:0, zIndex:300 }}/>
+          <div style={{ position:'fixed', top:menuPos.top, right:menuPos.right, width:190, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, overflow:'hidden', zIndex:400, boxShadow:'0 8px 32px rgba(0,0,0,0.6)' }}>
             {[
-              { label:'View Profile',      icon:<Eye size={14}/>,          action:'view'    },
-              { label:'Edit User',         icon:<Edit size={14}/>,         action:'edit'    },
-              { label:'Verify User',       icon:<BadgeCheck size={14}/>,   action:'verify'  },
-              { label:'Suspend User',      icon:<Power size={14}/>,        action:'suspend' },
-              { label:'Reset Password',    icon:<RefreshCw size={14}/>,    action:'reset'   },
-              { label:'View Activity',     icon:<Clock size={14}/>,        action:'activity'},
-              { label:'Delete User',       icon:<X size={14}/>,            action:'delete'  },
-            ].map(item => {
-              const user = USERS.find(u=>u.id===menuUser)!;
-              return (
-                <div key={item.label} onClick={() => { openUserModal(user, item.action); setMenuUser(null); }}
-                  style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', cursor:'pointer', color:item.action==='delete'?'#EF4444':'#F5F5F5', fontSize:14, fontFamily:BARLOW }}
-                  onMouseEnter={e => (e.currentTarget.style.background='rgba(255,255,255,0.05)')}
-                  onMouseLeave={e => (e.currentTarget.style.background='transparent')}
-                >
-                  <span style={{ color:item.action==='delete'?'#EF4444':'rgba(255,255,255,0.5)' }}>{item.icon}</span>
-                  {item.label}
-                </div>
-              );
-            })}
+              { label:'View Full Profile', icon:<Eye size={14}/>, action:'view_profile' },
+              { label:'Quick Info',        icon:<Shield size={14}/>,     action:'view'                                                      },
+              { label:'Edit User',         icon:<Edit2 size={14}/>,      action:'edit'                                                      },
+              { label:'Reset Password',    icon:<Shield size={14}/>,     action:'reset'                                                     },
+              { label:'View Audit Logs',   icon:<ScrollText size={14}/>, action:'audit'                                                     },
+              { label:activeUser?.is_active?'Suspend User':'Activate User', icon:<Power size={14}/>, action:activeUser?.is_active?'suspend':'activate', danger:!activeUser?.is_active },
+              { label:'Delete User',       icon:<X size={14}/>,          action:'delete', danger:true                                       },
+            ].map(item => (
+              <div key={item.label} onClick={()=>{ setMenuUser(null); if(item.action==='audit') { router.push('/admin/audit'); } else if(item.action==='view_profile') { if(activeUser?.role==='agency'){ const agId=Array.isArray(activeUser.agency_profiles)?activeUser.agency_profiles[0]?.id:(activeUser.agency_profiles as any)?.id; router.push(`/admin/agency-profile-view?id=${agId||activeUser.id}`); } else { router.push(`/admin/aspirant-profile?user_id=${activeUser?.id}`); } } else { openModal(activeUser!,item.action); } }}
+                style={{ display:'flex', alignItems:'center', gap:10, padding:'11px 16px', cursor:'pointer', borderBottom:'1px solid rgba(255,255,255,0.05)', color:(item as any).danger?RED:'rgba(255,255,255,0.8)' }}
+                onMouseEnter={e=>(e.currentTarget.style.background='rgba(255,255,255,0.05)')}
+                onMouseLeave={e=>(e.currentTarget.style.background='transparent')}
+              >
+                {item.icon}<span style={{ fontFamily:BARLOW, fontSize:15 }}>{item.label}</span>
+              </div>
+            ))}
           </div>
         </>
       )}
 
-      {/* ══ MODALS ══ */}
-
-      {/* View User */}
+      {/* VIEW USER MODAL */}
       {modal==='view' && activeUser && (
-        <Modal title="USER PROFILE" onClose={() => setModal('')} width={560}>
-          <div style={{ display:'flex', gap:16, alignItems:'center', marginBottom:24, padding:'16px', background:BG3, borderRadius:10 }}>
-            <div style={{ width:64, height:64, borderRadius:'50%', background:`${activeUser.avatarColor}25`, border:`2px solid ${activeUser.avatarColor}50`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, fontWeight:700, color:activeUser.avatarColor, flexShrink:0 }}>{activeUser.avatar}</div>
-            <div style={{ flex:1 }}>
-              <div style={{ fontFamily:BARLOW, fontSize:20, fontWeight:700, color:'#F5F5F5', marginBottom:4 }}>{activeUser.name}</div>
-              <div style={{ display:'flex', gap:8, flexWrap:'wrap' as const }}>
-                {typeBadge(activeUser.type)}
-                {verificationBadge(activeUser.verification)}
-                {statusBadge(activeUser.status)}
-              </div>
+        <Modal title="USER DETAILS" onClose={()=>setModal('')} width={520}>
+          <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:20, padding:'14px 16px', background:BG3, borderRadius:10 }}>
+            <div style={{ width:52, height:52, borderRadius:'50%', background:`${avatarColor(activeUser.id)}25`, border:`2px solid ${avatarColor(activeUser.id)}50`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:700, color:avatarColor(activeUser.id) }}>{initials(displayName(activeUser))}</div>
+            <div>
+              <div style={{ fontFamily:BEBAS, fontSize:22, color:'#F5F5F5', letterSpacing:0.5 }}>{displayName(activeUser)}</div>
+              <div style={{ display:'flex', gap:8, marginTop:4 }}>{typeBadge(activeUser.role)}{verificationBadge(verStatus(activeUser))}{statusBadge(activeUser.is_active)}</div>
             </div>
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:16 }}>
             {[
-              { icon:<Mail size={14}/>,     label:'Email',       value:activeUser.email      },
-              { icon:<Phone size={14}/>,    label:'Phone',       value:activeUser.phone       },
-              { icon:<Shield size={14}/>,   label:'User ID',     value:activeUser.id          },
-              { icon:<Calendar size={14}/>, label:'Joined On',   value:activeUser.joined      },
-              { icon:<Clock size={14}/>,    label:'Last Active', value:activeUser.lastActive  },
+              { icon:<Mail size={13}/>,     label:'Email',        value:activeUser.email },
+              { icon:<Phone size={13}/>,    label:'Phone',        value:activeUser.phone||'—' },
+              { icon:<Shield size={13}/>,   label:'Profile No.',  value:activeUser.profile_number||'—' },
+              { icon:<Calendar size={13}/>, label:'Joined On',    value:fmtDate(activeUser.created_at) },
+              { icon:<Clock size={13}/>,    label:'Last Login',   value:activeUser.last_login_at?timeAgo(activeUser.last_login_at):'Never' },
+              { icon:<BadgeCheck size={13}/>,label:'Plan',        value:planName(activeUser) },
             ].map(row => (
               <div key={row.label} style={{ padding:'10px 14px', background:BG3, borderRadius:8 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:6, fontFamily:BARLOW, fontSize: 14, color:'rgba(255,255,255,0.4)', marginBottom:4 }}>{row.icon} {row.label}</div>
-                <div style={{ fontFamily:BARLOW, fontSize:15, color:'#F5F5F5', fontWeight:600 }}>{row.value}</div>
+                <div style={{ display:'flex', alignItems:'center', gap:6, fontFamily:BARLOW, fontSize:13, color:'rgba(255,255,255,0.4)', marginBottom:4 }}>{row.icon} {row.label}</div>
+                <div style={{ fontFamily:BARLOW, fontSize:15, color:'#F5F5F5', fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' as const }}>{row.value}</div>
               </div>
             ))}
           </div>
-          <div style={{ display:'flex', gap:10, marginTop:16 }}>
-            <button onClick={() => { setModal('edit'); }} style={{ flex:1, padding:10, background:GOLD, border:'none', borderRadius:7, color:BG, fontFamily:BEBAS, fontSize:17, letterSpacing:1, cursor:'pointer' }}>Edit User</button>
-            <button onClick={() => setModal('')} style={{ flex:1, padding:10, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, color:'rgba(255,255,255,0.6)', fontFamily:BARLOW, fontSize:15, cursor:'pointer' }}>Close</button>
+          <div style={{ display:'flex', gap:10, marginTop:8 }}>
+            <button onClick={()=>openModal(activeUser, activeUser.is_active?'suspend':'activate')} style={{ flex:1, padding:10, background:activeUser.is_active?'rgba(239,68,68,0.1)':'rgba(34,197,94,0.1)', border:`1px solid ${activeUser.is_active?'rgba(239,68,68,0.3)':'rgba(34,197,94,0.3)'}`, borderRadius:7, color:activeUser.is_active?'#EF4444':GREEN, fontFamily:BARLOW, fontSize:15, cursor:'pointer' }}>
+              {activeUser.is_active?'Suspend':'Activate'}
+            </button>
+            <button onClick={()=>openModal(activeUser,'reset')} style={{ flex:1, padding:10, background:GOLD, border:'none', borderRadius:7, color:BG, fontFamily:BEBAS, fontSize:17, letterSpacing:1, cursor:'pointer' }}>Reset Password</button>
+            <button onClick={()=>setModal('')} style={{ flex:1, padding:10, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, color:'rgba(255,255,255,0.6)', fontFamily:BARLOW, fontSize:15, cursor:'pointer' }}>Close</button>
           </div>
         </Modal>
       )}
 
-      {/* Edit User */}
-      {modal==='edit' && activeUser && (
-        <Modal title="EDIT USER" onClose={() => setModal('')}>
-          <InputRow label="Full Name"    defaultValue={activeUser.name}  />
-          <InputRow label="Email"        defaultValue={activeUser.email} type="email"/>
-          <InputRow label="Phone Number" defaultValue={activeUser.phone} />
-          <div style={{ marginBottom:16 }}>
-            <label style={{ display:'block', fontFamily:BARLOW, fontSize: 14, color:'rgba(255,255,255,0.5)', marginBottom:5 }}>User Type</label>
-            <select defaultValue={activeUser.type} style={{ width:'100%', background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, padding:'10px 12px', color:'#F5F5F5', fontFamily:BARLOW, fontSize:15, outline:'none' }}>
-              <option>Aspirant</option><option>Agency</option>
-            </select>
-          </div>
-          <div style={{ marginBottom:16 }}>
-            <label style={{ display:'block', fontFamily:BARLOW, fontSize: 14, color:'rgba(255,255,255,0.5)', marginBottom:5 }}>Status</label>
-            <select defaultValue={activeUser.status} style={{ width:'100%', background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, padding:'10px 12px', color:'#F5F5F5', fontFamily:BARLOW, fontSize:15, outline:'none' }}>
-              <option>Active</option><option>Suspended</option><option>Blocked</option>
-            </select>
-          </div>
-          <MFooter onClose={() => setModal('')} />
-        </Modal>
-      )}
-
-      {/* Verify User */}
-      {modal==='verify' && activeUser && (
-        <Modal title="VERIFY USER" onClose={() => setModal('')}>
-          <div style={{ fontFamily:BARLOW, fontSize:15, color:'rgba(255,255,255,0.6)', marginBottom:16, lineHeight:1.6 }}>
-            Are you sure you want to verify <strong style={{ color:'#F5F5F5' }}>{activeUser.name}</strong>? Their profile will be marked as verified on the platform.
-          </div>
-          <MFooter onClose={() => setModal('')} label="Verify User" />
-        </Modal>
-      )}
-
-      {/* Suspend User */}
+      {/* SUSPEND MODAL */}
       {modal==='suspend' && activeUser && (
-        <Modal title="SUSPEND USER" onClose={() => setModal('')}>
+        <Modal title="SUSPEND USER" onClose={()=>setModal('')}>
           <div style={{ padding:'12px 16px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.2)', borderRadius:8, marginBottom:16 }}>
             <div style={{ fontFamily:BARLOW, fontSize:15, color:'#F59E0B', fontWeight:700, marginBottom:4 }}>⚠️ This will restrict the user's access</div>
-            <div style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.5)' }}>Suspending <strong style={{ color:'#F5F5F5' }}>{activeUser.name}</strong> will prevent them from logging in until reinstated.</div>
+            <div style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.5)' }}>Suspending <strong style={{ color:'#F5F5F5' }}>{displayName(activeUser)}</strong> will prevent them from logging in.</div>
           </div>
           <div style={{ marginBottom:16 }}>
-            <label style={{ display:'block', fontFamily:BARLOW, fontSize: 14, color:'rgba(255,255,255,0.5)', marginBottom:5 }}>Reason for Suspension</label>
-            <select style={{ width:'100%', background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, padding:'10px 12px', color:'#F5F5F5', fontFamily:BARLOW, fontSize:15, outline:'none' }}>
+            <label style={{ display:'block', fontFamily:BARLOW, fontSize:13, color:'rgba(255,255,255,0.5)', marginBottom:5 }}>Reason</label>
+            <select value={suspendReason} onChange={e=>setSuspendReason(e.target.value)} style={{ width:'100%', background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, padding:'10px 12px', color:'#F5F5F5', fontFamily:BARLOW, fontSize:15, outline:'none' }}>
               <option>Policy Violation</option><option>Suspicious Activity</option><option>User Request</option><option>Fraud</option><option>Other</option>
             </select>
           </div>
-          <InputRow label="Additional Notes (optional)" placeholder="Add notes..." />
-          <MFooter onClose={() => setModal('')} label="Suspend User" danger />
+          <InputField label="Additional Notes (optional)" value={suspendNotes} onChange={setSuspendNotes} placeholder="Add notes..."/>
+          <div style={{ display:'flex', gap:10, marginTop:8 }}>
+            <button onClick={()=>setModal('')} style={{ flex:1, padding:10, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, color:'rgba(255,255,255,0.6)', fontFamily:BARLOW, fontSize:15, cursor:'pointer' }}>Cancel</button>
+            <button disabled={actionLoading} onClick={()=>doAction(activeUser.id,'suspend',`${suspendReason}${suspendNotes?' - '+suspendNotes:''}`)} style={{ flex:2, padding:10, background:RED, border:'none', borderRadius:7, color:'#fff', fontFamily:BEBAS, fontSize:17, letterSpacing:1, cursor:'pointer', opacity:actionLoading?0.6:1 }}>
+              {actionLoading?'Suspending…':'Suspend User'}
+            </button>
+          </div>
         </Modal>
       )}
 
-      {/* Delete User */}
+      {/* ACTIVATE MODAL */}
+      {/* EDIT USER MODAL */}
+      {modal==='edit' && activeUser && (
+        <EditUserModal
+          user={activeUser}
+          onClose={()=>setModal('')}
+          onSave={async (patch)=>{
+            try {
+              const token = localStorage.getItem('ss_user') || sessionStorage.getItem('ss_user') || '{}';
+              const t = JSON.parse(token).token || '';
+              const res = await fetch('/api/admin/users', {
+                method: 'PUT',
+                headers: { 'Content-Type':'application/json', Authorization:`Bearer ${t}` },
+                body: JSON.stringify({ user_id: activeUser.id, action: 'edit', ...patch }),
+              });
+              const d = await res.json();
+              if (!res.ok) throw new Error((d.data??d)?.error || 'Failed to save');
+              showToast('User updated successfully', 'success');
+              setModal('');
+              fetchUsers();
+            } catch(e:any) {
+              showToast(e.message||'Failed to save changes', 'error');
+            }
+          }}
+        />
+      )}
+
+      {modal==='activate' && activeUser && (
+        <Modal title="ACTIVATE USER" onClose={()=>setModal('')}>
+          <div style={{ fontFamily:BARLOW, fontSize:15, color:'rgba(255,255,255,0.6)', marginBottom:20, lineHeight:1.6 }}>
+            Are you sure you want to reactivate <strong style={{ color:'#F5F5F5' }}>{displayName(activeUser)}</strong>? They will regain full platform access.
+          </div>
+          {activeUser.email?.includes('@silverscreens.deleted') && (
+            <div style={{ padding:'10px 14px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.25)', borderRadius:8, marginBottom:16, fontFamily:BARLOW, fontSize:14, color:'#F59E0B' }}>
+              ⚠️ This account was deleted. Activating will restore platform access but the original email is no longer available. The user will need to contact support to recover their account.
+            </div>
+          )}
+          <div style={{ display:'flex', gap:10 }}>
+            <button onClick={()=>setModal('')} style={{ flex:1, padding:10, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, color:'rgba(255,255,255,0.6)', fontFamily:BARLOW, fontSize:15, cursor:'pointer' }}>Cancel</button>
+            <button disabled={actionLoading} onClick={()=>doAction(activeUser.id,'activate')} style={{ flex:2, padding:10, background:GREEN, border:'none', borderRadius:7, color:'#000', fontFamily:BEBAS, fontSize:17, letterSpacing:1, cursor:'pointer', opacity:actionLoading?0.6:1 }}>
+              {actionLoading?'Activating…':'Activate User'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* DELETE MODAL */}
       {modal==='delete' && activeUser && (
-        <Modal title="DELETE USER" onClose={() => setModal('')}>
+        <Modal title="DELETE USER" onClose={()=>setModal('')}>
           <div style={{ padding:'14px 16px', background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.25)', borderRadius:8, marginBottom:16 }}>
             <div style={{ fontFamily:BARLOW, fontSize:15, color:'#EF4444', fontWeight:700, marginBottom:4 }}>⚠️ This action cannot be undone</div>
-            <div style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.5)', lineHeight:1.6 }}>Deleting <strong style={{ color:'#F5F5F5' }}>{activeUser.name}</strong> will permanently remove their account, profile, and all associated data from the platform.</div>
+            <div style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.5)', lineHeight:1.6 }}>Deleting <strong style={{ color:'#F5F5F5' }}>{displayName(activeUser)}</strong> will permanently remove their account and all data.</div>
           </div>
-          <InputRow label="Type DELETE to confirm" placeholder="DELETE" />
-          <MFooter onClose={() => setModal('')} label="Delete User" danger />
+          <div style={{ display:'flex', gap:10, marginTop:8 }}>
+            <button onClick={()=>setModal('')} style={{ flex:1, padding:10, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, color:'rgba(255,255,255,0.6)', fontFamily:BARLOW, fontSize:15, cursor:'pointer' }}>Cancel</button>
+            <button disabled={actionLoading} onClick={()=>doAction(activeUser.id,'delete')} style={{ flex:2, padding:10, background:RED, border:'none', borderRadius:7, color:'#fff', fontFamily:BEBAS, fontSize:17, letterSpacing:1, cursor:'pointer', opacity:actionLoading?0.6:1 }}>
+              {actionLoading?'Deleting…':'Delete User'}
+            </button>
+          </div>
         </Modal>
       )}
 
-      {/* Reset Password */}
+      {/* RESET PASSWORD MODAL */}
       {modal==='reset' && activeUser && (
-        <Modal title="RESET PASSWORD" onClose={() => setModal('')}>
+        <Modal title="RESET PASSWORD" onClose={()=>setModal('')}>
           <div style={{ fontFamily:BARLOW, fontSize:15, color:'rgba(255,255,255,0.6)', marginBottom:20, lineHeight:1.6 }}>
-            A password reset link will be sent to <strong style={{ color:'#F5F5F5' }}>{activeUser.email}</strong>. The user will receive an email with instructions to set a new password.
+            A password reset link will be sent to <strong style={{ color:'#F5F5F5' }}>{activeUser.email}</strong>.
           </div>
-          <MFooter onClose={() => setModal('')} label="Send Reset Link" />
-        </Modal>
-      )}
-
-      {/* Activity Log */}
-      {modal==='activity' && activeUser && (
-        <Modal title="USER ACTIVITY" onClose={() => setModal('')} width={540}>
-          <div style={{ fontFamily:BARLOW, fontSize:15, color:'#F5F5F5', marginBottom:16 }}>Recent activity for <strong>{activeUser.name}</strong></div>
-          {[
-            { action:'Login',            detail:'Chrome on Windows · Mumbai',     time:'2 hours ago',  color:GREEN  },
-            { action:'Profile Updated',  detail:'Updated bio and photos',          time:'1 day ago',    color:BLUE   },
-            { action:'Application Sent', detail:'Applied to City of Dreams S2',   time:'3 days ago',   color:PURPLE },
-            { action:'Password Changed', detail:'Via forgot password flow',        time:'1 week ago',   color:GOLD   },
-            { action:'Profile Created',  detail:'Joined SilverScreens',           time:activeUser.joined, color:GREEN },
-          ].map((log,i) => (
-            <div key={i} style={{ display:'flex', gap:12, padding:'10px 0', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
-              <div style={{ width:8, height:8, borderRadius:'50%', background:log.color, marginTop:6, flexShrink:0 }}/>
-              <div style={{ flex:1 }}>
-                <div style={{ fontFamily:BARLOW, fontSize:15, fontWeight:600, color:'#F5F5F5' }}>{log.action}</div>
-                <div style={{ fontFamily:BARLOW, fontSize: 14, color:'rgba(255,255,255,0.4)' }}>{log.detail}</div>
-              </div>
-              <div style={{ fontFamily:BARLOW, fontSize: 14, color:'rgba(255,255,255,0.3)', whiteSpace:'nowrap' as const }}>{log.time}</div>
-            </div>
-          ))}
-          <div style={{ marginTop:16 }}>
-            <button onClick={() => setModal('')} style={{ width:'100%', padding:10, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, color:'rgba(255,255,255,0.6)', fontFamily:BARLOW, fontSize:15, cursor:'pointer' }}>Close</button>
+          <div style={{ display:'flex', gap:10 }}>
+            <button onClick={()=>setModal('')} style={{ flex:1, padding:10, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, color:'rgba(255,255,255,0.6)', fontFamily:BARLOW, fontSize:15, cursor:'pointer' }}>Cancel</button>
+            <button disabled={actionLoading} onClick={()=>doAction(activeUser.id,'reset_password')} style={{ flex:2, padding:10, background:GOLD, border:'none', borderRadius:7, color:BG, fontFamily:BEBAS, fontSize:17, letterSpacing:1, cursor:'pointer', opacity:actionLoading?0.6:1 }}>
+              {actionLoading?'Sending…':'Send Reset Link'}
+            </button>
           </div>
         </Modal>
       )}
 
-      {/* Add User */}
-      {modal==='addUser' && (
-        <Modal title="ADD NEW USER" onClose={() => setModal('')}>
-          <InputRow label="Full Name"    placeholder="Enter full name"  />
-          <InputRow label="Email"        placeholder="Enter email address" type="email"/>
-          <InputRow label="Phone Number" placeholder="+91 XXXXX XXXXX"   />
-          <div style={{ marginBottom:16 }}>
-            <label style={{ display:'block', fontFamily:BARLOW, fontSize: 14, color:'rgba(255,255,255,0.5)', marginBottom:5 }}>User Type</label>
-            <select style={{ width:'100%', background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, padding:'10px 12px', color:'#F5F5F5', fontFamily:BARLOW, fontSize:15, outline:'none' }}>
-              <option>Aspirant</option><option>Agency</option>
-            </select>
-          </div>
-          <div style={{ marginBottom:16 }}>
-            <label style={{ display:'block', fontFamily:BARLOW, fontSize: 14, color:'rgba(255,255,255,0.5)', marginBottom:5 }}>Send Invitation Email</label>
-            <div style={{ display:'flex', gap:10 }}>
-              <button style={{ flex:1, padding:10, background:'rgba(34,197,94,0.1)', border:'1px solid rgba(34,197,94,0.3)', borderRadius:7, color:GREEN, fontFamily:BARLOW, fontSize:14, cursor:'pointer' }}>Yes, Send Email</button>
-              <button style={{ flex:1, padding:10, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, color:'rgba(255,255,255,0.6)', fontFamily:BARLOW, fontSize:14, cursor:'pointer' }}>No</button>
-            </div>
-          </div>
-          <MFooter onClose={() => setModal('')} label="Create User" />
-        </Modal>
-      )}
-
-      {/* Export */}
-      {modal==='export' && (
-        <Modal title="EXPORT USERS" onClose={() => setModal('')}>
-          <div style={{ fontFamily:BARLOW, fontSize:15, color:'rgba(255,255,255,0.6)', marginBottom:16 }}>Export user data in your preferred format.</div>
-          <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:20 }}>
-            {['CSV','Excel (.xlsx)','PDF Report','JSON'].map(fmt => (
-              <div key={fmt} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px', background:BG3, border:'1px solid rgba(255,255,255,0.07)', borderRadius:8, cursor:'pointer' }}
-                onMouseEnter={e => (e.currentTarget.style.borderColor=GOLD)}
-                onMouseLeave={e => (e.currentTarget.style.borderColor='rgba(255,255,255,0.07)')}
-              >
-                <span style={{ fontFamily:BARLOW, fontSize:15, color:'#F5F5F5' }}>{fmt}</span>
-                <Download size={16} color="rgba(255,255,255,0.4)"/>
-              </div>
-            ))}
-          </div>
-          <button onClick={() => setModal('')} style={{ width:'100%', padding:10, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, color:'rgba(255,255,255,0.6)', fontFamily:BARLOW, fontSize:15, cursor:'pointer' }}>Close</button>
-        </Modal>
-      )}
-
-      {/* Bulk Actions */}
-      {(modal==='bulkVerify'||modal==='bulkSuspend'||modal==='bulkDelete') && (
-        <Modal title={modal==='bulkVerify'?'BULK VERIFY':modal==='bulkSuspend'?'BULK SUSPEND':'BULK DELETE'} onClose={() => setModal('')}>
+      {/* BULK SUSPEND */}
+      {modal==='bulkSuspend' && (
+        <Modal title="BULK SUSPEND" onClose={()=>setModal('')}>
           <div style={{ fontFamily:BARLOW, fontSize:15, color:'rgba(255,255,255,0.6)', marginBottom:20, lineHeight:1.6 }}>
-            This action will be applied to <strong style={{ color:'#F5F5F5' }}>{selected.length} selected users</strong>.{' '}
-            {modal==='bulkDelete' && 'This cannot be undone.'}
+            This will suspend <strong style={{ color:'#F5F5F5' }}>{selected.length} selected users</strong>.
           </div>
-          <MFooter onClose={() => { setModal(''); setSelected([]); }} label={modal==='bulkVerify'?'Verify All':modal==='bulkSuspend'?'Suspend All':'Delete All'} danger={modal!=='bulkVerify'} />
+          <div style={{ display:'flex', gap:10 }}>
+            <button onClick={()=>setModal('')} style={{ flex:1, padding:10, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, color:'rgba(255,255,255,0.6)', fontFamily:BARLOW, fontSize:15, cursor:'pointer' }}>Cancel</button>
+            <button disabled={actionLoading} onClick={async()=>{ for(const id of selected) await doAction(id,'suspend','Bulk action'); setSelected([]); }} style={{ flex:2, padding:10, background:RED, border:'none', borderRadius:7, color:'#fff', fontFamily:BEBAS, fontSize:17, letterSpacing:1, cursor:'pointer' }}>
+              Suspend All
+            </button>
+          </div>
         </Modal>
       )}
 
-      {/* Filters Modal */}
-      {modal==='filters' && (
-        <Modal title="MORE FILTERS" onClose={() => setModal('')}>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
-            {[
-              { label:'Country',        options:['All Countries','India','USA','UK','UAE'] },
-              { label:'City',           options:['All Cities','Mumbai','Delhi','Chennai','Bangalore'] },
-              { label:'Joined After',   options:['Any Time','Last 7 days','Last 30 days','Last 3 months','Last year'] },
-              { label:'Last Active',    options:['Any Time','Today','This Week','This Month'] },
-              { label:'Profile Complete', options:['Any','Complete','Incomplete'] },
-              { label:'Has Showreel',   options:['Any','Yes','No'] },
-            ].map(f => (
-              <div key={f.label}>
-                <label style={{ display:'block', fontFamily:BARLOW, fontSize: 14, color:'rgba(255,255,255,0.5)', marginBottom:5 }}>{f.label}</label>
-                <select style={{ width:'100%', background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, padding:'9px 12px', color:'#F5F5F5', fontFamily:BARLOW, fontSize:14, outline:'none' }}>
-                  {f.options.map(o => <option key={o}>{o}</option>)}
-                </select>
-              </div>
-            ))}
+      {/* BULK DELETE */}
+      {modal==='bulkDelete' && (
+        <Modal title="BULK DELETE" onClose={()=>setModal('')}>
+          <div style={{ fontFamily:BARLOW, fontSize:15, color:'rgba(255,255,255,0.6)', marginBottom:20, lineHeight:1.6 }}>
+            This will permanently delete <strong style={{ color:'#F5F5F5' }}>{selected.length} selected users</strong>. This cannot be undone.
           </div>
-          <div style={{ marginTop:20 }}><MFooter onClose={() => setModal('')} label="Apply Filters" /></div>
+          <div style={{ display:'flex', gap:10 }}>
+            <button onClick={()=>setModal('')} style={{ flex:1, padding:10, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, color:'rgba(255,255,255,0.6)', fontFamily:BARLOW, fontSize:15, cursor:'pointer' }}>Cancel</button>
+            <button disabled={actionLoading} onClick={async()=>{ for(const id of selected) await doAction(id,'delete'); setSelected([]); }} style={{ flex:2, padding:10, background:RED, border:'none', borderRadius:7, color:'#fff', fontFamily:BEBAS, fontSize:17, letterSpacing:1, cursor:'pointer' }}>
+              Delete All
+            </button>
+          </div>
         </Modal>
       )}
 
+
+
+      {/* TOAST */}
+      {toast && <Toast msg={toast.msg} type={toast.type}/>}
     </div>
   );
-}
+}	

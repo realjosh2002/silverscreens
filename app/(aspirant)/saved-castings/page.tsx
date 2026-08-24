@@ -2,7 +2,8 @@
 
 import AspirantHeader from '@/components/layout/AspirantHeader'
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation'
+
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
 
@@ -24,7 +25,7 @@ const BEBAS  = "'Bebas Neue', sans-serif";
 const SIDEBAR_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard',            href: '/dashboard'       },
   { icon: FileText,        label: 'My Applications',      href: '/my-applications' },
-  { icon: MessageSquare,   label: 'Messages',             href: '/messages',        badge: 2 },
+  { icon: MessageSquare,   label: 'Messages',             href: '/messages' },
   { icon: Mic2,            label: 'Auditions',            href: '/auditions'       },
   { icon: Bookmark,        label: 'Saved Castings',       href: '/saved-castings',  active: true },
   { icon: Star,            label: 'Recommended Castings', href: '/recommended'     },
@@ -128,20 +129,20 @@ const QUICK_TIPS = [
 
 /* ─── Page ──────────────────────────────────────────────────── */
 export default function SavedCastingsPage() {
-  const router = useRouter();
+  const router = useRouter()
 
   const [sidebarOpen,  setSidebarOpen]  = useState(false);
-  const [userName,   setUserName]   = useState('My Account');
-  const [avatarUrl,  setAvatarUrl]  = useState('');
-
+  const [isApproved, setIsApproved] = useState(false);
   useEffect(() => {
     try {
       const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
-      if (u.name)         setUserName(u.name);
-      if (u.profilePhoto) setAvatarUrl(u.profilePhoto);
+      const ps = u?.profileStatus;
+      setIsApproved(ps === 'approved' || ps === 'active');
     } catch {}
   }, []);
-
+  const [authReady,    setAuthReady]    = useState(false);
+  const [userName,     setUserName]     = useState('My Account');
+  const [avatarUrl,    setAvatarUrl]    = useState('');
   const [activeTab,    setActiveTab]    = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [sortOpen,     setSortOpen]     = useState(false);
@@ -153,20 +154,24 @@ export default function SavedCastingsPage() {
   const [categories,   setCategories]   = useState<Record<string, boolean>>(
     Object.fromEntries(CATEGORY_FILTERS.map(c => [c, false]))
   );
-  const [castings,     setCastings]     = useState(CASTINGS);
+  const [castings,     setCastings]     = useState<typeof CASTINGS>([]);
   const [loading,      setLoading]      = useState(true);
-
-  const TABS = [
-    { label: 'All Saved',  count: castings.length,                                             filter: null as CastingType | null },
-    { label: 'Film',       count: castings.filter(c => c.type === 'Film').length,       filter: 'Film'       as CastingType },
-    { label: 'Web Series', count: castings.filter(c => c.type === 'Web Series').length, filter: 'Web Series' as CastingType },
-    { label: 'TV',         count: castings.filter(c => c.type === 'TV Series').length,  filter: 'TV Series'  as CastingType },
-    { label: 'Ad Films',   count: castings.filter(c => c.type === 'Ad Film').length,    filter: 'Ad Film'    as CastingType },
-  ];
-  const SB_W = sidebarOpen ? 240 : 56;
 
   const dropRef = useRef<HTMLDivElement>(null);
   const sortRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
+      if (!u?.loggedIn) { window.location.replace('/login'); return; }
+      const ps = u?.profileStatus;
+      const approved = ps === 'approved' || ps === 'active';
+      setIsApproved(approved);
+      if (approved && u.name)         setUserName(u.name);
+      if (approved && u.profilePhoto) setAvatarUrl(u.profilePhoto);
+      setAuthReady(true);
+    } catch { window.location.replace('/login'); }
+  }, []);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -176,6 +181,15 @@ export default function SavedCastingsPage() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  const TABS = [
+    { label: 'All Saved',  count: castings.length,                                             filter: null as CastingType | null },
+    { label: 'Film',       count: castings.filter(c => c.type === 'Film').length,       filter: 'Film'       as CastingType },
+    { label: 'Web Series', count: castings.filter(c => c.type === 'Web Series').length, filter: 'Web Series' as CastingType },
+    { label: 'TV',         count: castings.filter(c => c.type === 'TV Series').length,  filter: 'TV Series'  as CastingType },
+    { label: 'Ad Films',   count: castings.filter(c => c.type === 'Ad Film').length,    filter: 'Ad Film'    as CastingType },
+  ];
+  const SB_W = sidebarOpen ? 240 : 56;
 
   // Fetch saved castings from API
   useEffect(() => {
@@ -252,6 +266,8 @@ export default function SavedCastingsPage() {
     setLocation('All Locations');
   };
 
+  if (!authReady) return null;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: BG, fontFamily: BARLOW, color: '#fff' }}>
 
@@ -311,6 +327,19 @@ export default function SavedCastingsPage() {
               <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.45)' }}>Castings you&apos;ve saved to apply later or keep track of.</p>
             </div>
 
+
+            {/* Profile incomplete banner */}
+            {!isApproved && (
+              <div style={{ marginBottom: 16, padding: '10px 16px', background: 'rgba(212,166,74,0.08)', border: '1px solid rgba(212,166,74,0.25)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 16 }}>🎬</span>
+                  <span style={{ fontFamily: BARLOW, fontSize: 14, color: 'rgba(255,255,255,0.6)' }}>Complete your profile, choose a plan and get admin approval to unlock full access.</span>
+                </div>
+                <button onClick={() => router.push('/create-profile')} style={{ flexShrink: 0, padding: '6px 14px', background: GOLD, border: 'none', borderRadius: 6, color: '#050505', fontFamily: BEBAS, fontSize: 14, letterSpacing: 1, cursor: 'pointer' }}>
+                  CREATE PROFILE →
+                </button>
+              </div>
+            )}
             {/* Tabs + Sort */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: 16 }}>
               <div style={{ display: 'flex', gap: 0 }}>

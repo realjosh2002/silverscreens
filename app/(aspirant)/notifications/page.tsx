@@ -2,7 +2,8 @@
 
 import AspirantHeader from '@/components/layout/AspirantHeader'
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation'
+
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
 
@@ -25,7 +26,7 @@ const BEBAS  = "'Bebas Neue', sans-serif";
 const SIDEBAR_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard',            href: '/dashboard'      },
   { icon: FileText,        label: 'My Applications',      href: '/my-applications'},
-  { icon: MessageSquare,   label: 'Messages',             href: '/messages',       badge: 2 },
+  { icon: MessageSquare,   label: 'Messages',             href: '/messages' },
   { icon: Mic2,            label: 'Auditions',            href: '/auditions'      },
   { icon: Bookmark,        label: 'Saved Castings',       href: '/saved-castings' },
   { icon: Star,            label: 'Recommended Castings', href: '/recommended'    },
@@ -176,7 +177,7 @@ function MarkAllReadIcon() {
 }
 
 export default function NotificationsPage() {
-  const router = useRouter();
+  const router = useRouter()
 
   const [sidebarOpen,  setSidebarOpen]  = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -190,7 +191,8 @@ export default function NotificationsPage() {
   const [settings,     setSettings]     = useState({ push: true, email: true, sms: false, marketing: false });
   const [userName,     setUserName]     = useState('My Account');
   const [avatarUrl,    setAvatarUrl]    = useState('');
-  const [msgCount,     setMsgCount]     = useState(2);
+  const [msgCount,     setMsgCount]     = useState(0);
+  const [isApproved,   setIsApproved]   = useState(false);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -200,12 +202,15 @@ export default function NotificationsPage() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  /* ── Load user identity instantly ── */
+  /* ── Load user identity + approval status ── */
   useEffect(() => {
     try {
       const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
-      if (u.name)         setUserName(u.name);
-      if (u.profilePhoto) setAvatarUrl(u.profilePhoto);
+      const ps = u?.profileStatus;
+      const approved = ps === 'approved' || ps === 'active';
+      setIsApproved(approved);
+      if (approved && u.name)         setUserName(u.name);
+      if (approved && u.profilePhoto) setAvatarUrl(u.profilePhoto);
     } catch {}
   }, []);
 
@@ -221,6 +226,18 @@ export default function NotificationsPage() {
         const list = data.data?.notifications ?? data.notifications ?? data;
         if (!Array.isArray(list) || list.length === 0) return;
         setNotifs(list.map((n: any, i: number) => apiToNotif(n, i)));
+
+        // ── Auto mark all as read when page is opened ─────────
+        const hasUnread = list.some((n: any) => !(n.is_read ?? n.isRead ?? n.read ?? false));
+        if (hasUnread) {
+          fetch('/api/notifications', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', ...h },
+            body: JSON.stringify({}),
+          }).then(r => {
+            if (r.ok) setNotifs(prev => prev.map(n => ({ ...n, read: true })));
+          }).catch(() => {});
+        }
       })
       .catch(() => {}); // keep empty on error — no mock data
 
@@ -338,6 +355,19 @@ export default function NotificationsPage() {
                 <MarkAllReadIcon /> Mark all as read
               </button>
             </div>
+
+            {/* Profile incomplete banner */}
+            {!isApproved && (
+              <div style={{ marginBottom: 16, padding: '10px 16px', background: 'rgba(212,166,74,0.08)', border: '1px solid rgba(212,166,74,0.25)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 16 }}>🎬</span>
+                  <span style={{ fontFamily: BARLOW, fontSize: 14, color: 'rgba(255,255,255,0.6)' }}>Complete your profile, choose a plan and get admin approval to unlock full access.</span>
+                </div>
+                <button onClick={() => router.push('/create-profile')} style={{ flexShrink: 0, padding: '6px 14px', background: '#D4A64A', border: 'none', borderRadius: 6, color: '#050505', fontFamily: BEBAS, fontSize: 14, letterSpacing: 1, cursor: 'pointer' }}>
+                  CREATE PROFILE →
+                </button>
+              </div>
+            )}
 
             {/* Filter tabs */}
             <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: 0 }}>

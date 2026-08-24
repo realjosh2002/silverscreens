@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -34,42 +34,46 @@ const NAV_ITEMS = [
   { icon: Star,            label: 'Shortlisted Talents',     href: '/agency/shortlisted' },
   { icon: CalendarCheck,   label: 'Audition Management',     href: '/agency/auditions', active: true },
   { icon: Bookmark,        label: 'Saved Talents',           href: '/agency/saved-talents' },
-  { icon: MessageSquare,   label: 'Messages',  badge: 12,    href: '/agency/messages' },
-  { icon: Bell,            label: 'Notifications', badge: 3, href: '/agency/notifications' },
+  { icon: MessageSquare,   label: 'Messages',  href: '/agency/messages' },
+  { icon: Bell,            label: 'Notifications', href: '/agency/notifications' },
 ];
 
 /* ─── Mock aspirant data ──────────────────────────────────────── */
-const ASPIRANTS: Record<string, {
-  name: string; verified: boolean; category: string; gender: string; age: number;
-  location: string; rating: number; reviews: number; views: string;
-  img: string; appStatus: string; castingCall: string; ccType: string;
-  ccProducer: string; ccStatus: string; ccImg: string;
-  role: string; appliedOn: string; appliedTime: string; appId: string;
-}> = {
-  a1: {
-    name: 'Arjun Malhotra', verified: true, category: 'Actor', gender: 'Male', age: 26,
-    location: 'Mumbai, Maharashtra, India', rating: 4.8, reviews: 32, views: '3.2K',
-    img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face',
-    appStatus: 'Shortlisted',
-    castingCall: 'City of Dreams – Season 2', ccType: 'Web Series', ccProducer: 'Silver Paradise Productions',
-    ccStatus: 'Open', ccImg: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=80&h=80&fit=crop',
-    role: 'Lead Hero', appliedOn: '20 May 2024', appliedTime: '11:30 AM', appId: 'APP-2024-000512',
-  },
-  a2: {
-    name: 'Meera Iyer', verified: true, category: 'Actor', gender: 'Female', age: 25,
-    location: 'Mumbai, Maharashtra, India', rating: 4.9, reviews: 48, views: '5.1K',
-    img: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=face',
-    appStatus: 'Shortlisted',
-    castingCall: 'The Silent Witness', ccType: 'Web Series', ccProducer: 'Dharma Productions',
-    ccStatus: 'Open', ccImg: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=80&h=80&fit=crop',
-    role: 'Female Lead', appliedOn: '19 May 2024', appliedTime: '04:15 PM', appId: 'APP-2024-000498',
-  },
+// Get fresh auth token using refresh token
+async function getFreshHeaders(): Promise<Record<string, string>> {
+  try {
+    const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
+    const rt = u.refreshToken ?? u.refresh_token ?? '';
+    if (rt) {
+      const res = await fetch('/api/auth/refresh', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: rt }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        const nt = d?.data?.access_token ?? '';
+        if (nt) {
+          localStorage.setItem('ss_user', JSON.stringify({ ...u, token: nt, refreshToken: d?.data?.refresh_token ?? rt }));
+          return { Authorization: `Bearer ${nt}` };
+        }
+      }
+    }
+    if (u.token) return { Authorization: `Bearer ${u.token}` };
+  } catch {}
+  return {};
+}
+
+// Empty fallback — real data loaded from API
+const FALLBACK_ASPIRANT = {
+  id: '', name: '', verified: false, category: '', gender: '', age: 0,
+  location: '', rating: 0, reviews: 0, views: '0',
+  img: '', appStatus: 'Shortlisted',
+  castingCall: '', ccType: '', ccProducer: '', ccStatus: 'Open', ccImg: '',
+  role: '', appliedOn: '', appliedTime: '', appId: '',
 };
 
-const FALLBACK_ASPIRANT = ASPIRANTS['a1'];
-
-const STUDIOS = ['Dharma Studio, Andheri', 'Silver Paradise Studios, Juhu', 'Mumbai Film City', 'Delhi Production Hub', 'Other'];
-const ROOMS   = ['Studio A – Floor 2', 'Studio B – Floor 1', 'Conference Room', 'Rehearsal Hall', 'Main Stage'];
+const STUDIOS = ['Studio A', 'Studio B', 'Conference Room', 'Rehearsal Hall', 'Main Stage', 'Other'];
+const ROOMS   = ['Floor 1', 'Floor 2', 'Ground Floor', 'Terrace', 'Main Hall'];
 const DURATIONS = ['15 Minutes', '20 Minutes', '30 Minutes', '45 Minutes', '60 Minutes', '90 Minutes'];
 const REMINDERS = ['30 Minutes Before', '1 Hour Before', '3 Hours Before', '1 Day Before', '2 Days Before'];
 
@@ -88,13 +92,65 @@ export default function ScheduleAuditionWrapper() {
 
 function ScheduleAuditionPage() {
   const router = useRouter();
+
+  const [msgCount,      setMsgCount]      = useState(0);
+  const [notifCount,    setNotifCount]    = useState(0);
+  const [agencyName,    setAgencyName]    = useState(() => { try { return JSON.parse(localStorage.getItem('ss_user') || '{}').name || 'My Agency'; } catch { return 'My Agency'; } });
+  const [agencyInitials,setAgencyInitials]= useState(() => { try { const n = JSON.parse(localStorage.getItem('ss_user') || '{}').name || 'AG'; return n.split(' ').map((w: string) => w[0]).slice(0,2).join('').toUpperCase(); } catch { return 'AG'; } });
+  const [agencyType,    setAgencyType]    = useState('Production House');
+  const [agencyId,      setAgencyId]      = useState(() => { try { return JSON.parse(localStorage.getItem('ss_user') || '{}').profileNumber || 'AGE·········'; } catch { return 'AGE·········'; } });
+  const [isApproved,    setIsApproved]    = useState(true);
+
+  function getAuthHeaders() {
+    try { const u = JSON.parse(localStorage.getItem('ss_user') || '{}'); const token = u.token ?? u.access_token ?? ''; return token ? { Authorization: `Bearer ${token}` } : {}; } catch { return {}; }
+  }
+
+  useEffect(() => {
+    // Fetch real agency name
+    const h = getAuthHeaders();
+    fetch('/api/profile/agency', { headers: h })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        const p = d?.data?.profile ?? d?.profile ?? d;
+        const name = p?.company_name;
+        if (name) {
+          setAgencyName(name);
+          setAgencyInitials(name.split(' ').map((w: string) => w[0]).slice(0,2).join('').toUpperCase());
+        }
+        const agNum = p?.profile_number ?? p?.profiles?.profile_number;
+        if (agNum) setAgencyId(agNum);
+        if (p?.company_type) setAgencyType(p.company_type);
+        const vs = p?.verification_status ?? 'pending';
+        setIsApproved(vs === 'approved' || vs === 'active');
+      }).catch(() => {});
+
+    function fetchCounts() {
+      const h = getAuthHeaders();
+      fetch('/api/notifications', { headers: h }).then(r => r.ok ? r.json() : null).then(data => {
+        if (!data) return;
+        const count = data.data?.unread_count ?? data.unread_count;
+        if (count != null) { setNotifCount(count); return; }
+        const list = data.data?.notifications ?? data.notifications ?? [];
+        if (Array.isArray(list)) setNotifCount(list.filter((n: any) => !n.is_read).length);
+      }).catch(() => {});
+      fetch('/api/messages/conversations', { headers: h }).then(r => r.ok ? r.json() : null).then(data => {
+        if (!data) return;
+        const list = data.data?.conversations ?? data.conversations ?? [];
+        if (Array.isArray(list)) setMsgCount(list.filter((c: any) => c.unreadCount > 0 || c.unread_count > 0).length);
+      }).catch(() => {});
+    }
+    fetchCounts();
+    const interval = setInterval(fetchCounts, 30000);
+    return () => clearInterval(interval);
+  }, []);
   const searchParams = useSearchParams();
   const applicationId = searchParams?.get('applicationId') ?? '';
   const candidateId   = searchParams?.get('candidate') ?? 'a1';
   const fromPage      = searchParams?.get('from') ?? 'shortlisted';
-  const backLabel     = fromPage === 'auditions' ? 'Back to Audition Management' : 'Back to Shortlisted Talents';
-  const backHref      = fromPage === 'auditions' ? '/agency/auditions' : '/agency/shortlisted';
-  const [asp,          setAsp]          = useState(ASPIRANTS[candidateId] ?? FALLBACK_ASPIRANT);
+  const isFromTalent  = fromPage === 'talent';
+  const backLabel     = fromPage === 'auditions' ? 'Back to Audition Management' : fromPage === 'talent' ? 'Back to Talent Profile' : 'Back to Shortlisted Talents';
+  const backHref      = fromPage === 'auditions' ? '/agency/auditions' : fromPage === 'talent' ? `/agency/talent/${candidateId}` : '/agency/shortlisted';
+  const [asp,          setAsp]          = useState(FALLBACK_ASPIRANT);
 
   const [sidebarOpen,  setSidebarOpen]  = useState(false);
   const [profileOpen,  setProfileOpen]  = useState(false);
@@ -102,19 +158,19 @@ function ScheduleAuditionPage() {
   /* Section 1 */
   const [audType,      setAudType]      = useState<'In Person' | 'Self Tape' | 'Online Live'>('In Person');
   const [audMode,      setAudMode]      = useState<'Individual' | 'Group'>('Individual');
-  const [notes,        setNotes]        = useState('Scene performance + Dialogue delivery.\nPlease prepare the attached script.');
+  const [notes,        setNotes]        = useState('');
 
   /* Section 2 */
-  const [audDate,      setAudDate]      = useState('25 May 2024 (Saturday)');
-  const [startTime,    setStartTime]    = useState('11:00 AM');
+  const [audDate,      setAudDate]      = useState(() => { const d = new Date(); return d.toISOString().split('T')[0]; });
+  const [startTime,    setStartTime]    = useState('11:00');
   const [duration,     setDuration]     = useState('30 Minutes');
   const [bufferOn,     setBufferOn]     = useState(true);
   const [buffer,       setBuffer]       = useState('15 Minutes');
 
   /* Section 3 */
   const [locMode,      setLocMode]      = useState<'Physical Location' | 'Online (Video Call)' | 'Self Tape'>('Physical Location');
-  const [studio,       setStudio]       = useState('Dharma Studio, Andheri');
-  const [room,         setRoom]         = useState('Studio A – Floor 2');
+  const [studio,       setStudio]       = useState('');
+  const [room,         setRoom]         = useState('');
 
   /* Section 4 */
   const [sendEmail,    setSendEmail]    = useState(true);
@@ -122,6 +178,8 @@ function ScheduleAuditionPage() {
   const [reminder,     setReminder]     = useState('1 Day Before');
 
   const [saved,        setSaved]        = useState(false);
+  const [castingCalls, setCastingCalls] = useState<{id: string; title: string; project_type: string; role_name: string}[]>([]);
+  const [selectedCCId, setSelectedCCId] = useState('');
 
   const SB_W = sidebarOpen ? 230 : 52;
 
@@ -161,18 +219,112 @@ function ScheduleAuditionPage() {
       .catch(() => {});
   }, [applicationId]);
 
+  // Fetch aspirant data directly when coming from talent profile (no applicationId)
+  useEffect(() => {
+    if (applicationId || !candidateId) return;
+    const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
+    const token = u.token;
+    if (!token) return;
+    // Fetch aspirant profile
+    fetch(`/api/talents/${candidateId}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        const t = data.data?.talent ?? data.talent ?? data;
+        const dob = t.date_of_birth ? new Date(t.date_of_birth) : null;
+        const age = dob ? Math.floor((Date.now() - dob.getTime()) / (1000 * 60 * 60 * 24 * 365.25)) : 0;
+        const initials = [t.first_name, t.last_name].filter(Boolean).map((w: string) => w[0]).join('').toUpperCase();
+        setAsp(prev => ({
+          ...prev,
+          id:          t.id ?? prev.id,
+          name:        [t.first_name, t.last_name].filter(Boolean).join(' ') || prev.name,
+          photo:       initials || prev.photo,
+          img:         t.profile_image_url ?? prev.img,
+          gender:      t.gender ?? prev.gender,
+          age:         age || prev.age,
+          location:    [t.city, t.state].filter(Boolean).join(', ') || prev.location,
+          category:    t.category ?? prev.category,
+          role:        t.category ?? prev.role,
+          verified:    t.verification_status === 'approved',
+          profileId:   t.profile_number ?? prev.profileId,
+          appStatus:   'Available',
+          castingCall: '—',
+          ccType:      '—',
+          ccProducer:  '—',
+          ccStatus:    '—',
+        }));
+      })
+      .catch(() => {});
+
+    // Fetch agency casting calls for selection
+    fetch('/api/casting-calls?status=active&limit=50', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        const list = data.data?.casting_calls ?? data.castingCalls ?? data.data ?? [];
+        if (Array.isArray(list)) setCastingCalls(list.map((c: any) => ({
+          id:           c.id,
+          title:        c.title ?? '',
+          project_type: c.project_type ?? '',
+          role_name:    c.role_name ?? '',
+        })));
+      })
+      .catch(() => {});
+  }, [candidateId, applicationId]);
+
+  // auditionId is set when rescheduling an existing audition
+  const auditionId = searchParams?.get('auditionId') ?? '';
+  const isReschedule = !!auditionId;
+
+  // Fetch existing audition data for reschedule — pre-fills casting call and notes
+  useEffect(() => {
+    if (!auditionId) return;
+    getFreshHeaders().then(h => {
+      if (!h.Authorization) return;
+    fetch(`/api/auditions/${auditionId}`, { headers: h })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        const aud = data.data?.audition ?? data.audition ?? data;
+        const cc  = aud.casting_calls ?? {};
+        const ap  = aud.aspirant_profiles ?? {};
+        // Pre-fill form fields
+        if (aud.scheduled_at) {
+          const d = new Date(aud.scheduled_at);
+          setAudDate(d.toISOString().split('T')[0]);
+          setStartTime(d.toTimeString().slice(0,5));
+        }
+        if (aud.duration_minutes) setDuration(`${aud.duration_minutes} Minutes`);
+        if (aud.venue_details)    setStudio(aud.venue_details);
+        if (aud.notes)            setNotes(aud.notes);
+        if (aud.mode === 'online') setLocMode('Online (Video Call)');
+        else if (aud.mode === 'both') setLocMode('Self Tape');
+        // Pre-fill aspirant and casting call
+        setAsp(prev => ({
+          ...prev,
+          name:        [ap.first_name, ap.last_name].filter(Boolean).join(' ') || prev.name,
+          img:         ap.profile_image_url ?? prev.img,
+          castingCall: cc.title ?? prev.castingCall,
+          ccType:      cc.project_type ?? prev.ccType,
+          ccProducer:  cc.agency_profiles?.company_name ?? prev.ccProducer,
+        }));
+        if (cc.id) setSelectedCCId(cc.id);
+      })
+      .catch(() => {});
+    }); // end getFreshHeaders
+  }, [auditionId]);
+
   const handleSchedule = async () => {
-    if (!applicationId) {
-      router.push('/agency/auditions');
-      return;
-    }
     const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
     const token = u.token;
     if (!token) return;
 
-    // Build scheduled_at from audDate and startTime
-    const dateStr = audDate.replace(/\s*\(.*\)/, '').trim(); // remove "(Saturday)" etc
-    const scheduledAt = new Date(`${dateStr} ${startTime}`);
+    // Build scheduled_at from date picker value (YYYY-MM-DD) and time (HH:MM)
+    const scheduledAt = new Date(`${audDate}T${startTime}:00`);
+    if (isNaN(scheduledAt.getTime())) {
+      alert('Please select a valid date and time.');
+      return;
+    }
 
     const modeMap: Record<string, string> = {
       'In Person':   'offline',
@@ -181,27 +333,58 @@ function ScheduleAuditionPage() {
     };
 
     try {
-      const res = await fetch('/api/auditions', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
+      const url    = isReschedule ? `/api/auditions/${auditionId}` : '/api/auditions';
+      const method = isReschedule ? 'PATCH' : 'POST';
+
+      let body: Record<string, unknown>;
+      if (isReschedule) {
+        body = {
+          scheduled_at:     scheduledAt.toISOString(),
+          duration_minutes: parseInt(duration) || 30,
+          mode:             modeMap[audType] ?? 'offline',
+          venue_details:    locMode === 'Physical Location' ? `${studio} – ${room}` : undefined,
+          notes,
+          status:           'rescheduled',
+        };
+      } else if (applicationId) {
+        body = {
           application_id:   applicationId,
           scheduled_at:     scheduledAt.toISOString(),
           duration_minutes: parseInt(duration) || 30,
           mode:             modeMap[audType] ?? 'offline',
           venue_details:    locMode === 'Physical Location' ? `${studio} – ${room}` : undefined,
           notes,
-        }),
+        };
+      } else if (candidateId && candidateId !== 'a1') {
+        // Coming from talent profile — schedule with aspirant_profiles.id
+        body = {
+          aspirant_id:      candidateId,
+          casting_call_id:  selectedCCId || undefined,
+          scheduled_at:     scheduledAt.toISOString(),
+          duration_minutes: parseInt(duration) || 30,
+          mode:             modeMap[audType] ?? 'offline',
+          venue_details:    locMode === 'Physical Location' ? `${studio} – ${room}` : undefined,
+          notes,
+        };
+      } else {
+        alert('No aspirant selected. Please go back and select a talent.');
+        return;
+      }
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
       });
       if (res.ok) {
         setSaved(true);
         setTimeout(() => { setSaved(false); router.push('/agency/auditions/management'); }, 2000);
       } else {
         const data = await res.json();
-        alert(data.error || 'Failed to schedule audition');
+        alert(data.error || `Failed to ${isReschedule ? 'reschedule' : 'schedule'} audition`);
       }
     } catch {
-      alert('Failed to schedule audition. Please try again.');
+      alert(`Failed to ${isReschedule ? 'reschedule' : 'schedule'} audition. Please try again.`);
     }
   };
 
@@ -210,29 +393,29 @@ function ScheduleAuditionPage() {
 
       {/* ══ TOPNAV ══ */}
       <header style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, padding: '0 24px', height: 60, background: BG2, borderBottom: '1px solid rgba(255,255,255,0.06)', zIndex: 100 }}>
-        <SilverScreensLogo size="md" href="/" showTagline={false} />
+        <SilverScreensLogo size="md" href="/agency/dashboard" showTagline={false} />
         <div style={{ flex: 1 }} />
-        <button onClick={() => router.push('/agency/create-casting')} style={{ display: 'flex', alignItems: 'center', gap: 7, background: RED, color: '#fff', border: 'none', borderRadius: 8, padding: '0 18px', height: 36, fontSize: 16, fontWeight: 700, fontFamily: BARLOW, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+        <button onClick={() => { if (!isApproved) return; router.push('/agency/create-casting'); }} title={!isApproved ? 'Available after verification' : undefined} style={{ display: 'flex', alignItems: 'center', gap: 7, background: isApproved ? RED : 'rgba(200,32,42,0.3)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 18px', height: 36, fontSize: 16, fontWeight: 700, fontFamily: BARLOW, cursor: isApproved ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap', opacity: isApproved ? 1 : 0.5 }}>
           Post a Casting <span style={{ fontSize: 17, fontWeight: 400 }}>+</span>
         </button>
         <div onClick={() => router.push('/agency/messages')} style={{ position: 'relative', cursor: 'pointer' }}>
           <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <MessageSquare size={15} color="rgba(255,255,255,0.7)" />
           </div>
-          <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', pointerEvents: 'none' }}>12</div>
+          {msgCount > 0 && <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', pointerEvents: 'none' }}>{msgCount}</div>}
         </div>
         <div onClick={() => router.push('/agency/notifications')} style={{ position: 'relative', cursor: 'pointer' }}>
           <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Bell size={15} color="rgba(255,255,255,0.7)" />
           </div>
-          <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', pointerEvents: 'none' }}>3</div>
+          {notifCount > 0 && <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', pointerEvents: 'none' }}>{notifCount}</div>}
         </div>
         <div style={{ position: 'relative' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer' }} onClick={() => setProfileOpen(v => !v)}>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#1a1410,#2a1e0e)', border: `2px solid ${GOLD}60`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, color: GOLD, fontFamily: BEBAS }}>DP</div>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#1a1410,#2a1e0e)', border: `2px solid ${GOLD}60`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, color: GOLD, fontFamily: BEBAS }}>{agencyInitials}</div>
             <div>
-              <div style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2 }}>Dharma Productions</div>
-              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Production House</div>
+              <div style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2 }}>{agencyName}</div>
+              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>{agencyType}</div>
             </div>
             <ChevronDown size={12} color="rgba(255,255,255,0.4)" />
           </div>
@@ -242,20 +425,20 @@ function ScheduleAuditionPage() {
               <div style={{ position: 'absolute', top: 46, right: 0, width: 220, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', zIndex: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
                 <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Agency ID</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: GOLD }}>AGE062600001</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: GOLD }}>{agencyId}</span>
                 </div>
 
                 {[
                   { label: 'Reports & Analytics', href: '/agency/reports' },
-                  { label: 'Subscription & Billing', href: '/pricing' },
+                  { label: 'Subscription & Billing', href: '/agency/subscription' },
                   { label: 'Company Profile', href: '/agency-profile' },
                   { label: 'Documents', href: '/agency/documents' },
                   { label: 'Calendar', href: '/agency/calendar' },
                   { label: 'Settings', href: '/agency/settings' },
-                  { label: 'Support', href: '/contact' },
+                  { label: 'Support', href: '/agency/support' },
                   { label: 'Logout', href: '/login' },
                 ].map(({ label, href }) => (
-                  <div key={label} onClick={() => { router.push(href); setProfileOpen(false); }}
+                  <div key={label} onClick={() => { if (label === 'Logout') { localStorage.removeItem('ss_user'); window.location.replace('/login'); } else { router.push(href); setProfileOpen(false); } }}
                     style={{ padding: '10px 16px', fontSize: 16, cursor: 'pointer', color: label === 'Logout' ? '#ff6b6b' : '#F5F5F5', borderTop: label === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -280,15 +463,17 @@ function ScheduleAuditionPage() {
           </div>
           {sidebarOpen && (
             <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 38, height: 38, borderRadius: 9, background: 'linear-gradient(135deg,#1a1410,#2a1e0e)', border: `1px solid ${GOLD}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, color: GOLD, fontFamily: BEBAS, flexShrink: 0 }}>DP</div>
+              <div style={{ width: 38, height: 38, borderRadius: 9, background: 'linear-gradient(135deg,#1a1410,#2a1e0e)', border: `1px solid ${GOLD}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, color: GOLD, fontFamily: BEBAS, flexShrink: 0 }}>{agencyInitials}</div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#F5F5F5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Dharma Productions</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#F5F5F5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{agencyName}</div>
                 <div onClick={() => router.push('/agency-profile')} style={{ fontSize: 14, color: RED, fontWeight: 600, cursor: 'pointer' }}>View Company Profile</div>
               </div>
             </div>
           )}
           <nav style={{ flex: 1, padding: sidebarOpen ? '8px 6px' : '8px 4px', overflowY: 'auto', scrollbarWidth: 'none' }}>
-            {NAV_ITEMS.map(({ icon: Icon, label, active, badge, href }) => (
+            {NAV_ITEMS.map(({ icon: Icon, label, active, href }) => {
+                const badge = label === 'Messages' ? (msgCount > 0 ? msgCount : undefined) : label === 'Notifications' ? (notifCount > 0 ? notifCount : undefined) : undefined;
+                return (
               <div key={label} onClick={() => router.push(href)} title={!sidebarOpen ? label : undefined}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'space-between' : 'center', padding: sidebarOpen ? '8px 10px' : '10px 0', marginBottom: 2, borderRadius: 6, cursor: 'pointer', background: active ? 'rgba(200,32,42,0.12)' : 'transparent', borderLeft: sidebarOpen && active ? `3px solid ${RED}` : sidebarOpen ? '3px solid transparent' : 'none', position: 'relative' }}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
@@ -301,16 +486,9 @@ function ScheduleAuditionPage() {
                 {sidebarOpen && badge && <div style={{ background: RED, color: '#fff', borderRadius: 10, fontSize: 14, fontWeight: 700, padding: '1px 6px', minWidth: 18, textAlign: 'center' }}>{badge}</div>}
                 {!sidebarOpen && badge && <div style={{ position: 'absolute', top: 6, right: 4, background: RED, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff' }}>{badge}</div>}
               </div>
-            ))}
+                );
+              })}
           </nav>
-          {sidebarOpen && (
-            <div style={{ margin: '8px 10px 14px', borderRadius: 12, background: 'linear-gradient(135deg,#1a1205,#2a1e0a)', border: '1px solid rgba(212,166,74,0.25)', padding: '14px 12px', textAlign: 'center', flexShrink: 0 }}>
-              <div style={{ fontSize: 20, marginBottom: 4 }}>👑</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: GOLD, marginBottom: 3 }}>Upgrade to Pro</div>
-              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', marginBottom: 10, lineHeight: 1.5 }}>Unlock advanced filters and AI matching.</div>
-              <button onClick={() => router.push('/pricing')} style={{ width: '100%', background: GOLD, color: '#000', border: 'none', borderRadius: 8, padding: '7px 0', fontSize: 14, fontWeight: 700, fontFamily: BARLOW, cursor: 'pointer' }}>Upgrade Now</button>
-            </div>
-          )}
         </aside>
 
         {/* ── MAIN CONTENT ── */}
@@ -330,10 +508,11 @@ function ScheduleAuditionPage() {
                 </div>
                 <h1 style={{ fontFamily: BEBAS, fontSize: 26, letterSpacing: 1, color: '#fff', margin: '0 0 4px' }}>Schedule Audition</h1>
                 <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.45)' }}>
-                  Schedule an audition for <span style={{ color: '#fff', fontWeight: 600 }}>{asp.name}</span> for <span style={{ color: GOLD }}>{asp.castingCall}</span>
+                  Schedule an audition for <span style={{ color: '#fff', fontWeight: 600 }}>{asp.name}</span>
+                  {asp.castingCall && <> for <span style={{ color: GOLD }}>{asp.castingCall}</span></>}
                 </div>
               </div>
-              <button onClick={() => router.push(`/agency/applications/${candidateId}`)} style={{ display: 'flex', alignItems: 'center', gap: 7, background: BG2, border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '8px 16px', color: '#fff', fontSize: 15, fontFamily: BARLOW, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              <button onClick={() => router.push(`/agency/applications/${candidateId}`)} style={{ display: isFromTalent ? 'none' : 'flex', alignItems: 'center', gap: 7, background: BG2, border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '8px 16px', color: '#fff', fontSize: 15, fontFamily: BARLOW, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 View Application <ExternalLink size={13} />
               </button>
             </div>
@@ -345,15 +524,34 @@ function ScheduleAuditionPage() {
             <Section number={1} title="Audition Details">
               {/* Casting Call */}
               <div style={{ marginBottom: 16 }}>
-                <FieldLabel>Casting Call</FieldLabel>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 14px' }}>
-                  <img src={asp.ccImg} alt="" style={{ width: 44, height: 44, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-                  <div>
-                    <div style={{ fontSize: 16, fontWeight: 600, color: '#fff' }}>{asp.castingCall}</div>
-                    <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>{asp.ccType} · {asp.ccProducer}</div>
+                <FieldLabel required={isFromTalent}>Casting Call</FieldLabel>
+                {isFromTalent ? (
+                  <div style={{ position: 'relative' }}>
+                    <select value={selectedCCId} onChange={e => setSelectedCCId(e.target.value)}
+                      style={{ width: '100%', background: BG3, border: `1px solid ${selectedCCId ? GOLD : 'rgba(255,255,255,0.1)'}`, borderRadius: 10, padding: '12px 14px', color: selectedCCId ? '#fff' : 'rgba(255,255,255,0.35)', fontSize: 15, fontFamily: BARLOW, outline: 'none', cursor: 'pointer', appearance: 'none' }}>
+                      <option value="">— Select a casting call —</option>
+                      {castingCalls.map(cc => (
+                        <option key={cc.id} value={cc.id}>{cc.title} {cc.role_name ? `· ${cc.role_name}` : ''} {cc.project_type ? `(${cc.project_type})` : ''}</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={14} color="rgba(255,255,255,0.4)" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                    {castingCalls.length === 0 && (
+                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginTop: 6, fontFamily: BARLOW }}>No active casting calls found. <span onClick={() => router.push('/agency/create-casting')} style={{ color: GOLD, cursor: 'pointer' }}>Create one</span></div>
+                    )}
+                    {castingCalls.length > 0 && !selectedCCId && (
+                      <div style={{ fontSize: 13, color: RED, marginTop: 6, fontFamily: BARLOW }}>⚠ Please select a casting call to proceed</div>
+                    )}
                   </div>
-                  <span style={{ marginLeft: 'auto', fontSize: 14, fontWeight: 700, color: GREEN, background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 20, padding: '2px 10px' }}>{asp.ccStatus}</span>
-                </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 14px' }}>
+                    <img src={asp.ccImg} alt="" style={{ width: 44, height: 44, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                    <div>
+                      <div style={{ fontSize: 16, fontWeight: 600, color: '#fff' }}>{asp.castingCall}</div>
+                      <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>{asp.ccType} · {asp.ccProducer}</div>
+                    </div>
+                    <span style={{ marginLeft: 'auto', fontSize: 14, fontWeight: 700, color: GREEN, background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 20, padding: '2px 10px' }}>{asp.ccStatus}</span>
+                  </div>
+                )}
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -408,8 +606,14 @@ function ScheduleAuditionPage() {
                 <div>
                   <FieldLabel>Audition Date</FieldLabel>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '10px 12px' }}>
-                    <Calendar size={15} color="rgba(255,255,255,0.4)" />
-                    <input value={audDate} onChange={e => setAudDate(e.target.value)} style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 15, color: '#fff', fontFamily: BARLOW, flex: 1 }} />
+                    <Calendar size={15} color="rgba(255,255,255,0.4)" style={{ flexShrink: 0 }} />
+                    <input
+                      type="date"
+                      value={audDate}
+                      min={new Date().toISOString().split('T')[0]}
+                      onChange={e => setAudDate(e.target.value)}
+                      style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 15, color: '#fff', fontFamily: BARLOW, flex: 1, colorScheme: 'dark', cursor: 'pointer' }}
+                    />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, fontSize: 14, color: 'rgba(255,255,255,0.35)' }}>
                     <MapPin size={11} /> Time Zone: Asia/Kolkata (IST)
@@ -420,8 +624,13 @@ function ScheduleAuditionPage() {
                 <div>
                   <FieldLabel>Start Time</FieldLabel>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '10px 12px' }}>
-                    <Clock size={15} color="rgba(255,255,255,0.4)" />
-                    <input value={startTime} onChange={e => setStartTime(e.target.value)} style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 15, color: '#fff', fontFamily: BARLOW, flex: 1 }} />
+                    <Clock size={15} color="rgba(255,255,255,0.4)" style={{ flexShrink: 0 }} />
+                    <input
+                      type="time"
+                      value={startTime}
+                      onChange={e => setStartTime(e.target.value)}
+                      style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 15, color: '#fff', fontFamily: BARLOW, flex: 1, colorScheme: 'dark', cursor: 'pointer' }}
+                    />
                   </div>
                 </div>
 
@@ -482,24 +691,24 @@ function ScheduleAuditionPage() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 14, color: 'rgba(255,255,255,0.45)' }}>
                     <MapPin size={13} color="rgba(255,255,255,0.35)" />
-                    Plot No. 123, Andheri West, Mumbai, Maharashtra 400053
+                    {studio}
                   </div>
-                  {/* Contact person */}
+                  {/* Contact person — from logged-in agency */}
                   <div style={{ marginTop: 12, padding: '10px 12px', background: BG3, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${GOLD}20`, border: `1px solid ${GOLD}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: GOLD, fontFamily: BEBAS, flexShrink: 0 }}>MJ</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>Mohamed Jaleel</div>
-                      <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)' }}>Casting Coordinator · Dharma Productions</div>
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${GOLD}20`, border: `1px solid ${GOLD}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: GOLD, fontFamily: BEBAS, flexShrink: 0 }}>
+                      {(() => { try { const u = JSON.parse(localStorage.getItem('ss_user') || '{}'); return (u.name || 'AG').split(' ').map((w: string) => w[0]).slice(0,2).join('').toUpperCase(); } catch { return 'AG'; } })()}
                     </div>
-                    <div style={{ display: 'flex', flex: 'column', gap: 4, fontSize: 14, color: 'rgba(255,255,255,0.4)', textAlign: 'right' as const }}>
-                      <div>+91 99941 89841</div>
-                      <div>jaleel@dharma.com</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>
+                        {(() => { try { return JSON.parse(localStorage.getItem('ss_user') || '{}').name || 'Agency'; } catch { return 'Agency'; } })()}
+                      </div>
+                      <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)' }}>Casting Agency</div>
                     </div>
                   </div>
                   {/* Map embed */}
                   <div style={{ marginTop: 12, borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', height: 160 }}>
                     <iframe
-                      src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3769.2!2d72.8397!3d19.1197!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3be7b6f4e5e5e5e5%3A0x5e5e5e5e5e5e5e5e!2sAndheri%20West%2C%20Mumbai!5e0!3m2!1sen!2sin!4v1620000000000!5m2!1sen!2sin"
+                      src={studio ? `https://maps.google.com/maps?q=${encodeURIComponent(studio)}&output=embed` : 'about:blank'}
                       width="100%"
                       height="160"
                       style={{ border: 0, display: 'block', filter: 'invert(90%) hue-rotate(180deg)' }}
@@ -555,8 +764,11 @@ function ScheduleAuditionPage() {
               <button onClick={() => router.push('/agency/auditions')} style={{ background: BG2, border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '10px 24px', color: 'rgba(255,255,255,0.7)', fontSize: 16, fontFamily: BARLOW, fontWeight: 500, cursor: 'pointer' }}>
                 Cancel
               </button>
-              <button onClick={handleSchedule} style={{ background: saved ? 'rgba(34,197,94,0.15)' : GOLD, border: saved ? `1px solid ${GREEN}` : 'none', borderRadius: 8, padding: '10px 28px', color: saved ? GREEN : '#000', fontSize: 16, fontFamily: BARLOW, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
-                {saved ? '✓ Audition Scheduled!' : 'Schedule Audition'}
+              <button 
+                onClick={handleSchedule} 
+                disabled={isFromTalent && !selectedCCId}
+                style={{ background: saved ? 'rgba(34,197,94,0.15)' : (isFromTalent && !selectedCCId) ? 'rgba(212,166,74,0.3)' : GOLD, border: saved ? `1px solid ${GREEN}` : 'none', borderRadius: 8, padding: '10px 28px', color: saved ? GREEN : '#000', fontSize: 16, fontFamily: BARLOW, fontWeight: 700, cursor: (isFromTalent && !selectedCCId) ? 'not-allowed' : 'pointer', transition: 'all 0.2s', opacity: (isFromTalent && !selectedCCId) ? 0.5 : 1 }}>
+                {saved ? `✓ ${isReschedule ? 'Rescheduled!' : 'Audition Scheduled!'}` : isReschedule ? 'Reschedule Audition' : 'Schedule Audition'}
               </button>
             </div>
           </div>
@@ -595,16 +807,32 @@ function ScheduleAuditionPage() {
 
             <div style={{ height: 1, background: 'rgba(255,255,255,0.07)' }} />
 
-            {/* Application Summary */}
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 12 }}>Application Summary</div>
-              <RightRow label="Applied On" value={`${asp.appliedOn}, ${asp.appliedTime}`} />
-              <RightRow label="Role Applied For" value={asp.role} badge="Lead Role" />
-              <RightRow label="Application Status" value={asp.appStatus} valueColor={GREEN} />
-              <button onClick={() => router.push(`/agency/applications/${candidateId}`)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, width: '100%', background: 'none', border: `1px solid ${GOLD}`, borderRadius: 8, padding: '9px 0', color: GOLD, fontSize: 15, fontFamily: BARLOW, fontWeight: 700, cursor: 'pointer', marginTop: 12 }}>
-                View Application <ExternalLink size={13} color={GOLD} />
-              </button>
-            </div>
+            {/* Application Summary — only when from application */}
+            {!isFromTalent && (
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 12 }}>Application Summary</div>
+                <RightRow label="Applied On" value={`${asp.appliedOn}, ${asp.appliedTime}`} />
+                <RightRow label="Role Applied For" value={asp.role} badge="Lead Role" />
+                <RightRow label="Application Status" value={asp.appStatus} valueColor={GREEN} />
+                <button onClick={() => router.push(`/agency/applications/${candidateId}`)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, width: '100%', background: 'none', border: `1px solid ${GOLD}`, borderRadius: 8, padding: '9px 0', color: GOLD, fontSize: 15, fontFamily: BARLOW, fontWeight: 700, cursor: 'pointer', marginTop: 12 }}>
+                  View Application <ExternalLink size={13} color={GOLD} />
+                </button>
+              </div>
+            )}
+
+            {/* Casting Call Summary — only when from talent profile */}
+            {isFromTalent && selectedCCId && (() => {
+              const cc = castingCalls.find(c => c.id === selectedCCId);
+              if (!cc) return null;
+              return (
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 12 }}>Casting Call</div>
+                  <RightRow label="Title" value={cc.title} />
+                  {cc.role_name && <RightRow label="Role" value={cc.role_name} />}
+                  {cc.project_type && <RightRow label="Type" value={cc.project_type} />}
+                </div>
+              );
+            })()}
 
             <div style={{ height: 1, background: 'rgba(255,255,255,0.07)' }} />
 
@@ -612,11 +840,14 @@ function ScheduleAuditionPage() {
             <div>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 12 }}>Agency Contact</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: BG3, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10 }}>
-                <div style={{ width: 38, height: 38, borderRadius: '50%', background: `${GOLD}20`, border: `1px solid ${GOLD}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: GOLD, fontFamily: BEBAS, flexShrink: 0 }}>MJ</div>
+                <div style={{ width: 38, height: 38, borderRadius: '50%', background: `${GOLD}20`, border: `1px solid ${GOLD}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: GOLD, fontFamily: BEBAS, flexShrink: 0 }}>
+                  {(() => { try { const u = JSON.parse(localStorage.getItem('ss_user') || '{}'); return (u.name || 'AG').split(' ').map((w: string) => w[0]).slice(0,2).join('').toUpperCase(); } catch { return 'AG'; } })()}
+                </div>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>Mohamed Jaleel</div>
-                  <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)' }}>Casting Coordinator</div>
-                  <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>+91 99941 89841</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>
+                    {(() => { try { return JSON.parse(localStorage.getItem('ss_user') || '{}').name || 'Agency'; } catch { return 'Agency'; } })()}
+                  </div>
+                  <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)' }}>Casting Agency</div>
                 </div>
               </div>
             </div>
@@ -626,12 +857,13 @@ function ScheduleAuditionPage() {
             {/* Audition Summary — live preview */}
             <div>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 12 }}>Audition Summary</div>
+              {isFromTalent && <RightRow label="Casting Call" value={castingCalls.find(c => c.id === selectedCCId)?.title || '— Not selected'} />}
               <RightRow label="Audition Type" value={audType} />
               <RightRow label="Audition Mode" value={audMode} />
-              <RightRow label="Date & Time" value={`${audDate.replace(' (Saturday)', '')}, ${startTime}`} />
+              <RightRow label="Date & Time" value={audDate ? `${new Date(audDate + 'T' + startTime).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}, ${startTime}` : '—'} />
               <RightRow label="Duration" value={duration} />
               <RightRow label="Location" value={locMode === 'Physical Location' ? studio : locMode} />
-              <button onClick={() => {}} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, width: '100%', background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '9px 0', color: 'rgba(255,255,255,0.7)', fontSize: 15, fontFamily: BARLOW, fontWeight: 500, cursor: 'pointer', marginTop: 12 }}>
+              <button onClick={() => document.querySelector('input[type="date"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' })} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, width: '100%', background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '9px 0', color: 'rgba(255,255,255,0.7)', fontSize: 15, fontFamily: BARLOW, fontWeight: 500, cursor: 'pointer', marginTop: 12 }}>
                 ✏️ Edit Schedule
               </button>
             </div>

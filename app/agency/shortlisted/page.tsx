@@ -1,10 +1,12 @@
 'use client';
 
 import AgencyTopnav from '@/components/layout/AgencyTopnav'
-import { useState } from 'react';
+import ProtectedMedia from '@/components/ui/ProtectedMedia'
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
+
 
   LayoutDashboard, Megaphone, PlusCircle, ClipboardList,
   UserSearch, Star, CalendarCheck, MessageSquare, Bell,
@@ -13,6 +15,7 @@ import {
   CheckSquare, Square, MoreVertical, Calendar,
   TrendingUp, Users, Award,
 } from 'lucide-react';
+import AgencyVerificationBanner from '@/components/layout/AgencyVerificationBanner';
 
 /* ─── Design tokens ───────────────────────────────────────────── */
 const RED    = '#C8202A';
@@ -63,6 +66,7 @@ interface ShortlistedTalent {
   img: string;
   role: string;
   castingCall: string;
+  castingCallId: string;
   projectType: string;
   shortlistedOn: string;
   shortlistedTime: string;
@@ -83,14 +87,7 @@ const TALENTS: ShortlistedTalent[] = [
   { id: 'a8', name: 'Deepika Rao',    verified: true,  gender: 'Female', age: 26, location: 'Bengaluru',img: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=120&h=120&fit=crop&crop=face', role: 'Lead Actress',      castingCall: 'City of Stars',     projectType: 'Web Series',   shortlistedOn: '14 May 2024', shortlistedTime: '01:15 PM', status: 'Final Round',  statusDetail: 'Final Round',    statusDate: '26 May 2024, 11:00 AM', rating: 4.9 },
 ];
 
-const SUB_TABS = [
-  { key: 'all',       label: 'All Shortlisted', count: 96 },
-  { key: 'audition',  label: 'For Audition',    count: 18 },
-  { key: 'callback',  label: 'Callback',         count: 12 },
-  { key: 'final',     label: 'Final Round',      count: 7  },
-  { key: 'selected',  label: 'Selected',         count: 3  },
-  { key: 'rejected',  label: 'Rejected',         count: 2  },
-];
+// SUB_TABS counts computed dynamically below
 
 const STATUS_TAB_MAP: Record<string, ShortlistStatus[]> = {
   all:      ['For Audition', 'Callback', 'Final Round', 'Selected', 'Rejected'],
@@ -111,7 +108,31 @@ export default function ShortlistedTalentsPage() {
   const [rowMenuOpen,  setRowMenuOpen]  = useState<string | null>(null);
   const [menuPos,      setMenuPos]      = useState<{top: number; right: number}>({ top: 0, right: 0 });
   const [talentStatuses, setTalentStatuses] = useState<Record<string, string>>({});
-  const changeStatus = (id: string, status: string) => { setTalentStatuses(p => ({ ...p, [id]: status })); setRowMenuOpen(null); };
+  const [compareOpen,   setCompareOpen]   = useState(false);
+  const [compareData,   setCompareData]   = useState<Record<string, any>>({});
+  const [compareLoading, setCompareLoading] = useState(false);
+
+  const openComparison = async () => {
+    if (selectedIds.length < 2) { alert('Please select 2 to 4 talents to compare using the checkboxes.'); return; }
+    setCompareOpen(true);
+    setCompareLoading(true);
+    const h = getAuthHeaders();
+    const results: Record<string, any> = {};
+    await Promise.all(
+      selectedIds.slice(0, 4).map(async id => {
+        try {
+          const res = await fetch(`/api/talents/${id}`, { headers: h });
+          if (res.ok) {
+            const data = await res.json();
+            results[id] = data.data?.talent ?? data.talent ?? data;
+          }
+        } catch {}
+      })
+    );
+    setCompareData(results);
+    setCompareLoading(false);
+  };
+
   const openMenu = (id: string, e: React.MouseEvent) => {
     const btn = e.currentTarget as HTMLElement;
     const rect = btn.getBoundingClientRect();
@@ -124,13 +145,101 @@ export default function ShortlistedTalentsPage() {
   const [search,       setSearch]       = useState('');
   const [sortBy,       setSortBy]       = useState('Latest Shortlisted');
   const [sortOpen,     setSortOpen]     = useState(false);
+  const [openDropdown,  setOpenDropdown]  = useState<string | null>(null);
   const [page,         setPage]         = useState(1);
-  const PER_PAGE = 10;
+  const [perPage,      setPerPage]      = useState(10);
+  const PER_PAGE = perPage;
+
+  // Real data
+  const [talents,      setTalents]      = useState<ShortlistedTalent[]>([]);
+  const [loading,      setLoading]      = useState(true);
+  const [scheduledAuditions, setScheduledAuditions] = useState<Set<string>>(new Set());
+  const [msgCount,     setMsgCount]     = useState(0);
+  const [notifCount,   setNotifCount]   = useState(0);
+  const [agencyName,   setAgencyName]   = useState(() => { try { return JSON.parse(localStorage.getItem('ss_user') || '{}').name || 'My Agency'; } catch { return 'My Agency'; } });
+  const [agencyInitials, setAgencyInitials] = useState(() => { try { const n = JSON.parse(localStorage.getItem('ss_user') || '{}').name || 'AG'; return n.split(' ').map((w: string) => w[0]).slice(0,2).join('').toUpperCase(); } catch { return 'AG'; } });
+
+  function getAuthHeaders() {
+    try { const u = JSON.parse(localStorage.getItem('ss_user') || '{}'); const token = u.token ?? u.access_token ?? ''; return token ? { Authorization: `Bearer ${token}` } : {}; } catch { return {}; }
+  }
+
+  const fetchShortlisted = useCallback(() => {
+    setLoading(true);
+    const h = getAuthHeaders();
+    fetch('/api/shortlisted?limit=200', { headers: h })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        const list = data.data?.shortlisted ?? data.shortlisted ?? [];
+        if (!Array.isArray(list)) return;
+        setTalents(list.map((s: any) => {
+          const ap = s.aspirant_profiles ?? s.aspirant ?? {};
+          const cc = s.casting_calls ?? {};
+          return {
+            id:              ap.id ?? s.aspirant_id ?? s.id,
+            shortlistId:     s.id,
+            name:            [ap.first_name, ap.last_name].filter(Boolean).join(' ') || 'Unknown',
+            verified:        ap.verification_status === 'approved',
+            gender:          ap.gender ?? '',
+            age:             ap.date_of_birth ? Math.floor((Date.now() - new Date(ap.date_of_birth).getTime()) / (1000 * 60 * 60 * 24 * 365.25)) : 0,
+            location:        [ap.city, ap.state].filter(Boolean).join(', ') || '',
+            img:             ap.profile_image_url ?? '',
+            age:             ap.date_of_birth ? Math.floor((Date.now() - new Date(ap.date_of_birth).getTime()) / (1000 * 60 * 60 * 24 * 365.25)) : 0,
+            role:            cc.role_name ?? ap.role ?? ap.category ?? '',
+            castingCallId:   s.casting_call_id ?? '',
+            castingCall:     cc.title ?? '',
+            projectType:     cc.project_type ?? '',
+            shortlistedOn:   s.created_at ? new Date(s.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
+            shortlistedTime: s.created_at ? new Date(s.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '',
+            status:          'For Audition' as ShortlistStatus,
+            statusDetail:    '',
+            statusDate:      '',
+            rating:          ap.trust_score ? ap.trust_score / 20 : 0,
+          };
+        }));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    fetchShortlisted();
+    const h = getAuthHeaders();
+    // Fetch scheduled auditions to check which talents already have one
+    fetch('/api/auditions?limit=200', { headers: h })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        const list = data?.data?.auditions ?? [];
+        if (Array.isArray(list)) {
+          const ids = new Set<string>(
+            list
+              .filter((a: any) => ['scheduled', 'rescheduled'].includes(a.status))
+              .map((a: any) => a.aspirant_id ?? a.aspirant_profiles?.id)
+              .filter(Boolean)
+          );
+          setScheduledAuditions(ids);
+        }
+      }).catch(() => {});
+    fetch('/api/profile/agency', { headers: h })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        const name = d?.data?.profile?.company_name ?? d?.profile?.company_name;
+        if (name) { setAgencyName(name); setAgencyInitials(name.split(' ').map((w: string) => w[0]).slice(0,2).join('').toUpperCase()); }
+      }).catch(() => {});
+    fetch('/api/notifications', { headers: h })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { const c = d?.data?.unread_count ?? d?.unread_count; if (c != null) setNotifCount(c); })
+      .catch(() => {});
+    fetch('/api/messages/conversations', { headers: h })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { const list = d?.data?.conversations ?? d?.conversations ?? []; if (Array.isArray(list)) setMsgCount(list.filter((c: any) => c.unreadCount > 0).length); })
+      .catch(() => {});
+  }, [fetchShortlisted]);
 
   const SB_W = sidebarOpen ? 230 : 52;
 
   /* Filtered talents */
-  const filtered = TALENTS.filter(t => {
+  const filtered = talents.filter(t => {
     const statusMatch = STATUS_TAB_MAP[activeTab]?.includes(t.status);
     const searchMatch = !search || t.name.toLowerCase().includes(search.toLowerCase()) || t.role.toLowerCase().includes(search.toLowerCase());
     const castingMatch = castingFilter === 'All Casting Calls' || t.castingCall === castingFilter;
@@ -142,8 +251,43 @@ export default function ShortlistedTalentsPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
+  const SUB_TABS = [
+    { key: 'all',      label: 'All Shortlisted', count: talents.length },
+    { key: 'audition', label: 'For Audition',    count: talents.filter(t => (talentStatuses[t.id] || t.status) === 'For Audition').length },
+    { key: 'callback', label: 'Callback',         count: talents.filter(t => (talentStatuses[t.id] || t.status) === 'Callback').length },
+    { key: 'final',    label: 'Final Round',      count: talents.filter(t => (talentStatuses[t.id] || t.status) === 'Final Round').length },
+    { key: 'selected', label: 'Selected',         count: talents.filter(t => (talentStatuses[t.id] || t.status) === 'Selected').length },
+    { key: 'rejected', label: 'Rejected',         count: talents.filter(t => (talentStatuses[t.id] || t.status) === 'Rejected').length },
+  ];
+
   const toggleSelect = (id: string) => setSelectedIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
   const toggleSelectAll = () => setSelectedIds(p => p.length === filtered.length ? [] : filtered.map(t => t.id));
+
+  // Export CSV
+  const handleExport = () => {
+    const headers = ['Name', 'Gender', 'Age', 'Location', 'Role', 'Casting Call', 'Shortlisted On', 'Status'];
+    const rows = filtered.map(t => [t.name, t.gender, t.age, t.location, t.role, t.castingCall, t.shortlistedOn, t.status]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'shortlisted.csv'; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Change status locally and via API
+  const changeStatus = async (id: string, label: string) => {
+    setTalentStatuses(p => ({ ...p, [id]: label }));
+    setRowMenuOpen(null);
+    if (label === 'Remove from List') {
+      const h = getAuthHeaders();
+      const t = talents.find(x => x.id === id);
+      const shortlistId = (t as any)?.shortlistId ?? id;
+      try {
+        await fetch(`/api/shortlisted?aspirant_id=${id}`, { method: 'DELETE', headers: h });
+        setTalents(prev => prev.filter(x => x.id !== id));
+      } catch {}
+    }
+  };
 
   const StarRating = ({ rating }: { rating: number }) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
@@ -175,9 +319,9 @@ export default function ShortlistedTalentsPage() {
           </div>
           {sidebarOpen && (
             <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 38, height: 38, borderRadius: 9, background: 'linear-gradient(135deg,#1a1410,#2a1e0e)', border: `1px solid ${GOLD}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, color: GOLD, fontFamily: BEBAS, flexShrink: 0 }}>DP</div>
+              <div style={{ width: 38, height: 38, borderRadius: 9, background: 'linear-gradient(135deg,#1a1410,#2a1e0e)', border: `1px solid ${GOLD}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, color: GOLD, fontFamily: BEBAS, flexShrink: 0 }}>{agencyInitials}</div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#F5F5F5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Dharma Productions</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#F5F5F5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{agencyName}</div>
                 <div onClick={() => router.push('/agency-profile')} style={{ fontSize: 14, color: RED, fontWeight: 600, cursor: 'pointer' }}>View Company Profile</div>
               </div>
             </div>
@@ -211,6 +355,9 @@ export default function ShortlistedTalentsPage() {
         {/* ── MAIN CONTENT ── */}
         <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', scrollbarWidth: 'none', display: 'flex', flexDirection: 'column' }}>
 
+
+          {/* Verification banner */}
+          <AgencyVerificationBanner />
           {/* Page header */}
           <div style={{ padding: '20px 28px 0', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -221,19 +368,19 @@ export default function ShortlistedTalentsPage() {
                 </div>
                 <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.45)' }}>View and manage all shortlisted candidates across your casting calls.</div>
               </div>
-              <button onClick={() => router.push('/agency/talent-search')} style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'none', border: `1px solid ${RED}`, borderRadius: 8, padding: '8px 16px', color: RED, fontSize: 15, fontFamily: BARLOW, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                <Users size={14} /> Talent Comparison
+              <button onClick={openComparison} style={{ display: 'flex', alignItems: 'center', gap: 7, background: selectedIds.length >= 2 ? `${RED}15` : 'none', border: `1px solid ${selectedIds.length >= 2 ? RED : 'rgba(255,255,255,0.2)'}`, borderRadius: 8, padding: '8px 16px', color: selectedIds.length >= 2 ? RED : 'rgba(255,255,255,0.4)', fontSize: 15, fontFamily: BARLOW, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                <Users size={14} /> Compare {selectedIds.length >= 2 ? `(${selectedIds.length})` : 'Talents'}
               </button>
             </div>
 
             {/* Stat cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
               {[
-                { label: 'Total Shortlisted', value: 96,  icon: <Star size={22} color={GOLD} fill={GOLD} />,         iconBg: `${GOLD}18`,   sub: '' },
-                { label: 'This Week',         value: 12,  icon: <TrendingUp size={22} color={PURPLE} />,             iconBg: `${PURPLE}18`, sub: '↑ 20% vs last week', subColor: GREEN },
-                { label: 'Callbacks Scheduled',value: 18, icon: <CalendarCheck size={22} color={BLUE} />,            iconBg: `${BLUE}18`,   sub: '' },
-                { label: 'Finalists',         value: 7,   icon: <Award size={22} color={GREEN} />,                   iconBg: `${GREEN}18`,  sub: '' },
-              ].map(({ label, value, icon, iconBg, sub, subColor }) => (
+                { label: 'Total Shortlisted',   value: talents.length,                                                                                        icon: <Star size={22} color={GOLD} fill={GOLD} />,      iconBg: `${GOLD}18`,   sub: '' },
+                { label: 'This Week',            value: talents.filter(t => { const d = new Date(t.shortlistedOn); const now = new Date(); return (now.getTime() - d.getTime()) < 7 * 24 * 60 * 60 * 1000; }).length, icon: <TrendingUp size={22} color={PURPLE} />, iconBg: `${PURPLE}18`, sub: '' },
+                { label: 'Callbacks Scheduled',  value: talents.filter(t => (talentStatuses[t.id] || t.status) === 'Callback').length,                         icon: <CalendarCheck size={22} color={BLUE} />,          iconBg: `${BLUE}18`,   sub: '' },
+                { label: 'Finalists',            value: talents.filter(t => (talentStatuses[t.id] || t.status) === 'Final Round').length,                      icon: <Award size={22} color={GREEN} />,                 iconBg: `${GREEN}18`,  sub: '' },
+              ].map(({ label, value, icon, iconBg, sub, subColor }: { label: string; value: number; icon: React.ReactNode; iconBg: string; sub: string; subColor?: string }) => (
                 <div key={label} style={{ background: BG2, border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
                   <div style={{ width: 48, height: 48, borderRadius: 10, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{icon}</div>
                   <div>
@@ -249,11 +396,11 @@ export default function ShortlistedTalentsPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
               {/* Dropdowns */}
               {[
-                { value: castingFilter, options: ['All Casting Calls', 'City of Dreams', 'The Silent Witness', 'Rangbaaz: Dobara', 'Love in Rewind', 'Untitled Horror', 'Kaaviyam', 'Metro Diaries', 'City of Stars'], set: setCastingFilter },
-                { value: roleFilter,    options: ['All Roles', 'Lead Hero', 'Female Lead', 'Antagonist', 'Supporting Actress', 'Supporting Actor', 'Lead Actress'], set: setRoleFilter },
-                { value: statusFilter,  options: ['All Status', 'For Audition', 'Callback', 'Final Round', 'Selected', 'Rejected'], set: setStatusFilter },
-              ].map((dd, i) => (
-                <SimpleSelect key={i} value={dd.value} options={dd.options} onChange={v => { dd.set(v); setPage(1); }} />
+                { id: 'casting', value: castingFilter, options: ['All Casting Calls', ...Array.from(new Set(talents.map(t => t.castingCall).filter(Boolean)))], set: setCastingFilter },
+                { id: 'role',    value: roleFilter,    options: ['All Roles',          ...Array.from(new Set(talents.map(t => t.role).filter(Boolean)))],        set: setRoleFilter    },
+                { id: 'status',  value: statusFilter,  options: ['All Status', 'For Audition', 'Callback', 'Final Round', 'Selected', 'Rejected'],                set: setStatusFilter  },
+              ].map((dd) => (
+                <SimpleSelect key={dd.id} id={dd.id} openId={openDropdown} setOpenId={setOpenDropdown} value={dd.value} options={dd.options} onChange={v => { dd.set(v); setPage(1); }} />
               ))}
               {/* Search */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: BG2, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '7px 12px', flex: 1, minWidth: 180 }}>
@@ -264,7 +411,7 @@ export default function ShortlistedTalentsPage() {
               <button style={{ display: 'flex', alignItems: 'center', gap: 6, background: BG2, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '7px 14px', color: 'rgba(255,255,255,0.7)', fontSize: 14, fontFamily: BARLOW, cursor: 'pointer' }}>
                 <Filter size={13} /> Filters
               </button>
-              <button style={{ display: 'flex', alignItems: 'center', gap: 6, background: BG2, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '7px 14px', color: 'rgba(255,255,255,0.7)', fontSize: 14, fontFamily: BARLOW, cursor: 'pointer' }}>
+              <button onClick={handleExport} style={{ display: 'flex', alignItems: 'center', gap: 6, background: BG2, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '7px 14px', color: 'rgba(255,255,255,0.7)', fontSize: 14, fontFamily: BARLOW, cursor: 'pointer' }}>
                 <Download size={13} /> Export
               </button>
               {/* Sort */}
@@ -310,6 +457,7 @@ export default function ShortlistedTalentsPage() {
               <span style={{ fontSize: 14, fontWeight: 700, color: GOLD, whiteSpace: 'nowrap' as const }}>{selectedIds.length} selected</span>
               <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.1)' }} />
               {[
+                { label: 'Compare Selected',   color: GOLD,   onClick: openComparison },
                 { label: 'Schedule Auditions', color: BLUE,   onClick: () => router.push('/agency/auditions/schedule') },
                 { label: 'Move to Final Round', color: PURPLE, onClick: () => setSelectedIds([]) },
                 { label: 'Mark as Selected',   color: GREEN,  onClick: () => setSelectedIds([]) },
@@ -342,7 +490,9 @@ export default function ShortlistedTalentsPage() {
               </div>
 
               {/* Rows */}
-              {paged.length === 0 ? (
+              {loading ? (
+                <div style={{ padding: '60px 0', textAlign: 'center', color: 'rgba(255,255,255,0.35)', fontFamily: BARLOW, fontSize: 16 }}>Loading shortlisted talents...</div>
+              ) : paged.length === 0 ? (
                 <div style={{ padding: '48px 0', textAlign: 'center' as const }}>
                   <Star size={32} color="rgba(255,255,255,0.1)" style={{ marginBottom: 12 }} />
                   <div style={{ fontSize: 17, color: 'rgba(255,255,255,0.4)', fontFamily: BARLOW }}>No talents match this filter.</div>
@@ -361,30 +511,31 @@ export default function ShortlistedTalentsPage() {
                     </span>
 
                     {/* Talent */}
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, minWidth: 0 }}>
-                      <div style={{ position: 'relative', flexShrink: 0 }}>
-                        <img src={t.img} alt={t.name} style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover' }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                      <div style={{ position: 'relative', flexShrink: 0, width: 48, height: 48 }}>
+                        {t.img ? (
+                          <ProtectedMedia type="image" src={t.img} alt={t.name} width={48} height={48} style={{ borderRadius: 8, objectFit: 'cover' }} />
+                        ) : null}
+                        <div style={{ width: 48, height: 48, borderRadius: 8, background: BG4, border: `1px solid ${GOLD}30`, display: t.img ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, color: GOLD, fontFamily: BEBAS, position: 'absolute', top: 0, left: 0 }}>
+                          {t.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
+                        </div>
                       </div>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
                           <span style={{ fontSize: 16, fontWeight: 700, color: '#fff', fontFamily: BARLOW }}>{t.name}</span>
                           {t.verified && <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#3b82f6"/><path d="M5 8l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                         </div>
-                        <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', marginBottom: 6 }}>{t.gender} · {t.age} · {t.location}</div>
-                        <button onClick={() => router.push(`/agency/talent/${t.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 6, padding: '4px 10px', color: 'rgba(255,255,255,0.7)', fontSize: 14, fontFamily: BARLOW, cursor: 'pointer', whiteSpace: 'nowrap' }}
-                          onMouseEnter={e => { e.currentTarget.style.borderColor = GOLD; e.currentTarget.style.color = GOLD; }}
-                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'; e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}
-                        >
-                          View Profile
-                        </button>
+                        <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)' }}>
+                          {[t.gender, t.age > 0 ? `${t.age} yrs` : null, t.location].filter(Boolean).join(' · ')}
+                        </div>
                       </div>
                     </div>
 
                     {/* Role & Casting Call */}
                     <div>
-                      <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginBottom: 3 }}>{t.role}</div>
-                      <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 3 }}>{t.castingCall}</div>
-                      <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', background: BG3, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '2px 8px' }}>{t.projectType}</span>
+                      <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginBottom: 3 }}>{t.role || <span style={{ color:'rgba(255,255,255,0.25)' }}>—</span>}</div>
+                      {t.castingCall && <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 3 }}>{t.castingCall}</div>}
+                      {t.projectType && <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', background: BG3, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '2px 8px' }}>{t.projectType}</span>}
                     </div>
 
                     {/* Shortlisted On */}
@@ -396,6 +547,9 @@ export default function ShortlistedTalentsPage() {
                     {/* Status */}
                     <div>
                       <span style={{ display: 'inline-block', fontSize: 14, fontWeight: 700, color: scfg.color, background: scfg.bg, border: `1px solid ${scfg.border}`, borderRadius: 20, padding: '3px 10px', marginBottom: 4 }}>{t.status}</span>
+                      {scheduledAuditions.has(t.id) && (
+                        <span style={{ display: 'inline-block', marginLeft: 6, fontSize: 12, background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: GREEN, borderRadius: 10, padding: '2px 8px', fontFamily: BARLOW }}>🎬 Audition Scheduled</span>
+                      )}
                       <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)' }}>{t.statusDetail}</div>
                       <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>{t.statusDate}</div>
                     </div>
@@ -409,11 +563,11 @@ export default function ShortlistedTalentsPage() {
                     {/* Actions */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }} onClick={e => e.stopPropagation()}>
                       {/* Schedule Audition */}
-                      <ActionBtn title="Schedule Audition" onClick={() => router.push(`/agency/auditions/schedule?candidate=${t.id}&from=shortlisted`)}>
+                      <ActionBtn title={scheduledAuditions.has(t.id) ? 'Audition Already Scheduled' : 'Schedule Audition'} onClick={() => { if (!scheduledAuditions.has(t.id)) router.push(`/agency/auditions/schedule?candidate=${t.id}&from=shortlisted`); }}>
                         <Calendar size={14} color="rgba(255,255,255,0.55)" />
                       </ActionBtn>
                       {/* Message */}
-                      <ActionBtn title="Send Message" onClick={() => router.push('/agency/messages')}>
+                      <ActionBtn title="Send Message" onClick={() => router.push(`/agency/messages?recipient_id=${t.id}&recipient_name=${encodeURIComponent(t.name)}`)}>
                         <MessageSquare size={14} color="rgba(255,255,255,0.55)" />
                       </ActionBtn>
                       {/* More */}
@@ -429,8 +583,8 @@ export default function ShortlistedTalentsPage() {
                               {[
                                 { label: 'View Profile',       icon: <Eye size={13} />,           color: '',      onClick: () => { router.push(`/agency/talent/${t.id}`); setRowMenuOpen(null); } },
                                 { label: 'View Application',   icon: <Eye size={13} />,           color: '',      onClick: () => { router.push(`/agency/applications/${t.id}`); setRowMenuOpen(null); } },
-                                { label: 'Schedule Audition',  icon: <Calendar size={13} />,      color: BLUE,    onClick: () => { router.push(`/agency/auditions/schedule?candidate=${t.id}&from=shortlisted`); setRowMenuOpen(null); } },
-                                { label: 'Send Message',       icon: <MessageSquare size={13} />, color: '',      onClick: () => { router.push('/agency/messages'); setRowMenuOpen(null); } },
+                                { label: scheduledAuditions.has(t.id) ? 'Audition Scheduled ✓' : 'Schedule Audition', icon: <Calendar size={13} />, color: scheduledAuditions.has(t.id) ? GREEN : BLUE, onClick: () => { if (!scheduledAuditions.has(t.id)) { router.push(`/agency/auditions/schedule?candidate=${t.id}&from=shortlisted`); } setRowMenuOpen(null); } },
+                                { label: 'Send Message',       icon: <MessageSquare size={13} />, color: '',      onClick: () => { router.push(`/agency/messages?recipient_id=${t.id}&recipient_name=${encodeURIComponent(t.name)}`); setRowMenuOpen(null); } },
                               ].map(({ label, icon, color, onClick }) => (
                                 <div key={label} onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 14px', cursor: 'pointer', fontSize: 14, fontFamily: BARLOW, color: color || '#F5F5F5' }}
                                   onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
@@ -468,7 +622,7 @@ export default function ShortlistedTalentsPage() {
             {/* Pagination */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0 20px', flexWrap: 'wrap', gap: 10 }}>
               <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>
-                Showing {(page - 1) * PER_PAGE + 1} to {Math.min(page * PER_PAGE, filtered.length)} of {filtered.length === TALENTS.length ? 96 : filtered.length} shortlisted talents
+                Showing {Math.min((page - 1) * PER_PAGE + 1, filtered.length)} to {Math.min(page * PER_PAGE, filtered.length)} of {filtered.length} shortlisted talents
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <PaginationBtn onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}><ChevronLeft size={13} /></PaginationBtn>
@@ -476,12 +630,12 @@ export default function ShortlistedTalentsPage() {
                   <PaginationBtn key={n} onClick={() => setPage(n)} active={page === n}>{n}</PaginationBtn>
                 ))}
                 {totalPages > 3 && <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>...</span>}
-                {totalPages > 3 && <PaginationBtn onClick={() => setPage(totalPages)} active={page === totalPages}>{20}</PaginationBtn>}
+                {totalPages > 3 && <PaginationBtn onClick={() => setPage(totalPages)} active={page === totalPages}>{totalPages}</PaginationBtn>}
                 <PaginationBtn onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}><ChevronRight size={13} /></PaginationBtn>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'rgba(255,255,255,0.45)' }}>
                 Rows per page:
-                <select defaultValue="10" style={{ background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '4px 8px', color: '#fff', fontSize: 14, fontFamily: BARLOW, outline: 'none', cursor: 'pointer' }}>
+                <select value={perPage} onChange={e => { setPerPage(Number(e.target.value)); setPage(1); }} style={{ background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '4px 8px', color: '#fff', fontSize: 14, fontFamily: BARLOW, outline: 'none', cursor: 'pointer' }}>
                   {[5, 10, 20, 50].map(n => <option key={n} value={n}>{n}</option>)}
                 </select>
               </div>
@@ -503,11 +657,171 @@ export default function ShortlistedTalentsPage() {
           </div>
         </div>
       </div>
+
+      {/* ── TALENT COMPARISON MODAL ── */}
+      {compareOpen && (() => {
+        const compareTalents = talents.filter(t => selectedIds.includes(t.id)).slice(0, 4);
+
+        const get = (id: string, path: string) => {
+          const d = compareData[id];
+          if (!d) return null;
+          return path.split('.').reduce((o, k) => o?.[k], d);
+        };
+
+        const val = (v: any) => {
+          if (v == null || v === '') return <span style={{ color:'rgba(255,255,255,0.25)' }}>—</span>;
+          if (Array.isArray(v)) return v.length ? v.join(', ') : <span style={{ color:'rgba(255,255,255,0.25)' }}>—</span>;
+          return String(v);
+        };
+
+        const sections: { heading: string; rows: { label: string; key: string; format?: (v: any, d: any) => React.ReactNode }[] }[] = [
+          {
+            heading: 'Basic Info',
+            rows: [
+              { label: 'Gender',          key: 'gender' },
+              { label: 'Age',             key: 'date_of_birth', format: (v) => v ? `${Math.floor((Date.now() - new Date(v).getTime()) / (1000*60*60*24*365.25))} years` : null },
+              { label: 'Location',        key: 'city', format: (v, d) => [d?.city, d?.state, d?.country].filter(Boolean).join(', ') || null },
+              { label: 'Availability',    key: 'is_available', format: (v) => v ? <span style={{color:GREEN}}>Available Now</span> : <span style={{color:'rgba(255,255,255,0.4)'}}>Not Available</span> },
+            ],
+          },
+          {
+            heading: 'Professional',
+            rows: [
+              { label: 'Category',        key: 'category' },
+              { label: 'Role',            key: 'role' },
+              { label: 'Title',           key: 'title' },
+              { label: 'Experience',      key: 'experience_level' },
+              { label: 'Skills',          key: 'skills', format: (v: any) => Array.isArray(v) && v.length ? <div style={{ display:'flex', flexWrap:'wrap' as const, gap:4 }}>{v.map((s: string) => <span key={s} style={{ fontSize:12, background:'rgba(200,32,42,0.12)', border:'1px solid rgba(200,32,42,0.3)', color:RED, borderRadius:8, padding:'2px 7px' }}>{s}</span>)}</div> : null },
+              { label: 'Available For',   key: 'availability', format: (v: any) => Array.isArray(v) && v.length ? <div style={{ display:'flex', flexWrap:'wrap' as const, gap:4 }}>{v.map((s: string) => <span key={s} style={{ fontSize:12, background:'rgba(34,197,94,0.1)', border:'1px solid rgba(34,197,94,0.25)', color:GREEN, borderRadius:8, padding:'2px 7px' }}>{s}</span>)}</div> : null },
+              { label: 'Languages',       key: 'languages', format: (v: any) => Array.isArray(v) && v.length ? v.join(', ') : null },
+              { label: 'RnR Categories',  key: 'rnr_categories', format: (v: any) => Array.isArray(v) && v.length ? v.join(', ') : null },
+            ],
+          },
+          {
+            heading: 'Physical Attributes',
+            rows: [
+              { label: 'Height',          key: 'height_cm', format: (v) => v ? `${v} cm` : null },
+              { label: 'Weight',          key: 'weight_kg', format: (v) => v ? `${v} kg` : null },
+              { label: 'Eye Color',       key: 'eye_color' },
+              { label: 'Hair Color',      key: 'hair_color' },
+              { label: 'Body Type',       key: 'body_type' },
+              { label: 'Body Tone',       key: 'body_tone' },
+              { label: 'Complexion',      key: 'complexion' },
+              { label: 'Chest',           key: 'chest_size', format: (v) => v ? `${v} inch` : null },
+              { label: 'Waist',           key: 'waist_size', format: (v) => v ? `${v} inch` : null },
+              { label: 'Hip',             key: 'hip_size', format: (v) => v ? `${v} inch` : null },
+              { label: 'Shoe Size',       key: 'shoe_size', format: (v) => v ? `${v}` : null },
+            ],
+          },
+          {
+            heading: 'About & Experience',
+            rows: [
+              { label: 'About',           key: 'about_me', format: (v: any) => v ? <span style={{ fontSize:13, color:'rgba(255,255,255,0.7)', lineHeight:1.5 }}>{String(v).slice(0,120)}{String(v).length > 120 ? '...' : ''}</span> : null },
+              { label: 'Credits',         key: 'social_links', format: (v: any) => { const credits = v?.credits; if (!Array.isArray(credits) || !credits.length) return null; return <div style={{ display:'flex', flexDirection:'column' as const, gap:3 }}>{credits.slice(0,3).map((c: any, i: number) => <span key={i} style={{ fontSize:12 }}>{c.type} · {c.title} ({c.year})</span>)}{credits.length > 3 && <span style={{ fontSize:12, color:'rgba(255,255,255,0.4)' }}>+{credits.length - 3} more</span>}</div>; } },
+            ],
+          },
+          {
+            heading: 'Profile',
+            rows: [
+              { label: 'Trust Score',     key: 'trust_score', format: (v) => v ? `${v}/100` : null },
+              { label: 'Profile Views',   key: 'profile_views' },
+              { label: 'Completion',      key: 'profile_completion', format: (v) => v ? `${v}%` : null },
+              { label: 'Verified',        key: 'verification_status', format: (v) => v === 'approved' ? <span style={{color:GREEN}}>✓ Verified</span> : <span style={{color:'rgba(255,255,255,0.35)'}}>Unverified</span> },
+              { label: 'RnR Eligible',    key: 'rnr_eligible', format: (v) => v ? <span style={{color:GOLD}}>✓ Eligible</span> : '—' },
+            ],
+          },
+        ];
+
+        return (
+          <>
+            <div onClick={() => setCompareOpen(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:400, backdropFilter:'blur(4px)' }} />
+            <div style={{ position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:'min(96vw, 1200px)', maxHeight:'90vh', background:BG2, border:'1px solid rgba(255,255,255,0.1)', borderRadius:16, zIndex:401, overflow:'hidden', display:'flex', flexDirection:'column' as const, boxShadow:'0 32px 80px rgba(0,0,0,0.9)' }}>
+
+              {/* Header */}
+              <div style={{ padding:'16px 24px', borderBottom:'1px solid rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
+                <div>
+                  <div style={{ fontFamily:BEBAS, fontSize:24, letterSpacing:1, color:'#fff' }}>Talent Comparison</div>
+                  <div style={{ fontSize:14, color:'rgba(255,255,255,0.4)', marginTop:2 }}>Full profile comparison — {compareTalents.length} talents</div>
+                </div>
+                <button onClick={() => setCompareOpen(false)} style={{ background:'none', border:'1px solid rgba(255,255,255,0.15)', borderRadius:8, width:34, height:34, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'rgba(255,255,255,0.6)', fontSize:16 }}>✕</button>
+              </div>
+
+              {compareLoading ? (
+                <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,0.4)', fontFamily:BARLOW, fontSize:16 }}>Loading full profiles...</div>
+              ) : (
+                <div style={{ overflowY:'auto', flex:1 }}>
+                  <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                    {/* Sticky talent header */}
+                    <thead style={{ position:'sticky', top:0, zIndex:10 }}>
+                      <tr style={{ background:BG3 }}>
+                        <th style={{ padding:'14px 20px', textAlign:'left' as const, fontSize:13, color:'rgba(255,255,255,0.4)', fontFamily:BARLOW, fontWeight:600, width:150, borderBottom:'2px solid rgba(255,255,255,0.1)' }}>ATTRIBUTE</th>
+                        {compareTalents.map(t => {
+                          const d = compareData[t.id];
+                          return (
+                            <th key={t.id} style={{ padding:'14px 16px', textAlign:'left' as const, borderBottom:'2px solid rgba(255,255,255,0.1)', borderLeft:'1px solid rgba(255,255,255,0.06)' }}>
+                              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                                {(d?.profile_image_url || t.img) ? (
+                                  <ProtectedMedia type="image" src={d?.profile_image_url || t.img} alt={t.name} width={44} height={44} style={{ borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+                                ) : (
+                                  <div style={{ width:44, height:44, borderRadius:8, background:BG4, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontFamily:BEBAS, color:GOLD, flexShrink:0 }}>{t.name.split(' ').map((w: string) => w[0]).join('')}</div>
+                                )}
+                                <div>
+                                  <div style={{ fontSize:15, fontWeight:700, color:'#fff', fontFamily:BARLOW }}>{t.name}</div>
+                                  <div style={{ fontSize:13, color:'rgba(255,255,255,0.45)', fontFamily:BARLOW }}>{d?.category || t.role || ''}</div>
+                                  {t.verified && <div style={{ fontSize:12, color:GREEN }}>✓ Verified</div>}
+                                </div>
+                              </div>
+                            </th>
+                          );
+                        })}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sections.map(section => (
+                        <>
+                          {/* Section heading */}
+                          <tr key={`section-${section.heading}`}>
+                            <td colSpan={compareTalents.length + 1} style={{ padding:'10px 20px 6px', fontSize:13, fontWeight:700, color:GOLD, fontFamily:BARLOW, letterSpacing:1, textTransform:'uppercase' as const, background:'rgba(212,166,74,0.05)', borderTop:'1px solid rgba(212,166,74,0.15)', borderBottom:'1px solid rgba(212,166,74,0.1)' }}>{section.heading}</td>
+                          </tr>
+                          {section.rows.map((row, ri) => (
+                            <tr key={row.label} style={{ background: ri % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                              <td style={{ padding:'10px 20px', fontSize:13, color:'rgba(255,255,255,0.45)', fontFamily:BARLOW, fontWeight:600, borderBottom:'1px solid rgba(255,255,255,0.04)', whiteSpace:'nowrap' as const }}>{row.label}</td>
+                              {compareTalents.map(t => {
+                                const d = compareData[t.id];
+                                const raw = d?.[row.key];
+                                const rendered = row.format ? row.format(raw, d) : null;
+                                return (
+                                  <td key={t.id} style={{ padding:'10px 16px', fontSize:14, color:'#F5F5F5', fontFamily:BARLOW, borderBottom:'1px solid rgba(255,255,255,0.04)', borderLeft:'1px solid rgba(255,255,255,0.05)' }}>
+                                    {rendered !== null && rendered !== undefined ? rendered : val(raw)}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ))}
+                        </>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Footer */}
+              <div style={{ padding:'14px 24px', borderTop:'1px solid rgba(255,255,255,0.08)', display:'flex', gap:10, flexShrink:0, flexWrap:'wrap' as const }}>
+                {compareTalents.map(t => (
+                  <button key={t.id} onClick={() => { router.push(`/agency/talent/${t.id}`); setCompareOpen(false); }}
+                    style={{ flex:1, minWidth:120, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'9px 0', color:'rgba(255,255,255,0.7)', fontSize:14, fontFamily:BARLOW, cursor:'pointer' }}>
+                    View {t.name.split(' ')[0]}
+                  </button>
+                ))}
+                <button onClick={() => setCompareOpen(false)} style={{ background:RED, border:'none', borderRadius:8, padding:'9px 24px', color:'#fff', fontSize:14, fontFamily:BARLOW, fontWeight:700, cursor:'pointer' }}>Close</button>
+              </div>
+            </div>
+          </>
+        );
+      })()}
     </div>
   );
 }
-
-/* ── Helpers ─────────────────────────────────────────────────── */
 function ActionBtn({ onClick, title, children }: { onClick: (e: React.MouseEvent) => void; title: string; children: React.ReactNode }) {
   return (
     <button onClick={onClick} title={title} style={{ width: 28, height: 28, borderRadius: 6, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
@@ -525,18 +839,18 @@ function PaginationBtn({ onClick, disabled, active, children }: { onClick: () =>
   );
 }
 
-function SimpleSelect({ value, options, onChange }: { value: string; options: string[]; onChange: (v: string) => void }) {
-  const [open, setOpen] = useState(false);
+function SimpleSelect({ id, value, options, onChange, openId, setOpenId }: { id: string; value: string; options: string[]; onChange: (v: string) => void; openId: string | null; setOpenId: (id: string | null) => void }) {
+  const open = openId === id;
   return (
     <div style={{ position: 'relative' }}>
-      {open && <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 90 }} />}
-      <div onClick={() => setOpen(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: BG2, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '7px 12px', cursor: 'pointer', fontSize: 14, color: '#fff', fontFamily: "'Barlow Condensed', sans-serif", whiteSpace: 'nowrap', position: 'relative', zIndex: 91 }}>
+      {open && <div onClick={() => setOpenId(null)} style={{ position: 'fixed', inset: 0, zIndex: 90 }} />}
+      <div onClick={() => setOpenId(open ? null : id)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: BG2, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '7px 12px', cursor: 'pointer', fontSize: 14, color: '#fff', fontFamily: "'Barlow Condensed', sans-serif", whiteSpace: 'nowrap', position: 'relative', zIndex: 91 }}>
         {value} <ChevronDown size={12} color="rgba(255,255,255,0.4)" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
       </div>
       {open && (
         <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: '#1C2030', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, overflow: 'hidden', zIndex: 100, minWidth: '100%', maxHeight: 220, overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
           {options.map(opt => (
-            <div key={opt} onClick={() => { onChange(opt); setOpen(false); }} style={{ padding: '8px 12px', fontSize: 14, fontFamily: "'Barlow Condensed', sans-serif", cursor: 'pointer', color: opt === value ? '#D4A64A' : '#F5F5F5', background: opt === value ? 'rgba(212,166,74,0.08)' : 'transparent', whiteSpace: 'nowrap' }}
+            <div key={opt} onClick={() => { onChange(opt); setOpenId(null); }} style={{ padding: '8px 12px', fontSize: 14, fontFamily: "'Barlow Condensed', sans-serif", cursor: 'pointer', color: opt === value ? '#D4A64A' : '#F5F5F5', background: opt === value ? 'rgba(212,166,74,0.08)' : 'transparent', whiteSpace: 'nowrap' }}
               onMouseEnter={e => { if (opt !== value) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
               onMouseLeave={e => { if (opt !== value) e.currentTarget.style.background = 'transparent'; }}
             >{opt}</div>

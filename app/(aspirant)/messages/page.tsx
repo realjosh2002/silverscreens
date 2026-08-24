@@ -1,14 +1,15 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation'
+
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
   LayoutDashboard, FileText, MessageSquare, Mic2,
   Bookmark, Star, Bell, ChevronRight, ChevronDown, ChevronLeft, Menu,
   Search, Paperclip, Smile, Send, Phone, MoreVertical,
   Trash2, Archive, UserX, ArrowLeft, Check, Filter,
-  BadgeCheck, Info,
+  BadgeCheck, Info, LogOut,
 } from 'lucide-react';
 
 const RED    = '#C8202A';
@@ -29,7 +30,17 @@ const sidebarItems = [
   { icon: Bell,            label: 'Notifications',        href: '/notifications' },
 ];
 
-const dropdownLinks = ['Subscription', 'Analytics', 'Calendar', 'Settings', 'Support', 'Logout'];
+const PROFILE_MENU_APPROVED = [
+  { label: 'My Profile',      href: '/my-profile'             },
+  { label: 'Subscription',    href: '/dashboard/subscription' },
+  { label: 'Analytics',       href: '/analytics'              },
+  { label: 'Calendar',        href: '/calendar'               },
+  { label: 'Settings',        href: '/settings'               },
+  { label: 'Help & Support',  href: '/settings?tab=support'   },
+];
+const PROFILE_MENU_PENDING = [
+  { label: 'My Profile', href: '/create-profile' },
+];
 
 const CONV_TABS = [
   { label: 'All' },
@@ -113,8 +124,19 @@ function apiToMsgGroups(messages: any[], currentUserId: string): MsgGroup[] {
 }
 
 export default function MessagesPage() {
-  const router = useRouter();
+  const router = useRouter()
   const [sidebarOpen,   setSidebarOpen]   = useState(false);
+  const [profileNumber,  setProfileNumber]  = useState('ASP·······');
+  const [isApproved, setIsApproved] = useState(false);
+  useEffect(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
+      const pn = u?.profileNumber ?? u?.profile_number;
+      if (pn) setProfileNumber(pn);
+      const ps = u?.profileStatus;
+      setIsApproved(ps === 'approved' || ps === 'active');
+    } catch {}
+  }, []);
   const [activeConvId,  setActiveConvId]  = useState<string | null>(null);
   const [convTab,       setConvTab]       = useState(0);
   const [searchQuery,   setSearchQuery]   = useState('');
@@ -154,16 +176,15 @@ export default function MessagesPage() {
   useEffect(() => {
     try {
       const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
-      if (u.name)         setUserName(u.name);
       if (u.profilePhoto) setAvatarUrl(u.profilePhoto);
       if (u.id)           setCurrentUserId(u.id);
     } catch {}
   }, []);
 
   // Fetch conversations on mount
-  useEffect(() => {
+  // Fetch conversations — called on mount and every 5s for real-time updates
+  const fetchConversations = (isInitial = false) => {
     const h = getAuthHeaders();
-
     fetch('/api/messages/conversations', { headers: h })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
@@ -171,13 +192,32 @@ export default function MessagesPage() {
         const list = data.data?.conversations ?? data.conversations ?? [];
         if (!Array.isArray(list)) return;
         const normalised = list.map((c: any, i: number) => apiToConv(c, i));
-        setConversations(normalised);
+        setConversations(prev => {
+          // Merge: keep unread=0 for the currently active conversation
+          return normalised.map((n: Conversation) => {
+            const existing = prev.find(p => p.id === n.id);
+            if (existing && existing.unread === 0 && n.id === activeConvId) return { ...n, unread: 0 };
+            return n;
+          });
+        });
         setStarredConvs(new Set(normalised.filter((c: Conversation) => c.starred).map((c: Conversation) => c.id)));
-        setMsgCount(normalised.filter((c: Conversation) => c.unread > 0).length);
-        if (normalised.length > 0 && !activeConvId) setActiveConvId(normalised[0].id);
+        // Update unread badge — don't count active conversation
+        const unreadCount = normalised.filter((c: Conversation) => c.unread > 0 && c.id !== activeConvId).length;
+        setMsgCount(unreadCount);
+        if (isInitial && normalised.length > 0 && !activeConvId) setActiveConvId(normalised[0].id);
       })
       .catch(() => {})
-      .finally(() => setLoadingConvs(false));
+      .finally(() => { if (isInitial) setLoadingConvs(false); });
+  };
+
+  useEffect(() => {
+    const h = getAuthHeaders();
+
+    // Initial load
+    fetchConversations(true);
+
+    // Poll every 5 seconds for new messages
+    const pollInterval = setInterval(() => fetchConversations(false), 5000);
 
     fetch('/api/notifications', { headers: h })
       .then(r => r.ok ? r.json() : null)
@@ -188,9 +228,11 @@ export default function MessagesPage() {
         const list = data.data?.notifications ?? data.notifications ?? [];
         if (Array.isArray(list)) setNotifCount(list.filter((n: any) => !n.is_read && !n.read).length);
       }).catch(() => {});
+
+    return () => clearInterval(pollInterval);
   }, []);
 
-  // Fetch messages when active conversation changes
+  // Fetch messages when active conversation changes, poll every 5s for new ones
   useEffect(() => {
     if (!activeConvId) return;
     const h = getAuthHeaders();
@@ -198,16 +240,22 @@ export default function MessagesPage() {
     setLoadingMsgs(true);
     setMessageGroups([]);
 
-    fetch(`/api/messages/${activeConvId}`, { headers: h })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (!data) return;
-        const list = data.data?.messages ?? data.messages ?? [];
-        if (!Array.isArray(list)) return;
-        setMessageGroups(apiToMsgGroups(list, uid));
-      })
-      .catch(() => {})
-      .finally(() => setLoadingMsgs(false));
+    const fetchMsgs = (initial = false) => {
+      fetch(`/api/messages/${activeConvId}`, { headers: h })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return;
+          const list = data.data?.messages ?? data.messages ?? [];
+          if (!Array.isArray(list)) return;
+          setMessageGroups(apiToMsgGroups(list, uid));
+        })
+        .catch(() => {})
+        .finally(() => { if (initial) setLoadingMsgs(false); });
+    };
+
+    fetchMsgs(true);
+    const poll = setInterval(() => fetchMsgs(false), 5000);
+    return () => clearInterval(poll);
   }, [activeConvId, currentUserId]);
 
   const activeConv = conversations.find(c => c.id === activeConvId) ?? null;
@@ -236,6 +284,34 @@ export default function MessagesPage() {
       return next;
     });
   };
+
+  const markAllAsRead = async () => {
+    // Optimistically clear all unread counts locally
+    setConversations(prev => prev.map(c => ({ ...c, unread: 0 })))
+    setMsgCount(0)
+    // Call PUT for each unread conversation
+    const h = getAuthHeaders()
+    const unreadConvs = conversations.filter(c => c.unread > 0)
+    await Promise.all(
+      unreadConvs.map(c =>
+        fetch(`/api/messages/${c.id}`, { method: 'PUT', headers: h }).catch(() => {})
+      )
+    )
+  }
+
+  const markConvAsRead = (convId: string) => {
+    setActiveConvId(convId)
+    // Optimistically clear unread count in local state
+    setConversations(prev =>
+      prev.map(c => c.id === convId ? { ...c, unread: 0 } : c)
+    )
+    // Tell the server to reset unread count + mark messages read
+    const h = getAuthHeaders()
+    fetch(`/api/messages/${convId}`, { method: 'PUT', headers: h })
+      .catch(() => {})
+    // Also update sidebar badge count
+    setMsgCount(prev => Math.max(0, prev - 1))
+  }
 
   const handleSend = async () => {
     if (!messageText.trim() || !activeConvId) return;
@@ -286,7 +362,7 @@ export default function MessagesPage() {
       <header style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '0 24px', height: 60, flexShrink: 0, background: BG2, borderBottom: '1px solid rgba(255,255,255,0.07)', position: 'relative', zIndex: 100 }}>
         <SilverScreensLogo size="md" href="/" showTagline={false} />
         <div style={{ flex: 1 }} />
-        <button onClick={() => router.push('/casting-calls')} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 8, padding: '0 18px', height: 36, fontSize: 15, fontWeight: 600, fontFamily: BARLOW, cursor: 'pointer' }}>+ Find Casting Calls</button>
+        <button onClick={() => isApproved && router.push('/casting-calls')} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: `1px solid ${isApproved ? GOLD : 'rgba(212,166,74,0.3)'}`, color: isApproved ? GOLD : 'rgba(212,166,74,0.35)', borderRadius: 8, padding: '0 18px', height: 36, fontSize: 15, fontWeight: 600, fontFamily: BARLOW, cursor: isApproved ? 'pointer' : 'not-allowed', opacity: isApproved ? 1 : 0.6 }}>{isApproved ? '+ Find Casting Calls' : '🔒 Find Casting Calls'}</button>
         <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => router.push('/notifications')}>
           <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Bell size={16} />
@@ -299,26 +375,40 @@ export default function MessagesPage() {
         </div>
         <div ref={dropRef} style={{ position: 'relative' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} onClick={() => setDropdownOpen(v => !v)}>
-            <img src={avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=C8202A&color=fff`} alt={userName} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${GOLD}` }} />
+            <img src={avatarUrl || undefined} alt={userName} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${GOLD}` }} />
             <div>
-              <div style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2 }}>{userName}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2 }}>{isApproved ? userName : 'My Account'}</div>
               <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)' }}>Aspirant</div>
             </div>
             <ChevronRight size={12} color="rgba(255,255,255,0.4)" style={{ transform: 'rotate(90deg)' }} />
           </div>
           {dropdownOpen && (
-            <div style={{ position: 'absolute', top: 46, right: 0, width: 190, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', zIndex: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
-              {dropdownLinks.map(item => (
-                <div key={item} style={{ padding: '10px 16px', fontSize: 16, cursor: 'pointer', color: item === 'Logout' ? '#ff6b6b' : '#fff', borderTop: item === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
-                  onClick={() => {
-                    if (item === 'Logout') { localStorage.removeItem('ss_user'); window.location.replace('/login'); }
-                    else router.push(`/${item.toLowerCase()}`);
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                >{item}</div>
-              ))}
-            </div>
+            <>
+              <div onClick={() => setDropdownOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 150 }} />
+              <div style={{ position: 'absolute', top: 46, right: 0, width: 210, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', zIndex: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
+                {isApproved && (
+                  <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Aspirant ID</span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: GOLD }}>{profileNumber}</span>
+                  </div>
+                )}
+                {(isApproved ? PROFILE_MENU_APPROVED : PROFILE_MENU_PENDING).map(({ label, href }) => (
+                  <div key={label}
+                    onClick={() => { router.push(href); setDropdownOpen(false); }}
+                    style={{ padding: '10px 16px', fontSize: 15, cursor: 'pointer', color: '#F5F5F5', fontFamily: BARLOW }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  >{label}</div>
+                ))}
+                <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+                  <div onClick={() => { localStorage.removeItem('ss_user'); window.location.replace('/login'); }}
+                    style={{ padding: '10px 16px', fontSize: 15, cursor: 'pointer', color: '#ff6b6b', fontFamily: BARLOW, display: 'flex', alignItems: 'center', gap: 8 }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  ><LogOut size={14} /> Logout</div>
+                </div>
+              </div>
+            </>
           )}
         </div>
       </header>
@@ -383,14 +473,38 @@ export default function MessagesPage() {
                 return (
                   <button key={i} onClick={() => setConvTab(i)} style={{ flex: 1, background: 'none', border: 'none', borderBottom: `2px solid ${convTab === i ? RED : 'transparent'}`, padding: '0 0 10px', cursor: 'pointer', fontFamily: BARLOW, fontSize: 15, fontWeight: convTab === i ? 700 : 400, color: convTab === i ? '#fff' : 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                     {tab.label}
-                    {count > 0 && <span style={{ background: convTab === i ? RED : 'rgba(255,255,255,0.12)', color: '#fff', borderRadius: 10, fontSize: 12, fontWeight: 700, padding: '0 6px', minWidth: 18, textAlign: 'center' as const }}>{count}</span>}
+                    {i > 0 && count > 0 && <span style={{ background: convTab === i ? RED : 'rgba(255,255,255,0.12)', color: '#fff', borderRadius: 10, fontSize: 12, fontWeight: 700, padding: '0 6px', minWidth: 18, textAlign: 'center' as const }}>{count}</span>}
                   </button>
                 );
               })}
             </div>
 
+            {/* Mark all as read */}
+            {conversations.some(conv => conv.unread > 0) && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 16px 0', flexShrink: 0 }}>
+                <button onClick={markAllAsRead} style={{ background: 'none', border: 'none', color: GOLD, fontSize: 13, fontWeight: 700, fontFamily: BARLOW, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, padding: 0 }}>
+                  ✓ Mark all as read
+                </button>
+              </div>
+            )}
+
             {/* Conversation items */}
             <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>
+      {/* Profile incomplete banner */}
+      {!isApproved && (
+        <div style={{ margin: '16px 24px 0', padding: '14px 20px', background: 'rgba(212,166,74,0.08)', border: '1px solid rgba(212,166,74,0.25)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 22 }}>🎬</span>
+            <div>
+              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 17, letterSpacing: 1, color: '#D4A64A' }}>COMPLETE YOUR PROFILE TO UNLOCK THIS SECTION</div>
+              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 14, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>Submit your profile, choose a plan, complete payment and get admin approval to access all features.</div>
+            </div>
+          </div>
+          <button onClick={() => router.push('/create-profile')} style={{ padding: '9px 20px', background: '#D4A64A', border: 'none', borderRadius: 7, color: '#050505', fontFamily: "'Bebas Neue', sans-serif", fontSize: 15, letterSpacing: 1, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            CREATE PROFILE →
+          </button>
+        </div>
+      )}
               {loadingConvs && (
                 <div style={{ padding: '40px 0', textAlign: 'center', fontSize: 14, color: 'rgba(255,255,255,0.3)' }}>Loading…</div>
               )}
@@ -403,7 +517,7 @@ export default function MessagesPage() {
                 const isActive = conv.id === activeConvId;
                 const isStarred = starredConvs.has(conv.id);
                 return (
-                  <div key={conv.id} onClick={() => setActiveConvId(conv.id)} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', cursor: 'pointer', background: isActive ? 'rgba(200,32,42,0.08)' : 'transparent', borderLeft: `3px solid ${isActive ? RED : 'transparent'}`, transition: 'all 0.12s' }}
+                  <div key={conv.id} onClick={() => markConvAsRead(conv.id)} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', cursor: 'pointer', background: isActive ? 'rgba(200,32,42,0.08)' : 'transparent', borderLeft: `3px solid ${isActive ? RED : 'transparent'}`, transition: 'all 0.12s' }}
                     onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
                     onMouseLeave={e => { e.currentTarget.style.background = isActive ? 'rgba(200,32,42,0.08)' : 'transparent'; }}
                   >

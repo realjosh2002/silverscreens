@@ -1,11 +1,9 @@
-'use client';
+﻿'use client';
 
-import AgencyTopnav from '@/components/layout/AgencyTopnav'
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
-
   LayoutDashboard, Megaphone, PlusCircle, ClipboardList,
   UserSearch, Star, CalendarCheck, MessageSquare, Bell,
   Bookmark, ChevronDown, ChevronLeft, Menu, BarChart2, CreditCard, Settings,
@@ -54,70 +52,32 @@ const STATS = [
   { label: 'Total Applicants', value: '1,284', change: '+18%', icon: '👤' },
   { label: 'Auditions Scheduled', value: '156', change: '+11%', icon: '📅' },
   { label: 'Auditions Completed', value: '98', change: '+12%', icon: '✅' },
-  { label: 'Offers Sent', value: '16', change: '+23%', icon: '📨' },
-  { label: 'Hires Confirmed', value: '6', change: '+20%', icon: '⭐' },
+  { label: 'Offers Sent', value: '—', change: '', icon: '📨' },
+  { label: 'Hires Confirmed', value: '—', change: '', icon: '⭐' },
 ];
 
-const CASTING_TABLE: CastingRow[] = [
-  { id: '1', title: 'Lead Actress', role: 'Feature Film', image: '👩', applicants: 324, shortlisted: 72, shortlistedPct: 22, auditionsScheduled: 48, auditionsScheduledPct: 15, auditionsCompleted: 31, auditionsCompletedPct: 10, offersSent: 6, offersSentPct: 2, hires: 2, hiresPct: 0.6, conversionRate: 0.6, trend: 'up' },
-  { id: '2', title: 'Supporting Actor', role: 'Web Series', image: '👨', applicants: 256, shortlisted: 58, shortlistedPct: 23, auditionsScheduled: 41, auditionsScheduledPct: 16, auditionsCompleted: 27, auditionsCompletedPct: 11, offersSent: 4, offersSentPct: 1.5, hires: 1, hiresPct: 0.4, conversionRate: 0.4, trend: 'up' },
-  { id: '3', title: 'Model', role: 'Brand Campaign', image: '👩‍🦱', applicants: 198, shortlisted: 43, shortlistedPct: 22, auditionsScheduled: 29, auditionsScheduledPct: 15, auditionsCompleted: 18, auditionsCompletedPct: 9, offersSent: 3, offersSentPct: 1.5, hires: 1, hiresPct: 0.5, conversionRate: 0.5, trend: 'flat' },
-  { id: '4', title: 'Dancer', role: 'Music Video', image: '💃', applicants: 176, shortlisted: 29, shortlistedPct: 16, auditionsScheduled: 21, auditionsScheduledPct: 12, auditionsCompleted: 13, auditionsCompletedPct: 7, offersSent: 2, offersSentPct: 1, hires: 1, hiresPct: 0.6, conversionRate: 0.6, trend: 'up' },
-  { id: '5', title: 'Child Artist', role: 'TV Serial', image: '🧒', applicants: 142, shortlisted: 21, shortlistedPct: 15, auditionsScheduled: 17, auditionsScheduledPct: 12, auditionsCompleted: 10, auditionsCompletedPct: 7, offersSent: 1, offersSentPct: 0.7, hires: 1, hiresPct: 0.7, conversionRate: 0.7, trend: 'down' },
-];
+// CASTING_TABLE — computed from apiStats.top_casting_calls inside component
 
-const DONUT_STATUS = [
-  { label: 'Shortlisted', pct: 42, count: 540, color: GOLD },
-  { label: 'Audition Scheduled', pct: 26, count: 333, color: GRAY },
-  { label: 'Audition Completed', pct: 18, count: 231, color: GREEN },
-  { label: 'Rejected', pct: 14, count: 180, color: RED },
-];
+// DONUT_STATUS computed from apiStats inside component
 
-const DONUT_SOURCE = [
-  { label: 'SilverScreens (Organic)', pct: 48, count: 616, color: GOLD },
-  { label: 'Agency Invite', pct: 24, count: 308, color: GRAY },
-  { label: 'Social Media', pct: 17, count: 218, color: GREEN },
-  { label: 'Other Sources', pct: 11, count: 142, color: RED },
-];
+// DONUT_SOURCE — source breakdown not tracked per-channel yet, shown as N/A
 
-const FUNNEL_DATA = [
-  { label: 'Applicants', value: 1284, pct: 100 },
-  { label: 'Shortlisted', value: 540, pct: 42 },
-  { label: 'Audition Scheduled', value: 333, pct: 26 },
-  { label: 'Audition Completed', value: 231, pct: 18 },
-  { label: 'Offers Sent', value: 16, pct: 1.2 },
-  { label: 'Hires Confirmed', value: 6, pct: 0.5 },
-];
+// FUNNEL_DATA computed from apiStats inside component
 
-const TOP_CASTING = [
-  { title: 'Lead Actress – Feature Film', applicants: 324, shortlisted: 72, pct: 22, img: '👩' },
-  { title: 'Supporting Actor – Web Series', applicants: 256, shortlisted: 58, pct: 23, img: '👨' },
-  { title: 'Model – Brand Campaign', applicants: 198, shortlisted: 43, pct: 22, img: '👩‍🦱' },
-  { title: 'Dancer – Music Video', applicants: 176, shortlisted: 29, pct: 16, img: '💃' },
-  { title: 'Child Artist – TV Serial', applicants: 142, shortlisted: 21, pct: 15, img: '🧒' },
-];
+// TOP_CASTING and INSIGHTS computed from apiStats inside component
 
-const INSIGHTS = [
-  { icon: '📈', text: 'Your applicants increased by 18% compared to 25 May – 31 May 2026' },
-  { icon: '⭐', text: 'Lead Actress – Feature Film has the highest shortlist rate (22%)' },
-  { icon: '👥', text: 'Audition completion rate improved by 12% this week' },
-];
-
-// ─── Line Graph Data ───────────────────────────────────────────────────────────
-const DAYS = ['01 Jun', '02 Jun', '03 Jun', '04 Jun', '05 Jun', '06 Jun', '07 Jun'];
-const APPLICANTS_DATA = [500, 620, 680, 750, 980, 820, 630];
-const SHORTLISTED_DATA = [240, 310, 350, 420, 520, 450, 280];
-const SCHEDULED_DATA = [80, 100, 115, 130, 160, 140, 100];
-const COMPLETED_DATA = [55, 70, 85, 95, 120, 105, 75];
+// ─── Line Graph Data — populated from API ──────────────────────────────────────
+const EMPTY_DAYS = ['', '', '', '', '', '', ''];
+const EMPTY_DATA = [0, 0, 0, 0, 0, 0, 0];
 
 // ─── SVG Line Chart ────────────────────────────────────────────────────────────
-function LineChart({ data1, data2, color1, color2, label1, label2, height = 120 }: {
+function LineChart({ data1, data2, color1, color2, label1, label2, height = 120, days }: {
   data1: number[]; data2: number[]; color1: string; color2: string;
-  label1: string; label2: string; height?: number;
+  label1: string; label2: string; height?: number; days?: string[];
 }) {
   const W = 420; const H = height; const PAD = 20;
   const allVals = [...data1, ...data2];
-  const min = 0; const max = Math.max(...allVals) * 1.1;
+  const min = 0; const max = Math.max(...allVals) * 1.1 || 1;
   const xStep = (W - PAD * 2) / (data1.length - 1);
   const toY = (v: number) => H - PAD - ((v - min) / (max - min)) * (H - PAD * 2);
   const toX = (i: number) => PAD + i * xStep;
@@ -141,7 +101,7 @@ function LineChart({ data1, data2, color1, color2, label1, label2, height = 120 
       {data1.map((v, i) => <circle key={i} cx={toX(i)} cy={toY(v)} r="3" fill={color1} />)}
       {data2.map((v, i) => <circle key={i} cx={toX(i)} cy={toY(v)} r="3" fill={color2} />)}
       {/* X labels */}
-      {DAYS.map((d, i) => (
+      {(days ?? EMPTY_DAYS).map((d, i) => (
         <text key={i} x={toX(i)} y={H - 4} fill={GRAY} fontSize="8" textAnchor="middle">{d}</text>
       ))}
     </svg>
@@ -149,9 +109,9 @@ function LineChart({ data1, data2, color1, color2, label1, label2, height = 120 
 }
 
 // ─── Bar Chart ─────────────────────────────────────────────────────────────────
-function BarChart({ sched, compl }: { sched: number[]; compl: number[] }) {
+function BarChart({ sched, compl, days }: { sched: number[]; compl: number[]; days?: string[] }) {
   const W = 360; const H = 120; const PAD = 20;
-  const maxVal = Math.max(...sched, ...compl) * 1.2;
+  const maxVal = Math.max(...sched, ...compl) * 1.2 || 1;
   const barW = 18; const gap = 8;
   const groupW = barW * 2 + gap;
   const totalW = W - PAD * 2;
@@ -173,7 +133,7 @@ function BarChart({ sched, compl }: { sched: number[]; compl: number[] }) {
           <g key={i}>
             <rect x={x} y={H - PAD - toH(s)} width={barW} height={toH(s)} fill={GOLD} rx="2" />
             <rect x={x + barW + gap} y={H - PAD - toH(c)} width={barW} height={toH(c)} fill={GRAY} rx="2" />
-            <text x={x + barW + gap / 2} y={H - 4} fill={GRAY} fontSize="7.5" textAnchor="middle">{DAYS[i].split(' ')[0]}</text>
+            <text x={x + barW + gap / 2} y={H - 4} fill={GRAY} fontSize="7.5" textAnchor="middle">{(days ?? EMPTY_DAYS)[i]?.split(' ')[0] ?? ''}</text>
           </g>
         );
       })}
@@ -244,12 +204,12 @@ function CircularPct({ pct, color }: { pct: number; color: string }) {
 }
 
 // ─── Funnel ────────────────────────────────────────────────────────────────────
-function ConversionFunnel() {
+function ConversionFunnel({ funnel }: { funnel: { label: string; value: number; pct: number }[] }) {
   const funnelColors = [GOLD, '#C89A3A', '#B8902E', '#A88422', '#888', '#555'];
   const maxW = 160;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      {FUNNEL_DATA.map((item, i) => {
+      {funnel.map((item, i) => {
         const barW = Math.max((item.pct / 100) * maxW, 24);
         return (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -312,6 +272,13 @@ function DateRangePicker({ value, onChange }: { value: string; onChange: (v: str
 
 
 
+function getAuthHeaders(): Record<string, string> {
+  try {
+    const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
+    return u.token ? { Authorization: `Bearer ${u.token}` } : {}
+  } catch { return {} }
+}
+
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard',               href: '/agency/dashboard' },
   { icon: PlusCircle,      label: 'Create Casting Call',     href: '/agency/create-casting' },
@@ -321,8 +288,9 @@ const NAV_ITEMS = [
   { icon: Star,            label: 'Shortlisted Talents',     href: '/agency/shortlisted' },
   { icon: CalendarCheck,   label: 'Audition Management',     href: '/agency/auditions' },
   { icon: Bookmark,        label: 'Saved Talents',           href: '/agency/saved-talents' },
-  { icon: MessageSquare,   label: 'Messages',    href: '/agency/messages' },
-  { icon: Bell,            label: 'Notifications', href: '/agency/notifications' },
+  { icon: MessageSquare,   label: 'Messages',                href: '/agency/messages' },
+  { icon: Bell,            label: 'Notifications',           href: '/agency/notifications' },
+  { icon: BarChart2,       label: 'Reports & Analytics',     href: '/agency/reports', active: true },
 ];
 
 const PROFILE_MENU = [
@@ -332,7 +300,7 @@ const PROFILE_MENU = [
   { label: 'Documents',              href: '/agency/documents' },
   { label: 'Calendar',               href: '/agency/calendar' },
   { label: 'Settings',               href: '/agency/settings' },
-  { label: 'Support',                href: '/contact' },
+  { label: 'Support',                href: '/agency/support' },
   { label: 'Logout',                 href: '/login' },
 ];
 
@@ -342,15 +310,268 @@ export default function ReportsAnalyticsPage() {
   const [sidebarOpen,  setSidebarOpen]  = useState(false);
   const [profileOpen,  setProfileOpen]  = useState(false);
   const [dateRange,    setDateRange]    = useState('01 Jun 2026 – 07 Jun 2026');
-  const [tableFilter,  setTableFilter]  = useState('This Week');
+  const [tableFilter,  setTableFilter]  = useState('All Time');
+  const [agencyName,   setAgencyName]   = useState('My Agency');
+  const [agencyInitials, setAgencyInitials] = useState('AG');
+  const [agencyId,     setAgencyId]     = useState('AGE·········');
+  const [agencyType,   setAgencyType]   = useState('Production House');
+  const [msgCount,     setMsgCount]     = useState(0);
+  const [notifCount,   setNotifCount]   = useState(0);
+  const [apiStats,      setApiStats]      = useState<any>(null);
+  const [statsLoading,  setStatsLoading]  = useState(true);
+  const [appBreakdown,  setAppBreakdown]  = useState<Record<string,{shortlisted:number;scheduled:number;selected:number}>>({});
+
+  useEffect(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
+      if (u.name) {
+        setAgencyName(u.name)
+        setAgencyInitials(u.name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase())
+      }
+      if (u.profileNumber) setAgencyId(u.profileNumber)
+    } catch {}
+
+    const fetchCounts = () => {
+      const h = getAuthHeaders()
+      fetch('/api/notifications', { headers: h })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return
+          const count = data.data?.unread_count ?? data.unread_count
+          if (count != null) { setNotifCount(count); return }
+          const list = data.data?.notifications ?? data.notifications ?? []
+          if (Array.isArray(list)) setNotifCount(list.filter((n: any) => !n.is_read).length)
+        }).catch(() => {})
+      fetch('/api/messages/conversations', { headers: h })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return
+          const list = data.data?.conversations ?? data.conversations ?? []
+          if (Array.isArray(list)) setMsgCount(list.filter((c: any) => c.unreadCount > 0).length)
+        }).catch(() => {})
+    }
+    fetchCounts()
+    const interval = setInterval(fetchCounts, 10000)
+
+    // Fetch real stats
+    const h = getAuthHeaders()
+    fetch('/api/agency/reports/stats', { headers: h })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.data) setApiStats(data.data) })
+      .catch(() => {})
+      .finally(() => setStatsLoading(false))
+
+    // Fetch all applications to compute per-casting breakdown
+    fetch('/api/applications?limit=1000', { headers: h })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        const list: any[] = data.applications ?? data.data?.applications ?? [];
+        if (!Array.isArray(list) || list.length === 0) return;
+        // Group by casting_call_id
+        const byCall: Record<string, { shortlisted: number; scheduled: number; completed: number; selected: number; total: number }> = {};
+        list.forEach((a: any) => {
+          const id = a.casting_call_id;
+          if (!id) return;
+          if (!byCall[id]) byCall[id] = { shortlisted: 0, scheduled: 0, completed: 0, selected: 0, total: 0 };
+          byCall[id].total++;
+          const st = (a.status ?? '').toLowerCase();
+          if (st === 'shortlisted')                          byCall[id].shortlisted++;
+          if (st === 'audition_scheduled')                   byCall[id].scheduled++;
+          if (st === 'selected' || st === 'on_hold')         byCall[id].selected++;
+        });
+        // Store breakdown in separate state for reliable export
+        const bd: Record<string,{shortlisted:number;scheduled:number;selected:number}> = {};
+        Object.entries(byCall).forEach(([id, v]) => {
+          bd[id] = { shortlisted: v.shortlisted, scheduled: v.scheduled, selected: v.selected };
+        });
+        setAppBreakdown(bd);
+        setApiStats((prev: any) => {
+          if (!prev) return prev;
+          const updated = { ...prev };
+          updated.top_casting_calls = (prev.top_casting_calls ?? []).map((cc: any) => ({
+            ...cc,
+            _shortlisted: byCall[cc.id]?.shortlisted ?? 0,
+            _scheduled:   byCall[cc.id]?.scheduled ?? 0,
+            _selected:    byCall[cc.id]?.selected ?? 0,
+          }));
+          return updated;
+        });
+      }).catch(() => {});
+
+    // Fetch agency profile
+    fetch('/api/profile/agency', { headers: h })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return
+        const p = data.data?.profile ?? data.profile ?? data
+        if (p.company_name || p.name) {
+          const name = p.company_name ?? p.name
+          setAgencyName(name)
+          setAgencyInitials(name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase())
+        }
+        if (p.profiles?.profile_number) setAgencyId(p.profiles.profile_number)
+        if (p.company_type) setAgencyType(p.company_type)
+      }).catch(() => {})
+
+    return () => clearInterval(interval)
+  }, [])
+
+  const liveNavItems = NAV_ITEMS.map((item: any) => {
+    if (item.label === 'Messages')      return { ...item, badge: msgCount   || undefined }
+    if (item.label === 'Notifications') return { ...item, badge: notifCount || undefined }
+    return item
+  })
+
+  // ── Computed chart data from API ──────────────────────────────────
+  const ts = apiStats?.time_series
+  const chartDays        = ts?.days        ?? EMPTY_DAYS
+  const chartApplicants  = ts?.applicants  ?? EMPTY_DATA
+  const chartShortlisted = ts?.shortlisted ?? EMPTY_DATA
+  const chartScheduled   = ts?.scheduled   ?? EMPTY_DATA
+  const chartCompleted   = ts?.completed   ?? EMPTY_DATA
+
+  const total = apiStats?.applicants?.total ?? 0
+  const liveDonutStatus = [
+    { label: 'Shortlisted',        pct: total > 0 ? Math.round((apiStats?.applicants?.shortlisted ?? 0) / total * 100) : 0, count: apiStats?.applicants?.shortlisted ?? 0, color: GOLD   },
+    { label: 'Audition Scheduled', pct: total > 0 ? Math.round((apiStats?.auditions?.scheduled    ?? 0) / total * 100) : 0, count: apiStats?.auditions?.scheduled    ?? 0, color: GRAY   },
+    { label: 'Audition Completed', pct: total > 0 ? Math.round((apiStats?.auditions?.completed    ?? 0) / total * 100) : 0, count: apiStats?.auditions?.completed    ?? 0, color: GREEN  },
+    { label: 'Selected',           pct: total > 0 ? Math.round((apiStats?.applicants?.selected    ?? 0) / total * 100) : 0, count: apiStats?.applicants?.selected    ?? 0, color: BLUE   },
+    { label: 'Rejected',           pct: total > 0 ? Math.round((apiStats?.applicants?.rejected    ?? 0) / total * 100) : 0, count: apiStats?.applicants?.rejected    ?? 0, color: RED    },
+  ]
+
+  const selectedCount   = apiStats?.applicants?.selected    ?? 0
+  const shortlistCount  = apiStats?.applicants?.shortlisted ?? 0
+  const scheduledCount  = apiStats?.auditions?.scheduled    ?? 0
+  const completedCount  = apiStats?.auditions?.completed    ?? 0
+
+  const liveFunnel = [
+    { label: 'Applicants',         value: total,           pct: 100 },
+    { label: 'Shortlisted',        value: shortlistCount,  pct: total > 0 ? Math.round(shortlistCount  / total * 100) : 0 },
+    { label: 'Audition Scheduled', value: scheduledCount,  pct: total > 0 ? Math.round(scheduledCount  / total * 100) : 0 },
+    { label: 'Audition Completed', value: completedCount,  pct: total > 0 ? Math.round(completedCount  / total * 100) : 0 },
+    { label: 'Selected',           value: selectedCount,   pct: total > 0 ? Math.round(selectedCount   / total * 100) : 0 },
+  ]
+
+  // Live casting table from top_casting_calls
+  const liveCastingTable: CastingRow[] = (apiStats?.top_casting_calls ?? []).slice(0, 10).map((cc: any, i: number) => {
+    const apps = cc.applications_count ?? 0
+    return {
+      id: cc.id ?? String(i),
+      title: cc.title ?? '—',
+      role: cc.status === 'active' ? 'Active' : cc.status === 'closed' ? 'Closed' : cc.status === 'draft' ? 'Draft' : (cc.status ?? '—'),
+      image: '🎬',
+      applicants: apps,
+      shortlisted:            appBreakdown[cc.id]?.shortlisted ?? cc._shortlisted ?? 0,
+      shortlistedPct:         apps > 0 ? Math.round(((appBreakdown[cc.id]?.shortlisted ?? cc._shortlisted ?? 0) / apps) * 100) : 0,
+      auditionsScheduled:     appBreakdown[cc.id]?.scheduled ?? cc._scheduled ?? 0,
+      auditionsScheduledPct:  apps > 0 ? Math.round(((appBreakdown[cc.id]?.scheduled ?? cc._scheduled ?? 0) / apps) * 100) : 0,
+      auditionsCompleted:     0,
+      auditionsCompletedPct:  0,
+      offersSent:             0,
+      offersSentPct:          0,
+      hires:                  appBreakdown[cc.id]?.selected ?? cc._selected ?? 0,
+      hiresPct:               apps > 0 ? Math.round(((appBreakdown[cc.id]?.selected ?? cc._selected ?? 0) / apps) * 100) : 0,
+      conversionRate:         apps > 0 ? Math.round(((appBreakdown[cc.id]?.selected ?? cc._selected ?? 0) / apps) * 100) : 0,
+      trend:                  (appBreakdown[cc.id]?.selected ?? 0) > 0 ? 'up' as const : (appBreakdown[cc.id]?.shortlisted ?? 0) > 0 ? 'up' as const : 'flat' as const,
+    }
+  })
+
+  const liveTopCasting = (apiStats?.top_casting_calls ?? []).slice(0, 5).map((cc: any) => ({
+    title: cc.title,
+    applicants: cc.applications_count ?? 0,
+    views: cc.views_count ?? 0,
+    img: '🎬',
+  }))
+
+  // Filtered casting table based on tableFilter selection
+  const filteredTable = liveCastingTable.filter((row: CastingRow) => {
+    const now = new Date();
+    const cc = apiStats?.top_casting_calls?.find((c: any) => c.id === row.id);
+    if (!cc) return true;
+    const created = new Date(cc.created_at);
+    if (tableFilter === 'This Week') {
+      const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay());
+      weekStart.setHours(0,0,0,0);
+      return created >= weekStart;
+    }
+    if (tableFilter === 'Last Week') {
+      const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay() - 7);
+      weekStart.setHours(0,0,0,0);
+      const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 7);
+      return created >= weekStart && created < weekEnd;
+    }
+    if (tableFilter === 'This Month') {
+      return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear();
+    }
+    if (tableFilter === 'All Time') return true;
+    return true;
+  });
+
+  const liveInsights: { icon: string; text: string }[] = []
+  if (apiStats) {
+    const shortlistRate = total > 0 ? Math.round((apiStats.applicants?.shortlisted ?? 0) / total * 100) : 0
+      const recentApplications = apiStats?.applicants?.recent_30d ?? 0
+      if (recentApplications > 0) liveInsights.push({ icon: '📈', text: `${recentApplications} new applications received in the last 30 days` })
+    if (shortlistRate > 0) liveInsights.push({ icon: '⭐', text: `${shortlistRate}% shortlist rate across all your casting calls` })
+    if (apiStats.auditions?.completed > 0) liveInsights.push({ icon: '👥', text: `${apiStats.auditions.completed} auditions completed so far` })
+    if (liveInsights.length === 0) liveInsights.push({ icon: '🎬', text: 'Post casting calls to start seeing performance insights here' })
+  }
 
   const SB_W = sidebarOpen ? 230 : 52;
+
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: BG, fontFamily: BARLOW, color: '#F5F5F5' }}>
 
       {/* ══ TOPNAV ══ */}
-      <AgencyTopnav />
+      <header style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, padding: '0 24px', height: 60, background: BG2, borderBottom: '1px solid rgba(255,255,255,0.06)', zIndex: 100 }}>
+        <SilverScreensLogo size="md" href="/" showTagline={false} />
+        <div style={{ flex: 1 }} />
+        <button onClick={() => router.push('/agency/create-casting')} style={{ display: 'flex', alignItems: 'center', gap: 7, background: RED, color: '#fff', border: 'none', borderRadius: 8, padding: '0 18px', height: 36, fontSize: 15, fontWeight: 700, fontFamily: BARLOW, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          Post a Casting <span style={{ fontSize: 16, fontWeight: 400 }}>+</span>
+        </button>
+        <div onClick={() => router.push('/agency/messages')} style={{ position: 'relative', cursor: 'pointer' }}>
+          <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <MessageSquare size={15} color="rgba(255,255,255,0.7)" />
+          </div>
+          {msgCount > 0 && <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', pointerEvents: 'none' }}>{msgCount}</div>}
+        </div>
+        <div onClick={() => router.push('/agency/notifications')} style={{ position: 'relative', cursor: 'pointer' }}>
+          <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Bell size={15} color="rgba(255,255,255,0.7)" />
+          </div>
+          {notifCount > 0 && <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', pointerEvents: 'none' }}>{notifCount}</div>}
+        </div>
+        <div style={{ position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer' }} onClick={() => setProfileOpen(v => !v)}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#1a1410,#2a1e0e)', border: `2px solid ${GOLD}60`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: GOLD, fontFamily: BEBAS }}>{agencyInitials}</div>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>{agencyName}</div>
+              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>{agencyType}</div>
+            </div>
+            <ChevronDown size={12} color="rgba(255,255,255,0.4)" />
+          </div>
+          {profileOpen && (
+            <>
+              <div onClick={() => setProfileOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 150 }} />
+              <div style={{ position: 'absolute', top: 46, right: 0, width: 220, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', zIndex: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
+                <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Agency ID</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: GOLD }}>{agencyId}</span>
+                </div>
+                {PROFILE_MENU.map(({ label, href }) => (
+                  <div key={label} onClick={() => { router.push(href); setProfileOpen(false); }}
+                    style={{ padding: '10px 16px', fontSize: 15, cursor: 'pointer', color: label === 'Logout' ? '#ff6b6b' : label === 'Reports & Analytics' ? GOLD : '#F5F5F5', fontWeight: label === 'Reports & Analytics' ? 700 : 400, background: label === 'Reports & Analytics' ? 'rgba(212,166,74,0.08)' : 'transparent', borderTop: label === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = label === 'Reports & Analytics' ? 'rgba(212,166,74,0.08)' : 'transparent')}
+                  >{label}</div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </header>
 
       {/* ══ BODY ══ */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -365,15 +586,15 @@ export default function ReportsAnalyticsPage() {
           </div>
           {sidebarOpen && (
             <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 38, height: 38, borderRadius: 9, background: 'linear-gradient(135deg,#1a1410,#2a1e0e)', border: `1px solid ${GOLD}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: GOLD, fontFamily: BEBAS, flexShrink: 0 }}>DP</div>
+              <div style={{ width: 38, height: 38, borderRadius: 9, background: 'linear-gradient(135deg,#1a1410,#2a1e0e)', border: `1px solid ${GOLD}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: GOLD, fontFamily: BEBAS, flexShrink: 0 }}>{agencyInitials}</div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#F5F5F5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Dharma Productions</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#F5F5F5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{agencyName}</div>
                 <div onClick={() => router.push('/agency-profile')} style={{ fontSize: 14, color: RED, fontWeight: 600, cursor: 'pointer' }}>View Company Profile</div>
               </div>
             </div>
           )}
           <nav style={{ flex: 1, padding: sidebarOpen ? '8px 6px' : '8px 4px', overflowY: 'auto', scrollbarWidth: 'none' }}>
-            {NAV_ITEMS.map(({ icon: Icon, label, active, badge, href }) => (
+            {liveNavItems.map(({ icon: Icon, label, active, badge, href }) => (
               <div key={label} onClick={() => router.push(href)} title={!sidebarOpen ? label : undefined}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'space-between' : 'center', padding: sidebarOpen ? '8px 10px' : '10px 0', marginBottom: 2, borderRadius: 6, cursor: 'pointer', background: active ? 'rgba(200,32,42,0.12)' : 'transparent', borderLeft: sidebarOpen && active ? `3px solid ${RED}` : sidebarOpen ? '3px solid transparent' : 'none', position: 'relative' }}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
@@ -406,7 +627,23 @@ export default function ReportsAnalyticsPage() {
             </div>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
               <DateRangePicker value={dateRange} onChange={setDateRange} />
-              <button style={{
+              <button onClick={() => {
+                const rows = filteredTable;
+                const headers = ['Casting Call','Status','Applicants','Shortlisted','Shortlisted%','Auditions Scheduled','Auditions Completed','Selected','Conversion Rate%'];
+                const csv = [headers.join(','), ...rows.map(r => {
+                  const bd = appBreakdown[r.id] ?? { shortlisted: r.shortlisted, scheduled: r.auditionsScheduled, selected: r.hires };
+                  const apps = r.applicants;
+                  const slPct  = apps > 0 ? Math.round((bd.shortlisted / apps) * 100) : 0;
+                  const schPct = apps > 0 ? Math.round((bd.scheduled   / apps) * 100) : 0;
+                  const selPct = apps > 0 ? Math.round((bd.selected    / apps) * 100) : 0;
+                  return [`"${r.title}"`, r.role, apps, bd.shortlisted, slPct, bd.scheduled, 0, bd.selected, selPct].join(',');
+                })].join('\n');
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = `agency-report-${new Date().toISOString().slice(0,10)}.csv`;
+                a.click(); URL.revokeObjectURL(url);
+              }} style={{
                 background: BG3, border: `1px solid ${GOLD}`, borderRadius: 6,
                 padding: '7px 14px', color: GOLD, fontFamily: BARLOW, fontSize: 14,
                 cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
@@ -418,7 +655,14 @@ export default function ReportsAnalyticsPage() {
 
           {/* ── Stats Row ────────────────────────────────────────────────────── */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginBottom: 20 }}>
-            {STATS.map(stat => (
+            {[
+              { label: 'Total Casting Calls',   value: statsLoading ? '…' : (apiStats?.casting_calls?.total ?? 0),       icon: '🎬' },
+              { label: 'Total Applicants',       value: statsLoading ? '…' : (apiStats?.applicants?.total ?? 0),          icon: '👤' },
+              { label: 'Shortlisted',            value: statsLoading ? '…' : (apiStats?.applicants?.shortlisted ?? 0),    icon: '⭐' },
+              { label: 'Auditions Scheduled',    value: statsLoading ? '…' : (apiStats?.auditions?.scheduled ?? 0),       icon: '📅' },
+              { label: 'Auditions Completed',    value: statsLoading ? '…' : (apiStats?.auditions?.completed ?? 0),       icon: '✅' },
+              { label: 'Selected',               value: statsLoading ? '…' : (apiStats?.applicants?.selected ?? 0),       icon: '🏆' },
+            ].map(stat => (
               <div key={stat.label} style={{
                 background: BG2, border: `1px solid ${BG4}`, borderRadius: 8, padding: '14px 16px',
               }}>
@@ -427,9 +671,6 @@ export default function ReportsAnalyticsPage() {
                   <span style={{ fontSize: 14, color: GRAY, fontFamily: BARLOW, lineHeight: 1.2 }}>{stat.label}</span>
                 </div>
                 <div style={{ fontFamily: BEBAS, fontSize: 28, color: WHITE, lineHeight: 1 }}>{stat.value}</div>
-                <div style={{ fontSize: 14, color: GREEN, fontFamily: BARLOW, marginTop: 4 }}>
-                  ↑ {stat.change} <span style={{ color: GRAY }}>vs last 7 days</span>
-                </div>
               </div>
             ))}
           </div>
@@ -451,7 +692,7 @@ export default function ReportsAnalyticsPage() {
                   </span>
                 </div>
               </div>
-              <LineChart data1={APPLICANTS_DATA} data2={SHORTLISTED_DATA} color1={GOLD} color2={GRAY} label1="Applicants" label2="Shortlisted" />
+              <LineChart data1={chartApplicants} data2={chartShortlisted} color1={GOLD} color2={GRAY} label1="Applicants" label2="Shortlisted" days={chartDays} />
             </div>
 
             {/* Applicants by Status Donut */}
@@ -468,9 +709,9 @@ export default function ReportsAnalyticsPage() {
                 </select>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-                <DonutChart segments={DONUT_STATUS} centerLabel="Total" centerValue="1,284" />
+                {statsLoading ? <div style={{color:GRAY,fontSize:14,textAlign:'center',padding:'40px 0'}}>Loading…</div> : <DonutChart segments={liveDonutStatus} centerLabel="Total" centerValue={String(total)} />}
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {DONUT_STATUS.map(s => (
+                  {liveDonutStatus.map(s => (
                     <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ width: 10, height: 10, borderRadius: '50%', background: s.color, flexShrink: 0, display: 'inline-block' }} />
                       <span style={{ fontSize: 14, color: LIGHT, fontFamily: BARLOW, flex: 1 }}>{s.label}</span>
@@ -497,18 +738,18 @@ export default function ReportsAnalyticsPage() {
                   <span style={{ width: 8, height: 8, background: GRAY, display: 'inline-block' }} /> Completed
                 </span>
               </div>
-              <BarChart sched={SCHEDULED_DATA} compl={COMPLETED_DATA} />
+              <BarChart sched={chartScheduled} compl={chartCompleted} days={chartDays} />
             </div>
 
             {/* Applicants by Source */}
             <div style={{ background: BG2, border: `1px solid ${BG4}`, borderRadius: 8, padding: 16 }}>
               <div style={{ fontFamily: BARLOW, fontSize: 15, color: WHITE, fontWeight: 600, marginBottom: 12 }}>
-                Applicants by Source
+                Application Status Breakdown
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <DonutChart segments={DONUT_SOURCE} centerLabel="Total" centerValue="1,284" />
+                {statsLoading ? <div style={{color:GRAY,fontSize:14,textAlign:'center',padding:'40px 0'}}>Loading…</div> : <DonutChart segments={liveDonutStatus} centerLabel="Total" centerValue={String(total)} />}
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 7 }}>
-                  {DONUT_SOURCE.map(s => (
+                  {liveDonutStatus.map(s => (
                     <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, flexShrink: 0, display: 'inline-block' }} />
                       <span style={{ fontSize: 14, color: LIGHT, fontFamily: BARLOW, flex: 1, lineHeight: 1.2 }}>{s.label}</span>
@@ -524,7 +765,7 @@ export default function ReportsAnalyticsPage() {
               <div style={{ fontFamily: BARLOW, fontSize: 15, color: WHITE, fontWeight: 600, marginBottom: 14 }}>
                 Conversion Funnel
               </div>
-              <ConversionFunnel />
+              <ConversionFunnel funnel={liveFunnel} />
             </div>
           </div>
 
@@ -544,6 +785,7 @@ export default function ReportsAnalyticsPage() {
                       background: BG3, border: `1px solid ${BG4}`, borderRadius: 4,
                       color: LIGHT, fontFamily: BARLOW, fontSize: 14, padding: '4px 8px', cursor: 'pointer',
                     }}>
+                                    <option>All Time</option>
                     <option>This Week</option>
                     <option>Last Week</option>
                     <option>This Month</option>
@@ -569,7 +811,7 @@ export default function ReportsAnalyticsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {CASTING_TABLE.map((row, i) => (
+                  {filteredTable.map((row, i) => (
                     <tr key={row.id}
                       style={{ borderBottom: `1px solid ${BG4}`, cursor: 'pointer' }}
                       onClick={() => router.push(`/agency/casting-calls/${row.id}`)}
@@ -629,32 +871,38 @@ export default function ReportsAnalyticsPage() {
                     style={{ fontSize: 14, color: GOLD, fontFamily: BARLOW, cursor: 'pointer' }}>View All</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {TOP_CASTING.map(item => (
-                    <div key={item.title}
+                  {(apiStats?.top_casting_calls ?? []).slice(0, 5).map((item: any) => {
+                    const apps = item.applications_count ?? 0
+                    const pct = apps > 0 ? 100 : 0
+                    return (
+                    <div key={item.id}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0',
                         borderBottom: `1px solid ${BG4}`, cursor: 'pointer',
                       }}
-                      onClick={() => router.push('/agency/casting-calls')}
+                      onClick={() => router.push(`/agency/casting-calls/${item.id}`)}
                     >
                       <div style={{
                         width: 32, height: 32, borderRadius: 4, background: BG4,
                         display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0,
-                      }}>{item.img}</div>
+                      }}>🎬</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 14, color: WHITE, fontFamily: BARLOW, fontWeight: 600, lineHeight: 1.2 }}>{item.title}</div>
+                        <div style={{ fontSize: 14, color: WHITE, fontFamily: BARLOW, fontWeight: 600, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
                         <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
                           <span style={{ fontSize: 14, color: GRAY, fontFamily: BARLOW }}>
-                            Applicants <span style={{ color: WHITE }}>{item.applicants}</span>
+                            Applicants <span style={{ color: WHITE }}>{apps}</span>
                           </span>
                           <span style={{ fontSize: 14, color: GRAY, fontFamily: BARLOW }}>
-                            Shortlisted <span style={{ color: WHITE }}>{item.shortlisted}</span>
+                            Views <span style={{ color: WHITE }}>{item.views_count ?? 0}</span>
                           </span>
                         </div>
                       </div>
-                      <CircularPct pct={item.pct} color={item.pct > 20 ? GOLD : item.pct > 15 ? BLUE : GRAY} />
                     </div>
-                  ))}
+                    )
+                  })}
+                  {!statsLoading && (!apiStats?.top_casting_calls || apiStats.top_casting_calls.length === 0) && (
+                    <div style={{ color: GRAY, fontSize: 14, fontFamily: BARLOW, textAlign: 'center', padding: '20px 0' }}>No casting calls yet</div>
+                  )}
                 </div>
               </div>
 
@@ -664,7 +912,7 @@ export default function ReportsAnalyticsPage() {
                   Insights
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {INSIGHTS.map((ins, i) => (
+                  {liveInsights.map((ins, i) => (
                     <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                       <span style={{ fontSize: 18, flexShrink: 0 }}>{ins.icon}</span>
                       <span style={{ fontSize: 14, color: LIGHT, fontFamily: BARLOW, lineHeight: 1.4 }}>{ins.text}</span>

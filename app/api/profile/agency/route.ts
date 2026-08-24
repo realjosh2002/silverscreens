@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
 
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const token = req.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return errorResponse('Authentication required', 401)
 
-    const { data: { user }, error } = await supabase.auth.getUser(token)
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
     if (error || !user) return errorResponse('Invalid session', 401)
 
     // ─── 2. Fetch full agency profile ─────────────────────────
@@ -72,7 +72,7 @@ export async function PUT(req: NextRequest) {
     const token = req.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return errorResponse('Authentication required', 401)
 
-    const { data: { user }, error } = await supabase.auth.getUser(token)
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
     if (error || !user) return errorResponse('Invalid session', 401)
 
     // ─── 2. Verify this is an agency ──────────────────────────
@@ -89,6 +89,8 @@ export async function PUT(req: NextRequest) {
 
     const {
       company_name,
+      company_type,
+      company_size,
       registration_number,
       gst_number,
       pan_number,
@@ -102,11 +104,19 @@ export async function PUT(req: NextRequest) {
       pincode,
       country,
       contact_person_name,
+      contact_designation,
       contact_email,
       contact_phone,
       show_phone,
       show_email,
       social_links,
+      languages,
+      genres,
+      expertise,
+      operating_cities,
+      logo_url,
+      banner_url,
+      gallery_urls,
     } = body
 
     // ─── 3. Validate required fields ──────────────────────────
@@ -139,13 +149,43 @@ export async function PUT(req: NextRequest) {
     if (contact_phone       !== undefined) updateData.contact_phone       = contact_phone
     if (show_phone          !== undefined) updateData.show_phone          = show_phone
     if (show_email          !== undefined) updateData.show_email          = show_email
-    if (social_links        !== undefined) updateData.social_links        = social_links
+    if (social_links           !== undefined) updateData.social_links           = social_links
+    if (company_type           !== undefined) updateData.company_type           = company_type
+    if (company_size           !== undefined) updateData.company_size           = company_size
+    if (languages              !== undefined) updateData.languages              = languages
+    if (genres                 !== undefined) updateData.genres                 = genres
+    if (expertise              !== undefined) updateData.expertise              = expertise
+    if (operating_cities       !== undefined) updateData.operating_cities       = operating_cities
+    if (logo_url               !== undefined) updateData.logo_url               = logo_url
+    if (banner_url             !== undefined) updateData.banner_url             = banner_url
+    if (gallery_urls           !== undefined) updateData.gallery_urls           = gallery_urls
+    if (contact_designation    !== undefined) updateData.contact_designation    = contact_designation
 
-    // ─── 5. Update profile ────────────────────────────────────
-    const updated = await prisma.agency_profiles.update({
-      where: { user_id: user.id },
-      data:  updateData as never,
+    // ─── 5. Upsert profile — works for both new and existing agencies ──
+    // Check if a profile row already exists
+    const existing = await prisma.agency_profiles.findUnique({
+      where:  { user_id: user.id },
+      select: { id: true },
     })
+
+    let updated: any
+    if (existing) {
+      updated = await prisma.agency_profiles.update({
+        where: { user_id: user.id },
+        data:  updateData as never,
+      })
+    } else {
+      // Create profile row for first-time save
+      // Generate a profile number
+      const profileNumber = 'AG' + Date.now().toString().slice(-8)
+      updated = await prisma.agency_profiles.create({
+        data: {
+          user_id:        user.id,
+          profile_number: profileNumber,
+          ...updateData,
+        } as never,
+      })
+    }
 
     // ─── 6. Update name in profiles table if company name changed
     if (company_name !== undefined) {

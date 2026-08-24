@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabase, supabaseAdmin } from '@/lib/supabase'
+import { supabase, supabaseAdmin } from '@/lib/supabase-admin'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
 

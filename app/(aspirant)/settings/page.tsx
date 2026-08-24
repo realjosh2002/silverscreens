@@ -1,5 +1,7 @@
 'use client'
 
+import React, { useEffect as _ue } from 'react'
+import { useSearchParams } from 'next/navigation'
 import AspirantHeader from '@/components/layout/AspirantHeader'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -12,6 +14,7 @@ import {
   Shield, Mail, Eye, Sliders, UserX, CreditCard,
   FolderOpen, HelpCircle, LogOut, Camera, ExternalLink, Check,
   Award, GraduationCap, Briefcase, BadgeCheck, Plus, Trash2, Pencil, X,
+  Send, RefreshCw, AlertCircle, CheckCircle, Clock, Zap,
 } from 'lucide-react'
 
 /* ── CONSTANTS ───────────────────────────────────────────────── */
@@ -42,7 +45,7 @@ const dropdownLinks = [
   { label: 'Analytics',    href: '/analytics' },
   { label: 'Calendar',     href: '/calendar' },
   { label: 'Settings',     href: '/settings' },
-  { label: 'Support',      href: '/contact' },
+  { label: 'Help & Support',      href: '/settings?tab=support' },
   { label: 'Logout',       href: '/login' },
 ]
 
@@ -54,6 +57,7 @@ const settingsNav = [
   { key: 'email',        icon: Mail,        label: 'Email Preferences'    },
   { key: 'privacy',      icon: Eye,         label: 'Privacy'              },
   { key: 'preferences',  icon: Sliders,     label: 'Preferences'          },
+  { key: 'skills',       icon: Zap,         label: 'Skills'               },
   { key: 'blocked',      icon: UserX,       label: 'Blocked Agencies'     },
   { key: 'billing',      icon: CreditCard,  label: 'Subscription & Billing'},
   { key: 'documents',    icon: FolderOpen,  label: 'Documents'            },
@@ -61,6 +65,7 @@ const settingsNav = [
   { key: 'education',    icon: GraduationCap, label: 'Education'          },
   { key: 'awards',       icon: Award,       label: 'Awards'               },
   { key: 'memberships',  icon: BadgeCheck,  label: 'Memberships'          },
+  { key: 'support',      icon: HelpCircle,  label: 'Help & Support'        },
 ]
 
 /* ── SHARED COMPONENTS ───────────────────────────────────────── */
@@ -142,6 +147,159 @@ function EditModal({ label, value, onClose, onSave }: { label: string; value: st
 }
 
 /* ── MAIN PAGE ───────────────────────────────────────────────── */
+/* ── SUPPORT SECTION COMPONENT ── */
+const SUPPORT_CATS = ['Account & Profile','Payments & Billing','Verification','Casting & Auditions','Login & Security','Technical Issue','Subscription','Other']
+const S_SL: Record<string,string> = { open:'Open', in_progress:'In Progress', resolved:'Resolved', escalated:'Escalated', closed:'Closed' }
+const S_SC: Record<string,string> = { open:'#F97316', in_progress:'#3B82F6', resolved:'#22C55E', escalated:'#C8202A', closed:'#6B7280' }
+const S_SB: Record<string,string> = { open:'rgba(249,115,22,0.15)', in_progress:'rgba(59,130,246,0.15)', resolved:'rgba(34,197,94,0.15)', escalated:'rgba(239,68,68,0.15)', closed:'rgba(107,114,128,0.15)' }
+
+function SupportSection({ tickets, loading, tab, setTab, showModal, setShowModal, form, setForm, error, setError, submitting, success, getToken, onLoad, onSubmit }: any) {
+  React.useEffect(function() { onLoad() }, [])
+  const filtered = tickets.filter(function(t: any) {
+    if (tab === 'open') return t.status === 'open' || t.status === 'in_progress' || t.status === 'escalated'
+    if (tab === 'resolved') return t.status === 'resolved' || t.status === 'closed'
+    return true
+  })
+  const openCount = tickets.filter(function(t: any) { return t.status === 'open' || t.status === 'in_progress' }).length
+  const resolvedCount = tickets.filter(function(t: any) { return t.status === 'resolved' || t.status === 'closed' }).length
+  const inp: React.CSSProperties = { width: '100%', padding: '10px 14px', background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#F5F5F5', fontFamily: BARLOW, fontSize: 15, outline: 'none', boxSizing: 'border-box' }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 16 }}>
+      {success && (
+        <div style={{ padding: '14px 18px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 10, fontFamily: BARLOW, fontSize: 15, color: GREEN }}>
+          <CheckCircle size={16} /> Ticket submitted! Our team will respond within 24 hours.
+        </div>
+      )}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontSize: 20, fontFamily: BEBAS, letterSpacing: 1, color: '#F5F5F5', marginBottom: 4 }}>Help & Support</div>
+          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', fontFamily: BARLOW }}>Submit a ticket or track your existing support requests.</div>
+        </div>
+        <button onClick={function() { setShowModal(true) }}
+          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', background: RED, border: 'none', borderRadius: 8, color: '#fff', fontFamily: BEBAS, fontSize: 16, letterSpacing: 1, cursor: 'pointer' }}>
+          <Plus size={14} /> New Ticket
+        </button>
+      </div>
+
+      <div style={{ padding: '14px 18px', background: 'rgba(212,166,74,0.06)', border: '1px solid rgba(212,166,74,0.15)', borderRadius: 10, fontFamily: BARLOW, fontSize: 14, color: 'rgba(255,255,255,0.5)', lineHeight: 1.7 }}>
+        <HelpCircle size={14} color={GOLD} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} />
+        Never share your OTP, password, Aadhaar or bank details with anyone. SilverScreens will never ask for this information.
+      </div>
+
+      <div style={{ background: BG2, border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12 }}>
+        <div style={{ padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {[{ k: 'all', l: 'All (' + tickets.length + ')' }, { k: 'open', l: 'Open (' + openCount + ')' }, { k: 'resolved', l: 'Resolved (' + resolvedCount + ')' }].map(function(t) {
+              return (
+                <button key={t.k} onClick={function() { setTab(t.k) }}
+                  style={{ padding: '5px 12px', background: tab === t.k ? RED : 'transparent', border: '1px solid ' + (tab === t.k ? RED : 'rgba(255,255,255,0.1)'), borderRadius: 6, color: tab === t.k ? '#fff' : 'rgba(255,255,255,0.5)', fontFamily: BARLOW, fontSize: 14, cursor: 'pointer' }}>
+                  {t.l}
+                </button>
+              )
+            })}
+          </div>
+          <button onClick={function() { onLoad() }} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.4)', fontFamily: BARLOW, fontSize: 14, cursor: 'pointer' }}>
+            <RefreshCw size={13} /> Refresh
+          </button>
+        </div>
+        {loading ? (
+          <div style={{ padding: 40, textAlign: 'center' as const, color: 'rgba(255,255,255,0.3)', fontFamily: BARLOW, fontSize: 15 }}>Loading tickets...</div>
+        ) : filtered.length === 0 ? (
+          <div style={{ padding: 48, textAlign: 'center' as const }}>
+            <HelpCircle size={36} color="rgba(255,255,255,0.1)" style={{ marginBottom: 12 }} />
+            <div style={{ fontSize: 16, fontFamily: BARLOW, color: 'rgba(255,255,255,0.35)', marginBottom: 8 }}>{tab === 'all' ? 'No tickets yet' : 'No ' + tab + ' tickets'}</div>
+            {tab === 'all' && (
+              <button onClick={function() { setShowModal(true) }}
+                style={{ padding: '8px 20px', background: RED, border: 'none', borderRadius: 8, color: '#fff', fontFamily: BEBAS, fontSize: 15, letterSpacing: 1, cursor: 'pointer', marginTop: 8 }}>
+                Raise Your First Ticket
+              </button>
+            )}
+          </div>
+        ) : (
+          <div>
+            {filtered.map(function(t: any, i: number) {
+              return (
+                <div key={t.id}
+                  style={{ padding: '14px 18px', borderBottom: i < filtered.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none', display: 'flex', alignItems: 'flex-start', gap: 12 }}
+                  onMouseEnter={function(e) { e.currentTarget.style.background = 'rgba(255,255,255,0.02)' }}
+                  onMouseLeave={function(e) { e.currentTarget.style.background = 'transparent' }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 8, background: S_SC[t.status] + '15', border: '1px solid ' + S_SC[t.status] + '30', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
+                    {t.status === 'resolved' || t.status === 'closed' ? <CheckCircle size={15} color={GREEN} /> : t.status === 'escalated' ? <AlertCircle size={15} color={RED} /> : <Clock size={15} color={S_SC[t.status]} />}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const, marginBottom: 4 }}>
+                      <div style={{ fontSize: 15, fontFamily: BARLOW, fontWeight: 600, color: '#F5F5F5' }}>{t.subject}</div>
+                      <span style={{ padding: '2px 8px', background: S_SB[t.status], border: '1px solid ' + S_SC[t.status] + '44', borderRadius: 20, fontSize: 12, color: S_SC[t.status], fontWeight: 600, whiteSpace: 'nowrap' as const }}>{S_SL[t.status]}</span>
+                    </div>
+                    <div style={{ fontSize: 13, fontFamily: BARLOW, color: 'rgba(255,255,255,0.4)', display: 'flex', gap: 14, flexWrap: 'wrap' as const }}>
+                      <span>{t.category}</span>
+                      <span>#{t.id.slice(0,8).toUpperCase()}</span>
+                      <span>{new Date(t.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {showModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+          onClick={function() { setShowModal(false); setError('') }}>
+          <div style={{ background: BG2, border: '1px solid rgba(212,166,74,0.3)', borderRadius: 14, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' as const }}
+            onClick={function(e) { e.stopPropagation() }}>
+            <div style={{ padding: '18px 22px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontFamily: BEBAS, fontSize: 20, letterSpacing: 1, color: '#F5F5F5' }}>RAISE A SUPPORT TICKET</div>
+              <button onClick={function() { setShowModal(false); setError('') }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)' }}><X size={18} /></button>
+            </div>
+            <div style={{ padding: '18px 22px', display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
+              <div style={{ padding: '10px 14px', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 8, fontFamily: BARLOW, fontSize: 14, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6 }}>
+                We typically respond within <strong style={{ color: '#F5F5F5' }}>24 hours</strong> on business days.
+              </div>
+              <div>
+                <label style={{ display: 'block', fontFamily: BARLOW, fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 5 }}>CATEGORY *</label>
+                <select value={form.category} onChange={function(e) { setForm({ ...form, category: e.target.value }); setError('') }}
+                  style={{ ...inp, appearance: 'none' as any }}>
+                  <option value="">Select a category</option>
+                  {SUPPORT_CATS.map(function(c) { return <option key={c} value={c} style={{ background: BG3 }}>{c}</option> })}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontFamily: BARLOW, fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 5 }}>SUBJECT *</label>
+                <input value={form.subject} onChange={function(e) { setForm({ ...form, subject: e.target.value }); setError('') }}
+                  placeholder="Brief description of your issue" maxLength={120} style={inp} />
+                <div style={{ fontFamily: BARLOW, fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 3, textAlign: 'right' as const }}>{form.subject.length}/120</div>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontFamily: BARLOW, fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 5 }}>DESCRIPTION *</label>
+                <textarea value={form.description} onChange={function(e) { setForm({ ...form, description: e.target.value }); setError('') }}
+                  placeholder="Describe your issue in detail. Include error messages, steps to reproduce, or transaction IDs." rows={5} maxLength={2000}
+                  style={{ ...inp, resize: 'vertical' as const, minHeight: 110 }} />
+                <div style={{ fontFamily: BARLOW, fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 3, textAlign: 'right' as const }}>{form.description.length}/2000</div>
+              </div>
+              {error && (
+                <div style={{ padding: '9px 13px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, fontFamily: BARLOW, fontSize: 14, color: RED, display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <AlertCircle size={13} /> {error}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={function() { setShowModal(false); setError('') }}
+                  style={{ flex: 1, padding: 10, background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: 'rgba(255,255,255,0.6)', fontFamily: BARLOW, fontSize: 15, cursor: 'pointer' }}>Cancel</button>
+                <button onClick={onSubmit} disabled={submitting}
+                  style={{ flex: 2, padding: 10, background: submitting ? RED + '80' : RED, border: 'none', borderRadius: 8, color: '#fff', fontFamily: BEBAS, fontSize: 17, letterSpacing: 1, cursor: submitting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+                  {submitting ? <><RefreshCw size={13} /> Submitting...</> : <><Send size={13} /> Submit Ticket</>}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+
 export default function SettingsPage() {
   const router = useRouter()
   const { counts, markAllRead } = useNotifications()
@@ -149,29 +307,55 @@ export default function SettingsPage() {
   const SB_W = sidebarOpen ? 210 : 56
   const [dropOpen,    setDropOpen]    = useState(false)
   const [activeTab,   setActiveTab]   = useState('profile')
-  const [editField,   setEditField]   = useState<{ label: string; value: string; key: string } | null>(null)
+  const [profileLocked, setProfileLocked] = useState(false)
+  const searchParams = useSearchParams()
 
-  // Profile state — starts from localStorage, API load will update it
-  const [profile, setProfile] = useState(() => {
+  // ── Auth + approval guard ──
+  React.useEffect(function() {
     try {
       const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
-      return {
-        fullName:   u.name    || '',
-        stageName:  u.stageName || '',
-        email:      u.email   || '',
-        mobile:     u.phone   || '',
-        location:   u.location || '',
-        visibility: 'Public',
-      }
-    } catch {
-      return { fullName: '', stageName: '', email: '', mobile: '', location: '', visibility: 'Public' }
-    }
+      if (!u?.loggedIn) { window.location.replace('/login'); return }
+      const ps = u?.profileStatus
+      const approved = ps === 'approved' || ps === 'active'
+      if (!approved) setProfileLocked(true)
+    } catch { window.location.replace('/login') }
+  }, [])
+
+  // ── Read ?tab= from URL and activate correct tab ──
+  React.useEffect(function() {
+    const tab = searchParams.get('tab')
+    const validTabs = settingsNav.map(n => n.key)
+    if (tab && validTabs.includes(tab)) setActiveTab(tab)
+  }, [searchParams])
+  const [editField,   setEditField]   = useState<{ label: string; value: string; key: string } | null>(null)
+
+  // Profile state — always start empty to avoid SSR/client mismatch
+  const [profile, setProfile] = useState({
+    fullName: '', stageName: '', email: '', mobile: '', location: '', visibility: 'Public',
   })
 
-  // User identity for topnav/sidebar — from localStorage
-  const [userName,   setUserName]   = useState(() => { try { return JSON.parse(localStorage.getItem('ss_user') || '{}').name || 'My Account' } catch { return 'My Account' } })
-  const [userAvatar, setUserAvatar] = useState(() => { try { return JSON.parse(localStorage.getItem('ss_user') || '{}').profilePhoto || '' } catch { return '' } })
-  const [userEmail,  setUserEmail]  = useState(() => { try { return JSON.parse(localStorage.getItem('ss_user') || '{}').email || '' } catch { return '' } })
+  // User identity for topnav/sidebar — always start empty
+  const [userName,   setUserName]   = useState('My Account')
+  const [userAvatar, setUserAvatar] = useState('')
+  const [userEmail,  setUserEmail]  = useState('')
+
+  // Hydrate from localStorage only on client after mount
+  React.useEffect(function() {
+    try {
+      const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
+      setProfile({
+        fullName:   u.name       || '',
+        stageName:  u.stageName  || '',
+        email:      u.email      || '',
+        mobile:     u.phone      || '',
+        location:   u.location   || '',
+        visibility: 'Public',
+      })
+      if (u.name)         setUserName(u.name)
+      if (u.profilePhoto) setUserAvatar(u.profilePhoto)
+      if (u.email)        setUserEmail(u.email)
+    } catch {}
+  }, [])
 
   // Security state
   const [twoFA,       setTwoFA]       = useState(true)
@@ -229,7 +413,57 @@ export default function SettingsPage() {
   ])
   const unblockAgency = (id: number) => setBlockedAgencies(p => p.filter(a => a.id !== id))
 
+  // Skills state
+  const ALL_SKILLS = [
+    'Acting', 'Dialogue Delivery', 'Dancing', 'Action', 'Singing', 'Modelling',
+    'Yoga', 'Fighting', 'Mimicry', 'Horse Riding', 'Direction', 'Photography',
+    'Videography', 'Editing', 'Choreography', 'Make Up', 'Hair Styling',
+    'Costume Design', 'Script Writing', 'Voice Over', 'Anchoring', 'News Reading',
+    'Animation', 'VFX', 'Sound Design', 'Music Composition', 'Stunt',
+    'Production Management', 'Casting', 'Art Direction', 'Set Design',
+    'Cinematography', 'Dubbing', 'Influencing', 'Fashion Modelling',
+  ]
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([])
+  React.useEffect(function() {
+    try {
+      const skills = JSON.parse(localStorage.getItem('ss_user') || '{}').skills || []
+      if (skills.length) setSelectedSkills(skills)
+    } catch {}
+  }, [])
+  const [skillsSaving, setSkillsSaving] = useState(false)
+  const [skillsSaved,  setSkillsSaved]  = useState(false)
+  const toggleSkill = (skill: string) =>
+    setSelectedSkills(p => p.includes(skill) ? p.filter(s => s !== skill) : [...p, skill])
+  const saveSkills = async () => {
+    setSkillsSaving(true)
+    try {
+      const token = getToken()
+      if (token) {
+        await fetch('/api/profile/aspirant', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ skills: selectedSkills }),
+        })
+      }
+      const existing = JSON.parse(localStorage.getItem('ss_user') || '{}')
+      localStorage.setItem('ss_user', JSON.stringify({ ...existing, skills: selectedSkills }))
+      setSkillsSaved(true)
+      setTimeout(() => setSkillsSaved(false), 3000)
+    } catch {}
+    setSkillsSaving(false)
+  }
+
   const updateProfile = (key: string, val: string) => setProfile(p => ({ ...p, [key]: val }))
+
+  // Support tickets state
+  const [supportTickets,  setSupportTickets]  = React.useState<any[]>([])
+  const [supportLoading,  setSupportLoading]  = React.useState(false)
+  const [supportTab,      setSupportTab]      = React.useState<'all'|'open'|'resolved'>('all')
+  const [showTicketModal, setShowTicketModal] = React.useState(false)
+  const [ticketForm,      setTicketForm]      = React.useState({ category: '', subject: '', description: '' })
+  const [ticketError,     setTicketError]     = React.useState('')
+  const [ticketSubmitting,setTicketSubmitting]= React.useState(false)
+  const [ticketSuccess,   setTicketSuccess]   = React.useState(false)
 
   /* ── Auth helper ── */
   function getToken(): string {
@@ -263,10 +497,16 @@ export default function SettingsPage() {
         if (Array.isArray(sl.credits) && sl.credits.length) {
           setExperiences(sl.credits.map((c: any, i: number) => ({
             id: c.id || i + 1, project: c.title || '', role: c.role || '',
-            company: c.company || '', from: c.from || c.year || '',
-            to: c.to || '', current: c.current || false, description: c.description || '',
+            characterName: c.characterName || '', company: c.company || '',
+            director: c.director || '', platform: c.platform || '',
+            platformOther: c.platformOther || '', language: c.language || '',
+            languageOther: c.languageOther || '', projectType: c.projectType || '',
+            releaseYear: c.releaseYear || c.year || '', trailerLink: c.trailerLink || '',
+            imdbLink: c.imdbLink || '', description: c.description || '',
           })))
         }
+        // Skills
+        if (Array.isArray(p.skills) && p.skills.length) setSelectedSkills(p.skills)
         // Documents from aspirant_media where type = 'document'
         if (Array.isArray(p.aspirant_media)) {
           const docs = p.aspirant_media
@@ -304,7 +544,7 @@ export default function SettingsPage() {
   // Documents state
   const [documents, setDocuments] = useState<{ id: number; name: string; type: string; status: string; size: string; date: string; url?: string }[]>([])
   const [docUploadOpen, setDocUploadOpen] = useState(false)
-  const [docUploadType, setDocUploadType] = useState('Resume')
+  const [docUploadType, setDocUploadType] = useState('Portfolio')
   const [docDeleteId, setDocDeleteId] = useState<number | null>(null)
   const deleteDocument = (id: number) => { setDocuments(p => p.filter(d => d.id !== id)); setDocDeleteId(null) }
   const [docUploading, setDocUploading] = useState(false)
@@ -335,11 +575,13 @@ export default function SettingsPage() {
   }
 
   // ── Experience ──
-  interface ExperienceEntry { id: number; project: string; role: string; company: string; from: string; to: string; current: boolean; description: string }
+  interface ExperienceEntry { id: number; project: string; role: string; characterName: string; company: string; director: string; platform: string; platformOther: string; language: string; languageOther: string; projectType: string; releaseYear: string; trailerLink: string; imdbLink: string; description: string }
   const [experiences, setExperiences] = useState<ExperienceEntry[]>([])
   const [expModal, setExpModal] = useState<null | 'add' | number>(null)
-  const blankExp = (): ExperienceEntry => ({ id: Date.now(), project: '', role: '', company: '', from: '', to: '', current: false, description: '' })
+  const blankExp = (): ExperienceEntry => ({ id: Date.now(), project: '', role: '', characterName: '', company: '', director: '', platform: '', platformOther: '', language: '', languageOther: '', projectType: '', releaseYear: '', trailerLink: '', imdbLink: '', description: '' })
   const [expForm, setExpForm] = useState<ExperienceEntry>(blankExp())
+  const mapExp = (e: ExperienceEntry) => ({ id: e.id, title: e.project, role: e.role, characterName: e.characterName, company: e.company, director: e.director, platform: e.platform, platformOther: e.platformOther, language: e.language, languageOther: e.languageOther, projectType: e.projectType, releaseYear: e.releaseYear, trailerLink: e.trailerLink, imdbLink: e.imdbLink, description: e.description })
+
   const saveExp = () => {
     let updated: ExperienceEntry[]
     if (expModal === 'add') {
@@ -349,14 +591,13 @@ export default function SettingsPage() {
     }
     setExperiences(updated)
     setExpModal(null)
-    // Save to API as social_links.credits
-    saveSocialLinks({ credits: updated.map(e => ({ id: e.id, title: e.project, role: e.role, company: e.company, from: e.from, to: e.to, current: e.current, description: e.description, year: e.from })) })
+    saveSocialLinks({ credits: updated.map(mapExp) })
   }
 
   const deleteExp = (id: number) => {
     const updated = experiences.filter(e => e.id !== id)
     setExperiences(updated)
-    saveSocialLinks({ credits: updated.map(e => ({ id: e.id, title: e.project, role: e.role, company: e.company, from: e.from, to: e.to, current: e.current, description: e.description, year: e.from })) })
+    saveSocialLinks({ credits: updated.map(mapExp) })
   }
 
   // ── Education ──
@@ -434,6 +675,21 @@ export default function SettingsPage() {
   // shared input style for modals
   const mi: React.CSSProperties = { width: '100%', background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '9px 12px', color: '#fff', fontSize: 15, fontFamily: BARLOW, outline: 'none', boxSizing: 'border-box' as const }
 
+  if (profileLocked) return (
+    <div style={{ minHeight: '100vh', background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: BARLOW }}>
+      <div style={{ textAlign: 'center' as const, padding: 40, background: BG2, border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, maxWidth: 440 }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
+        <div style={{ fontFamily: BEBAS, fontSize: 28, letterSpacing: 2, color: '#fff', marginBottom: 8 }}>SETTINGS LOCKED</div>
+        <div style={{ fontSize: 16, color: 'rgba(255,255,255,0.45)', lineHeight: 1.6, marginBottom: 24 }}>
+          Settings are available only after your profile has been submitted, payment confirmed, and approved by admin.
+        </div>
+        <button onClick={() => router.push('/create-profile')} style={{ background: RED, border: 'none', borderRadius: 8, padding: '12px 28px', color: '#fff', fontFamily: BEBAS, fontSize: 18, letterSpacing: 2, cursor: 'pointer' }}>
+          COMPLETE YOUR PROFILE →
+        </button>
+      </div>
+    </div>
+  )
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: BG, color: '#F5F5F5', fontFamily: BARLOW, overflow: 'hidden' }}>
       {editField && (
@@ -476,7 +732,7 @@ export default function SettingsPage() {
               const readKey = label === 'Messages' ? 'messages' : label === 'Notifications' ? 'notifications' : null
               const badge = readKey === 'messages' ? counts.messages : readKey === 'notifications' ? counts.notifications : undefined
               return (
-              <div key={label} title={!sidebarOpen ? label : undefined} onClick={() => { if (readKey) markAllRead(readKey); router.push(href) }}
+              <div key={label} title={!sidebarOpen ? label : undefined} onClick={() => { if (readKey) markAllRead(readKey); navigate(href) }}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'space-between' : 'center', padding: sidebarOpen ? '8px 14px' : '10px 0', cursor: 'pointer', background: active ? 'rgba(200,32,42,0.1)' : 'transparent', borderLeft: sidebarOpen && active ? `3px solid ${RED}` : '3px solid transparent' }}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.03)' }}
                 onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
@@ -1825,7 +2081,7 @@ export default function SettingsPage() {
                       <div style={{ marginBottom: 18 }}>
                         <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', fontFamily: BARLOW, letterSpacing: 1, textTransform: 'uppercase' as const, marginBottom: 8 }}>Document Type</div>
                         <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8 }}>
-                          {['Resume', 'ID Proof', 'Showreel', 'NOC Letter', 'Other'].map(type => (
+                          {['Portfolio', 'Aadhaar', 'Showreel', 'Passport', 'Driving Licence', 'Other'].map(type => (
                             <button key={type} onClick={() => setDocUploadType(type)} style={{
                               background: docUploadType === type ? 'rgba(212,166,74,0.15)' : BG3,
                               border: `1px solid ${docUploadType === type ? GOLD : 'rgba(255,255,255,0.08)'}`,
@@ -1882,7 +2138,7 @@ export default function SettingsPage() {
                         <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', fontFamily: BARLOW }}>Manage your uploaded documents and certificates.</div>
                       </div>
                     </div>
-                    <button onClick={() => { setDocUploadType('Resume'); setDocUploadOpen(true) }} style={{ display: 'flex', alignItems: 'center', gap: 7, background: RED, border: 'none', borderRadius: 8, padding: '10px 18px', color: '#fff', fontSize: 15, fontFamily: BARLOW, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
+                    <button onClick={() => { setDocUploadType('Portfolio'); setDocUploadOpen(true) }} style={{ display: 'flex', alignItems: 'center', gap: 7, background: RED, border: 'none', borderRadius: 8, padding: '10px 18px', color: '#fff', fontSize: 15, fontFamily: BARLOW, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
                       <span style={{ fontSize: 16 }}>+</span> Upload Document
                     </button>
                   </div>
@@ -1896,7 +2152,7 @@ export default function SettingsPage() {
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
                       {documents.map(doc => {
-                        const iconMap: Record<string, string> = { 'Resume': '📄', 'ID Proof': '🪪', 'Showreel': '🎬', 'NOC Letter': '📋', 'Other': '📎' }
+                        const iconMap: Record<string, string> = { 'Portfolio': '📄', 'Aadhaar': '🪪', 'Showreel': '🎬', 'Passport': '🛂', 'Driving Licence': '🚗', 'Other': '📎' }
                         const statusColor = doc.status === 'Verified' ? GREEN : doc.status === 'Pending' ? GOLD : RED
                         return (
                           <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: 14, background: BG3, border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '14px' }}>
@@ -1941,28 +2197,57 @@ export default function SettingsPage() {
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                         {[
-                          { label: 'Project / Show Title', key: 'project', placeholder: 'e.g. Ek Baar Phir' },
-                          { label: 'Your Role',            key: 'role',    placeholder: 'e.g. Lead Actor' },
-                          { label: 'Production Company',   key: 'company', placeholder: 'e.g. Dharma Productions' },
-                          { label: 'From (Year)',          key: 'from',    placeholder: 'e.g. 2022' },
+                          { label: 'Production Name',  key: 'project',        placeholder: 'e.g. Leo 2'              },
+                          { label: 'Role',             key: 'role',           placeholder: 'e.g. Lead Actor'         },
+                          { label: 'Character Name',   key: 'characterName',  placeholder: 'e.g. Parthiban'          },
+                          { label: 'Director',         key: 'director',       placeholder: 'e.g. Lokesh Kanagaraj'   },
+                          { label: 'Production House', key: 'company',        placeholder: 'e.g. Lyca Productions'   },
+                          { label: 'Trailer Link',     key: 'trailerLink',    placeholder: 'https://youtube.com/...' },
+                          { label: 'IMDb Link',        key: 'imdbLink',       placeholder: 'https://imdb.com/...'    },
                         ].map(f => (
                           <div key={f.key}>
                             <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', fontFamily: BARLOW, marginBottom: 5, textTransform: 'uppercase' as const, letterSpacing: 1 }}>{f.label}</div>
                             <input value={expForm[f.key as keyof ExperienceEntry] as string} onChange={e => setExpForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder} style={mi} />
                           </div>
                         ))}
+                        {/* Project Type */}
                         <div>
-                          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', fontFamily: BARLOW, marginBottom: 5, textTransform: 'uppercase' as const, letterSpacing: 1 }}>To (Year)</div>
-                          <input value={expForm.to} onChange={e => setExpForm(p => ({ ...p, to: e.target.value }))} placeholder="e.g. 2023" style={{ ...mi, opacity: expForm.current ? 0.4 : 1 }} disabled={expForm.current} />
+                          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', fontFamily: BARLOW, marginBottom: 5, textTransform: 'uppercase' as const, letterSpacing: 1 }}>Project Type</div>
+                          <select value={expForm.projectType} onChange={e => setExpForm(p => ({ ...p, projectType: e.target.value }))} style={{ ...mi, appearance: 'none' as const, cursor: 'pointer' }}>
+                            <option value="">-- Select --</option>
+                            {PROJECT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                          </select>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 24 }}>
-                          <input type="checkbox" id="expCurrent" checked={expForm.current} onChange={e => setExpForm(p => ({ ...p, current: e.target.checked, to: '' }))} style={{ width: 16, height: 16, accentColor: RED }} />
-                          <label htmlFor="expCurrent" style={{ fontSize: 15, fontFamily: BARLOW, color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>Currently working here</label>
+                        {/* Release Year */}
+                        <div>
+                          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', fontFamily: BARLOW, marginBottom: 5, textTransform: 'uppercase' as const, letterSpacing: 1 }}>Release Year</div>
+                          <select value={expForm.releaseYear} onChange={e => setExpForm(p => ({ ...p, releaseYear: e.target.value }))} style={{ ...mi, appearance: 'none' as const, cursor: 'pointer' }}>
+                            <option value="">-- Year --</option>
+                            {RELEASE_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                          </select>
+                        </div>
+                        {/* Platform */}
+                        <div>
+                          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', fontFamily: BARLOW, marginBottom: 5, textTransform: 'uppercase' as const, letterSpacing: 1 }}>Platform</div>
+                          <select value={expForm.platform} onChange={e => setExpForm(p => ({ ...p, platform: e.target.value }))} style={{ ...mi, appearance: 'none' as const, cursor: 'pointer' }}>
+                            <option value="">-- Select --</option>
+                            {AVAILABLE_FOR.map(a => <option key={a} value={a}>{a}</option>)}
+                          </select>
+                          {expForm.platform === 'Other' && <input value={expForm.platformOther} onChange={e => setExpForm(p => ({ ...p, platformOther: e.target.value }))} placeholder="Specify platform" style={{ ...mi, marginTop: 6 }} />}
+                        </div>
+                        {/* Language */}
+                        <div>
+                          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', fontFamily: BARLOW, marginBottom: 5, textTransform: 'uppercase' as const, letterSpacing: 1 }}>Language</div>
+                          <select value={expForm.language} onChange={e => setExpForm(p => ({ ...p, language: e.target.value }))} style={{ ...mi, appearance: 'none' as const, cursor: 'pointer' }}>
+                            <option value="">-- Select --</option>
+                            {LANGUAGES_EXP.map(l => <option key={l} value={l}>{l}</option>)}
+                          </select>
+                          {expForm.language === 'Other' && <input value={expForm.languageOther} onChange={e => setExpForm(p => ({ ...p, languageOther: e.target.value }))} placeholder="Specify language" style={{ ...mi, marginTop: 6 }} />}
                         </div>
                       </div>
                       <div style={{ marginBottom: 18 }}>
                         <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', fontFamily: BARLOW, marginBottom: 5, textTransform: 'uppercase' as const, letterSpacing: 1 }}>Description (optional)</div>
-                        <textarea value={expForm.description} onChange={e => setExpForm(p => ({ ...p, description: e.target.value }))} placeholder="Brief description of your work..." rows={3} style={{ ...mi, resize: 'vertical' as const }} />
+                        <textarea value={expForm.description} onChange={e => setExpForm(p => ({ ...p, description: e.target.value }))} placeholder="Brief description of your role and the project..." rows={3} style={{ ...mi, resize: 'vertical' as const }} />
                       </div>
                       <div style={{ display: 'flex', gap: 12 }}>
                         <button onClick={() => setExpModal(null)} style={{ flex: 1, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: 11, fontSize: 15, fontFamily: BARLOW, fontWeight: 700, color: '#fff', cursor: 'pointer' }}>Cancel</button>
@@ -1993,9 +2278,19 @@ export default function SettingsPage() {
                         <div key={e.id} style={{ background: BG3, border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14 }}>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 17, fontFamily: BARLOW, fontWeight: 700, color: '#fff', marginBottom: 2 }}>{e.project || '—'}</div>
-                            <div style={{ fontSize: 15, fontFamily: BARLOW, color: RED, marginBottom: 4 }}>{e.role}{e.company ? ` · ${e.company}` : ''}</div>
-                            <div style={{ fontSize: 14, fontFamily: BARLOW, color: 'rgba(255,255,255,0.35)' }}>{e.from}{e.current ? ' – Present' : e.to ? ` – ${e.to}` : ''}</div>
-                            {e.description && <div style={{ fontSize: 14, fontFamily: BARLOW, color: 'rgba(255,255,255,0.5)', marginTop: 6, lineHeight: 1.55 }}>{e.description}</div>}
+                            <div style={{ fontSize: 15, fontFamily: BARLOW, color: RED, marginBottom: 6 }}>{e.role}{e.characterName ? ` as ${e.characterName}` : ''}{e.company ? ` · ${e.company}` : ''}</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6, marginBottom: 6 }}>
+                              {e.projectType && <span style={{ fontSize: 12, fontFamily: BARLOW, color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: 4 }}>{e.projectType}</span>}
+                              {e.platform && <span style={{ fontSize: 12, fontFamily: BARLOW, color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: 4 }}>{e.platform === 'Other' ? e.platformOther : e.platform}</span>}
+                              {e.language && <span style={{ fontSize: 12, fontFamily: BARLOW, color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: 4 }}>{e.language === 'Other' ? e.languageOther : e.language}</span>}
+                              {e.releaseYear && <span style={{ fontSize: 12, fontFamily: BARLOW, color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: 4 }}>{e.releaseYear}</span>}
+                            </div>
+                            {e.director && <div style={{ fontSize: 14, fontFamily: BARLOW, color: 'rgba(255,255,255,0.35)', marginBottom: 4 }}>Dir. {e.director}</div>}
+                            {e.description && <div style={{ fontSize: 14, fontFamily: BARLOW, color: 'rgba(255,255,255,0.5)', marginTop: 4, lineHeight: 1.55 }}>{e.description}</div>}
+                            <div style={{ display: 'flex', gap: 14, marginTop: 8 }}>
+                              {e.trailerLink && <a href={e.trailerLink} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontFamily: BARLOW, color: RED, textDecoration: 'none' }}>▶ Trailer</a>}
+                              {e.imdbLink && <a href={e.imdbLink} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontFamily: BARLOW, color: GOLD, textDecoration: 'none' }}>IMDb →</a>}
+                            </div>
                           </div>
                           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                             <button onClick={() => { setExpForm(e); setExpModal(e.id) }} style={{ width: 32, height: 32, borderRadius: 7, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><Pencil size={13} color="rgba(255,255,255,0.6)" /></button>
@@ -2272,6 +2567,140 @@ export default function SettingsPage() {
                   )}
                 </div>
               </div>
+            )}
+
+            {/* ══ SKILLS ══ */}
+            {activeTab === 'skills' && (
+              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 16 }}>
+                <div style={{ background: BG2, border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: 22 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 18 }}>
+                    <div>
+                      <div style={{ fontSize: 20, fontFamily: BEBAS, letterSpacing: 1, color: '#fff', marginBottom: 4 }}>Skills</div>
+                      <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', fontFamily: BARLOW }}>Select skills that best describe your abilities. These help agencies find you in searches.</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                      {selectedSkills.length > 0 && (
+                        <span style={{ fontSize: 13, fontFamily: BARLOW, color: RED, fontWeight: 700 }}>{selectedSkills.length} selected</span>
+                      )}
+                      <button
+                        onClick={() => setSelectedSkills([])}
+                        style={{ padding: '7px 14px', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 7, color: 'rgba(255,255,255,0.45)', fontFamily: BARLOW, fontSize: 14, cursor: 'pointer' }}>
+                        Clear All
+                      </button>
+                      <button
+                        onClick={saveSkills}
+                        disabled={skillsSaving}
+                        style={{ padding: '7px 20px', background: skillsSaved ? GREEN : RED, border: 'none', borderRadius: 7, color: '#fff', fontFamily: BEBAS, fontSize: 16, letterSpacing: 1, cursor: skillsSaving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, opacity: skillsSaving ? 0.7 : 1 }}>
+                        {skillsSaved ? <><Check size={14} /> Saved!</> : skillsSaving ? 'Saving...' : 'Save Skills'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Skill chips */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 10 }}>
+                    {ALL_SKILLS.map(skill => {
+                      const active = selectedSkills.includes(skill)
+                      return (
+                        <div
+                          key={skill}
+                          onClick={() => toggleSkill(skill)}
+                          style={{
+                            padding: '8px 16px', borderRadius: 22,
+                            border: `1px solid ${active ? RED : 'rgba(255,255,255,0.12)'}`,
+                            background: active ? 'rgba(200,32,42,0.15)' : 'transparent',
+                            color: active ? '#F5F5F5' : 'rgba(255,255,255,0.5)',
+                            fontSize: 15, fontFamily: BARLOW, cursor: 'pointer',
+                            transition: 'all 0.15s', userSelect: 'none' as const,
+                            display: 'flex', alignItems: 'center', gap: 6,
+                          }}
+                          onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(200,32,42,0.4)'; (e.currentTarget as HTMLDivElement).style.color = '#A8B0BD' } }}
+                          onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,255,255,0.12)'; (e.currentTarget as HTMLDivElement).style.color = 'rgba(255,255,255,0.5)' } }}
+                        >
+                          {active && <Check size={13} color={RED} strokeWidth={2.5} />}
+                          {skill}
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Selected summary */}
+                  {selectedSkills.length > 0 && (
+                    <div style={{ marginTop: 20, padding: '14px 16px', background: 'rgba(200,32,42,0.06)', border: '1px solid rgba(200,32,42,0.2)', borderRadius: 10 }}>
+                      <div style={{ fontSize: 14, fontFamily: BARLOW, color: 'rgba(255,255,255,0.45)', marginBottom: 8, textTransform: 'uppercase' as const, letterSpacing: 1 }}>Your selected skills</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
+                        {selectedSkills.map(s => (
+                          <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, background: 'rgba(200,32,42,0.15)', border: `1px solid ${RED}`, color: RED, fontSize: 14, fontFamily: BARLOW }}>
+                            {s}
+                            <span onClick={() => toggleSkill(s)} style={{ cursor: 'pointer', fontSize: 13, opacity: 0.7 }}>×</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {skillsSaved && (
+                    <div style={{ marginTop: 14, padding: '11px 14px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8, fontFamily: BARLOW, fontSize: 14, color: GREEN }}>
+                      <CheckCircle size={15} /> Skills saved successfully!
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ══ HELP & SUPPORT ══ */}
+            {activeTab === 'support' && (
+              <SupportSection
+                tickets={supportTickets}
+                loading={supportLoading}
+                tab={supportTab}
+                setTab={setSupportTab}
+                showModal={showTicketModal}
+                setShowModal={setShowTicketModal}
+                form={ticketForm}
+                setForm={setTicketForm}
+                error={ticketError}
+                setError={setTicketError}
+                submitting={ticketSubmitting}
+                success={ticketSuccess}
+                getToken={getToken}
+                onLoad={() => {
+                  setSupportLoading(true)
+                  const token = getToken()
+                  fetch('/api/support', { headers: { Authorization: 'Bearer ' + token } })
+                    .then(r => r.ok ? r.json() : null)
+                    .then(data => { if (data?.data?.tickets) setSupportTickets(data.data.tickets) })
+                    .finally(() => setSupportLoading(false))
+                }}
+                onSubmit={() => {
+                  if (!ticketForm.category) { setTicketError('Please select a category.'); return }
+                  if (!ticketForm.subject.trim()) { setTicketError('Please enter a subject.'); return }
+                  if (!ticketForm.description.trim() || ticketForm.description.trim().length < 20) { setTicketError('Please describe your issue (min 20 characters).'); return }
+                  setTicketSubmitting(true)
+                  setTicketError('')
+                  const token = getToken()
+                  fetch('/api/support', {
+                    method: 'POST',
+                    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ category: ticketForm.category, subject: ticketForm.subject.trim(), description: ticketForm.description.trim() }),
+                  })
+                    .then(r => r.json())
+                    .then(data => {
+                      if (data.error) { setTicketError(data.error) }
+                      else {
+                        setTicketSuccess(true)
+                        setTicketForm({ category: '', subject: '', description: '' })
+                        setShowTicketModal(false)
+                        const t2 = getToken()
+                        fetch('/api/support', { headers: { Authorization: 'Bearer ' + t2 } })
+                          .then(r => r.ok ? r.json() : null)
+                          .then(d => { if (d?.data?.tickets) setSupportTickets(d.data.tickets) })
+                        setTimeout(() => setTicketSuccess(false), 4000)
+                      }
+                    })
+                    .catch(() => setTicketError('Network error. Please try again.'))
+                    .finally(() => setTicketSubmitting(false))
+                }}
+              />
             )}
 
           </div>

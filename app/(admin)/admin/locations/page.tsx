@@ -1,176 +1,36 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import {
-  Plus, Trash2, Pencil, Check, X, Search,
-  ChevronRight, Globe, MapPin, Building, Save,
-  ToggleLeft, ToggleRight, AlertCircle, RotateCcw,
-} from 'lucide-react'
+import AdminTopnav from '@/components/layout/AdminTopnav'
+import AdminSidebar from '@/components/layout/AdminSidebar'
+import { Plus, Trash2, Pencil, Search, Globe, MapPin, Building, Check } from 'lucide-react'
 
-/* ── Tokens ── */
 const RED    = '#C8202A'
 const GOLD   = '#D4A64A'
 const GREEN  = '#22C55E'
-const BG     = '#050505'
-const BG2    = '#0B0F14'
-const BG3    = '#121821'
-const BG4    = '#1C2030'
+const BG     = '#0D1117'
+const BG2    = '#131720'
+const BG3    = '#181E2A'
+const BG4    = '#1C2338'
 const BARLOW = "'Barlow Condensed', sans-serif"
 const BEBAS  = "'Bebas Neue', sans-serif"
+const LS_KEY = 'ss_location_config'
+const LS_VER = 'ss_location_config_version'
+const VERSION = 'v11'
 
-export const LS_KEY = 'ss_location_config'
-
-/* ── Types ── */
-export interface City    { id: string; name: string; active: boolean }
-export interface State   { id: string; name: string; active: boolean; cities: City[] }
-export interface Country { id: string; name: string; active: boolean; states: State[] }
-
-/* ── Default data ── */
-const DEFAULT_COUNTRIES: Country[] = [
-  {
-    id: 'in', name: 'India', active: true,
-    states: [
-      { id: 'mh', name: 'Maharashtra', active: true, cities: [
-        { id: 'mh-mum', name: 'Mumbai',     active: true  },
-        { id: 'mh-pun', name: 'Pune',       active: true  },
-        { id: 'mh-nag', name: 'Nagpur',     active: true  },
-        { id: 'mh-nas', name: 'Nashik',     active: true  },
-        { id: 'mh-aur', name: 'Aurangabad', active: true  },
-      ]},
-      { id: 'dl', name: 'Delhi', active: true, cities: [
-        { id: 'dl-ndl', name: 'New Delhi',  active: true  },
-        { id: 'dl-noi', name: 'Noida',      active: true  },
-        { id: 'dl-gur', name: 'Gurugram',   active: true  },
-        { id: 'dl-fbd', name: 'Faridabad',  active: true  },
-      ]},
-      { id: 'ka', name: 'Karnataka', active: true, cities: [
-        { id: 'ka-blr', name: 'Bengaluru',  active: true  },
-        { id: 'ka-mys', name: 'Mysuru',     active: true  },
-        { id: 'ka-hub', name: 'Hubballi',   active: true  },
-      ]},
-      { id: 'tn', name: 'Tamil Nadu', active: true, cities: [
-        { id: 'tn-che', name: 'Chennai',    active: true  },
-        { id: 'tn-cbe', name: 'Coimbatore', active: true  },
-        { id: 'tn-mad', name: 'Madurai',    active: true  },
-      ]},
-      { id: 'ts', name: 'Telangana', active: true, cities: [
-        { id: 'ts-hyd', name: 'Hyderabad',  active: true  },
-        { id: 'ts-wgl', name: 'Warangal',   active: true  },
-      ]},
-      { id: 'gj', name: 'Gujarat', active: true, cities: [
-        { id: 'gj-ahm', name: 'Ahmedabad',  active: true  },
-        { id: 'gj-sur', name: 'Surat',      active: true  },
-        { id: 'gj-vad', name: 'Vadodara',   active: true  },
-      ]},
-      { id: 'rj', name: 'Rajasthan', active: true, cities: [
-        { id: 'rj-jai', name: 'Jaipur',     active: true  },
-        { id: 'rj-jod', name: 'Jodhpur',    active: true  },
-        { id: 'rj-uda', name: 'Udaipur',    active: true  },
-      ]},
-      { id: 'up', name: 'Uttar Pradesh', active: true, cities: [
-        { id: 'up-lko', name: 'Lucknow',    active: true  },
-        { id: 'up-kan', name: 'Kanpur',     active: true  },
-        { id: 'up-agr', name: 'Agra',       active: true  },
-        { id: 'up-var', name: 'Varanasi',   active: true  },
-      ]},
-      { id: 'wb', name: 'West Bengal', active: true, cities: [
-        { id: 'wb-kol', name: 'Kolkata',    active: true  },
-        { id: 'wb-hoo', name: 'Howrah',     active: true  },
-      ]},
-      { id: 'pb', name: 'Punjab', active: true, cities: [
-        { id: 'pb-asr', name: 'Amritsar',   active: true  },
-        { id: 'pb-ldh', name: 'Ludhiana',   active: true  },
-        { id: 'pb-chd', name: 'Chandigarh', active: true  },
-      ]},
-      { id: 'kl', name: 'Kerala', active: true, cities: [
-        { id: 'kl-tvm', name: 'Thiruvananthapuram', active: true },
-        { id: 'kl-koc', name: 'Kochi',      active: true  },
-        { id: 'kl-kzd', name: 'Kozhikode',  active: true  },
-      ]},
-      { id: 'br', name: 'Bihar', active: true, cities: [
-        { id: 'br-pat', name: 'Patna',      active: true  },
-        { id: 'br-gay', name: 'Gaya',       active: true  },
-      ]},
-      { id: 'mp', name: 'Madhya Pradesh', active: true, cities: [
-        { id: 'mp-bho', name: 'Bhopal',     active: true  },
-        { id: 'mp-ind', name: 'Indore',     active: true  },
-        { id: 'mp-gwa', name: 'Gwalior',    active: true  },
-      ]},
-      { id: 'ga', name: 'Goa', active: true, cities: [
-        { id: 'ga-pan', name: 'Panaji',     active: true  },
-        { id: 'ga-mar', name: 'Margao',     active: true  },
-      ]},
-    ],
-  },
-  {
-    id: 'us', name: 'USA', active: true,
-    states: [
-      { id: 'us-ca', name: 'California', active: true, cities: [
-        { id: 'us-la',  name: 'Los Angeles',   active: true },
-        { id: 'us-sf',  name: 'San Francisco', active: true },
-      ]},
-      { id: 'us-ny', name: 'New York', active: true, cities: [
-        { id: 'us-nyc', name: 'New York City', active: true },
-      ]},
-    ],
-  },
-  {
-    id: 'uk', name: 'UK', active: true,
-    states: [
-      { id: 'uk-eng', name: 'England', active: true, cities: [
-        { id: 'uk-lon', name: 'London',     active: true },
-        { id: 'uk-man', name: 'Manchester', active: true },
-      ]},
-    ],
-  },
-  {
-    id: 'au', name: 'Australia', active: true,
-    states: [
-      { id: 'au-nsw', name: 'New South Wales', active: true, cities: [
-        { id: 'au-syd', name: 'Sydney',    active: true },
-      ]},
-      { id: 'au-vic', name: 'Victoria', active: true, cities: [
-        { id: 'au-mel', name: 'Melbourne', active: true },
-      ]},
-    ],
-  },
-  {
-    id: 'ca', name: 'Canada', active: true,
-    states: [
-      { id: 'ca-on', name: 'Ontario', active: true, cities: [
-        { id: 'ca-tor', name: 'Toronto', active: true },
-      ]},
-      { id: 'ca-bc', name: 'British Columbia', active: true, cities: [
-        { id: 'ca-van', name: 'Vancouver', active: true },
-      ]},
-    ],
-  },
-  {
-    id: 'ae', name: 'UAE', active: true,
-    states: [
-      { id: 'ae-dxb', name: 'Dubai', active: true, cities: [
-        { id: 'ae-dxb-c', name: 'Dubai City', active: true },
-      ]},
-      { id: 'ae-auh', name: 'Abu Dhabi', active: true, cities: [
-        { id: 'ae-auh-c', name: 'Abu Dhabi City', active: true },
-      ]},
-    ],
-  },
-]
-
-/* ── Helpers ── */
 const uid = () => Math.random().toString(36).slice(2, 9)
 
-/* ── Shared styles ── */
+interface City    { id: string; name: string; active: boolean }
+interface State   { id: string; name: string; active: boolean; cities: City[] }
+interface Country { id: string; name: string; active: boolean; states: State[] }
+
 const inp: React.CSSProperties = {
   background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7,
   padding: '8px 12px', color: '#fff', fontSize: 15, fontFamily: BARLOW,
   outline: 'none', width: '100%', boxSizing: 'border-box',
 }
 
-/* ── Toggle pill ── */
-function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
+function Toggle({ on, onClick }: { on: boolean; onClick: (e: React.MouseEvent) => void }) {
   return (
     <div onClick={onClick} style={{ width: 38, height: 22, borderRadius: 11, background: on ? GREEN : 'rgba(255,255,255,0.15)', position: 'relative', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0 }}>
       <div style={{ position: 'absolute', top: 3, left: on ? 19 : 3, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
@@ -178,328 +38,435 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
   )
 }
 
-/* ── Inline add form ── */
 function AddForm({ placeholder, onAdd, onCancel }: { placeholder: string; onAdd: (name: string) => void; onCancel: () => void }) {
   const [val, setVal] = useState('')
   return (
     <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
       <input value={val} onChange={e => setVal(e.target.value)} placeholder={placeholder} style={{ ...inp, flex: 1 }}
         onKeyDown={e => { if (e.key === 'Enter' && val.trim()) { onAdd(val.trim()); setVal('') } if (e.key === 'Escape') onCancel() }}
-        autoFocus
-      />
+        autoFocus />
       <button onClick={() => { if (val.trim()) { onAdd(val.trim()); setVal('') } }} disabled={!val.trim()}
         style={{ background: val.trim() ? RED : 'rgba(200,32,42,0.3)', border: 'none', borderRadius: 7, padding: '8px 14px', color: '#fff', fontSize: 14, fontFamily: BARLOW, fontWeight: 700, cursor: val.trim() ? 'pointer' : 'not-allowed' }}>
         Add
       </button>
-      <button onClick={onCancel} style={{ background: BG4, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7, padding: '8px 12px', color: 'rgba(255,255,255,0.5)', fontSize: 14, fontFamily: BARLOW, cursor: 'pointer' }}>
-        ✕
-      </button>
+      <button onClick={onCancel} style={{ background: BG4, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7, padding: '8px 12px', color: 'rgba(255,255,255,0.5)', fontSize: 14, fontFamily: BARLOW, cursor: 'pointer' }}>✕</button>
     </div>
   )
 }
 
-/* ══ MAIN PAGE ══ */
 export default function AdminLocationPage() {
-  const router = useRouter()
-  const [countries, setCountries] = useState<Country[]>(DEFAULT_COUNTRIES)
-  const [saved, setSaved] = useState(false)
-  const [search, setSearch] = useState('')
-
-  // Drill-down selection
-  const [selCountry, setSelCountry] = useState<string | null>(null)
-  const [selState,   setSelState]   = useState<string | null>(null)
-
-  // Add forms
+  const [countries,     setCountries]     = useState<Country[]>([])
+  const [loading,       setLoading]       = useState(true)
+  const [flashSaved,    setFlashSaved]    = useState(false)
+  const [countrySearch, setCountrySearch] = useState('')
+  const [stateSearch,   setStateSearch]   = useState('')
+  const [citySearch,    setCitySearch]    = useState('')
+  const [selCountry,    setSelCountry]    = useState<string | null>(null)
+  const [selState,      setSelState]      = useState<string | null>(null)
   const [addingCountry, setAddingCountry] = useState(false)
   const [addingState,   setAddingState]   = useState(false)
   const [addingCity,    setAddingCity]    = useState(false)
+  const [renamingId,    setRenamingId]    = useState<string | null>(null)
+  const [renameVal,     setRenameVal]     = useState('')
 
-  // Rename editing
-  const [renamingId, setRenamingId] = useState<string | null>(null)
-  const [renameVal,  setRenameVal]  = useState('')
-
-  // ── FIX: seed localStorage with defaults if nothing saved yet ──
+  // Load from locationData.json — always fresh, merge active flags from localStorage
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(LS_KEY)
-      if (raw) {
-        setCountries(JSON.parse(raw))
-      } else {
-        localStorage.setItem(LS_KEY, JSON.stringify(DEFAULT_COUNTRIES))
-      }
-    } catch {}
+    fetch('/locationData.json')
+      .then(r => r.json())
+      .then((defaults: any[]) => {
+        const raw      = localStorage.getItem(LS_KEY)
+        const savedVer = localStorage.getItem(LS_VER)
+        let base: Country[]
+
+        if (raw && savedVer === VERSION) {
+          // Merge: use JSON for structure, localStorage for active flags
+          const saved: Country[] = JSON.parse(raw)
+          base = defaults.map(jc => {
+            const sc = saved.find(s => s.name === jc.name)
+            const states = (jc.states ?? []).map((js: any) => {
+              const ss = sc?.states?.find((s: any) => s.name === js.name)
+              const cities = (js.cities ?? []).map((jci: any) => {
+                const sci = ss?.cities?.find((c: any) => c.name === jci.name)
+                return { id: uid(), name: jci.name, active: sci ? sci.active : (sc?.active ?? false) }
+              })
+              return { id: uid(), name: js.name, active: ss ? ss.active : (sc?.active ?? false), cities }
+            })
+            return { id: uid(), name: jc.name, active: sc ? sc.active : false, states }
+          })
+        } else {
+          // First load — all inactive by default
+          base = defaults.map(jc => ({
+            id: uid(), name: jc.name, active: false,
+            states: (jc.states ?? []).map((js: any) => ({
+              id: uid(), name: js.name, active: false,
+              cities: (js.cities ?? []).map((jci: any) => ({ id: uid(), name: jci.name, active: false }))
+            }))
+          }))
+        }
+
+        const sorted = [...base].sort((a, b) => a.name.localeCompare(b.name))
+        setCountries(sorted)
+        localStorage.setItem(LS_KEY, JSON.stringify(sorted))
+        localStorage.setItem(LS_VER, VERSION)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
   }, [])
 
-  const persist = (updated: Country[]) => {
-    localStorage.setItem(LS_KEY, JSON.stringify(updated))
-    setCountries(updated)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  // Save to localStorage + sync active status to locations table
+  const syncToDb = (sorted: Country[]) => {
+    try {
+      const stored   = localStorage.getItem('ss_user')
+      const token    = stored ? JSON.parse(stored).token : null
+      if (!token) return
+      fetch('/api/locations/sync', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body:    JSON.stringify({ config: sorted }),
+      }).catch(() => {})
+    } catch {}
   }
 
-  // ── FIX: reset now saves defaults to localStorage instead of removing key ──
-  const resetDefaults = () => {
-    localStorage.setItem(LS_KEY, JSON.stringify(DEFAULT_COUNTRIES))
-    setCountries(DEFAULT_COUNTRIES)
-    setSelCountry(null); setSelState(null)
-    setSaved(true); setTimeout(() => setSaved(false), 2000)
+  const persist = (updater: Country[] | ((prev: Country[]) => Country[])) => {
+    setCountries(prev => {
+      const updated = typeof updater === 'function' ? updater(prev) : updater
+      const sorted  = [...updated].sort((a, b) => a.name.localeCompare(b.name))
+      localStorage.setItem(LS_KEY, JSON.stringify(sorted))
+      localStorage.setItem(LS_VER, VERSION)
+      syncToDb(sorted)
+      return sorted
+    })
+    setFlashSaved(true)
+    setTimeout(() => setFlashSaved(false), 1500)
   }
 
-  /* ── Country ops ── */
-  const addCountry = (name: string) => {
-    persist([...countries, { id: uid(), name, active: true, states: [] }])
-    setAddingCountry(false)
-  }
-  const toggleCountry = (cid: string) =>
-    persist(countries.map(c => c.id === cid ? { ...c, active: !c.active } : c))
-  const renameCountry = (cid: string, name: string) =>
-    persist(countries.map(c => c.id === cid ? { ...c, name } : c))
-  const deleteCountry = (cid: string) => {
-    if (selCountry === cid) { setSelCountry(null); setSelState(null) }
-    persist(countries.filter(c => c.id !== cid))
-  }
-
-  /* ── State ops ── */
-  const addState = (cid: string, name: string) => {
-    persist(countries.map(c => c.id === cid ? { ...c, states: [...c.states, { id: uid(), name, active: true, cities: [] }] } : c))
-    setAddingState(false)
-  }
-  const toggleState = (cid: string, sid: string) =>
-    persist(countries.map(c => c.id === cid ? { ...c, states: c.states.map(s => s.id === sid ? { ...s, active: !s.active } : s) } : c))
-  const renameState = (cid: string, sid: string, name: string) =>
-    persist(countries.map(c => c.id === cid ? { ...c, states: c.states.map(s => s.id === sid ? { ...s, name } : s) } : c))
-  const deleteState = (cid: string, sid: string) => {
-    if (selState === sid) setSelState(null)
-    persist(countries.map(c => c.id === cid ? { ...c, states: c.states.filter(s => s.id !== sid) } : c))
+  // Toggle country — activating sets ALL its states and cities active too
+  const toggleCountry = (cid: string) => {
+    persist(prev => prev.map(c => {
+      if (c.id !== cid) return c
+      const newActive = !c.active
+      return {
+        ...c, active: newActive,
+        states: c.states.map(s => ({
+          ...s, active: newActive,
+          cities: s.cities.map(ci => ({ ...ci, active: newActive }))
+        }))
+      }
+    }))
+    // When activating a country, auto-select it to show its states
+    if (!countries.find(c => c.id === cid)?.active) {
+      setSelCountry(cid)
+      setSelState(null)
+    }
   }
 
-  /* ── City ops ── */
-  const addCity = (cid: string, sid: string, name: string) => {
-    persist(countries.map(c => c.id === cid ? { ...c, states: c.states.map(s => s.id === sid ? { ...s, cities: [...s.cities, { id: uid(), name, active: true }] } : s) } : c))
-    setAddingCity(false)
+  // Toggle state — activating sets ALL its cities active too
+  const toggleState = (cid: string, sid: string) => {
+    persist(prev => prev.map(c => {
+      if (c.id !== cid) return c
+      return {
+        ...c,
+        states: c.states.map(s => {
+          if (s.id !== sid) return s
+          const newActive = !s.active
+          return { ...s, active: newActive, cities: s.cities.map(ci => ({ ...ci, active: newActive })) }
+        })
+      }
+    }))
+    // Auto-select state to show cities
+    if (!countries.find(c => c.id === cid)?.states.find(s => s.id === sid)?.active) {
+      setSelState(sid)
+    }
   }
-  const toggleCity = (cid: string, sid: string, cityId: string) =>
-    persist(countries.map(c => c.id === cid ? { ...c, states: c.states.map(s => s.id === sid ? { ...s, cities: s.cities.map(ci => ci.id === cityId ? { ...ci, active: !ci.active } : ci) } : s) } : c))
-  const renameCity = (cid: string, sid: string, cityId: string, name: string) =>
-    persist(countries.map(c => c.id === cid ? { ...c, states: c.states.map(s => s.id === sid ? { ...s, cities: s.cities.map(ci => ci.id === cityId ? { ...ci, name } : ci) } : s) } : c))
-  const deleteCity = (cid: string, sid: string, cityId: string) =>
-    persist(countries.map(c => c.id === cid ? { ...c, states: c.states.map(s => s.id === sid ? { ...s, cities: s.cities.filter(ci => ci.id !== cityId) } : s) } : c))
 
+  // Toggle city
+  const toggleCity = (cid: string, sid: string, cityId: string) => {
+    persist(prev => prev.map(c => c.id !== cid ? c : {
+      ...c, states: c.states.map(s => s.id !== sid ? s : {
+        ...s, cities: s.cities.map(ci => ci.id !== cityId ? ci : { ...ci, active: !ci.active })
+      })
+    }))
+  }
+
+  // Add ops
+  const addCountry = (name: string) => { persist(prev => [...prev, { id: uid(), name, active: true, states: [] }]); setAddingCountry(false) }
+  const addState   = (cid: string, name: string) => { persist(prev => prev.map(c => c.id !== cid ? c : { ...c, states: [...c.states, { id: uid(), name, active: true, cities: [] }] })); setAddingState(false) }
+  const addCity    = (cid: string, sid: string, name: string) => { persist(prev => prev.map(c => c.id !== cid ? c : { ...c, states: c.states.map(s => s.id !== sid ? s : { ...s, cities: [...s.cities, { id: uid(), name, active: true }] }) })); setAddingCity(false) }
+
+  // Delete ops
+  const deleteCountry = (cid: string) => { if (selCountry === cid) { setSelCountry(null); setSelState(null) } persist(prev => prev.filter(c => c.id !== cid)) }
+  const deleteState   = (cid: string, sid: string) => { if (selState === sid) setSelState(null); persist(prev => prev.map(c => c.id !== cid ? c : { ...c, states: c.states.filter(s => s.id !== sid) })) }
+  const deleteCity    = (cid: string, sid: string, cityId: string) => persist(prev => prev.map(c => c.id !== cid ? c : { ...c, states: c.states.map(s => s.id !== sid ? s : { ...s, cities: s.cities.filter(ci => ci.id !== cityId) }) }))
+
+  // Rename ops
+  const renameCountry = (cid: string, name: string) => persist(prev => prev.map(c => c.id !== cid ? c : { ...c, name }))
+  const renameState   = (cid: string, sid: string, name: string) => persist(prev => prev.map(c => c.id !== cid ? c : { ...c, states: c.states.map(s => s.id !== sid ? s : { ...s, name }) }))
+  const renameCity    = (cid: string, sid: string, cityId: string, name: string) => persist(prev => prev.map(c => c.id !== cid ? c : { ...c, states: c.states.map(s => s.id !== sid ? s : { ...s, cities: s.cities.map(ci => ci.id !== cityId ? ci : { ...ci, name }) }) }))
+
+  // Derived
   const selectedCountry = countries.find(c => c.id === selCountry) ?? null
   const selectedState   = selectedCountry?.states.find(s => s.id === selState) ?? null
 
-  const filteredCountries = countries.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
+  // States column: all states from ALL active countries
+  const activeCountries  = countries.filter(c => c.active)
+  const allActiveStates  = activeCountries.flatMap(c => c.states.map(s => ({ ...s, countryId: c.id, countryName: c.name })))
+  const displayedStates  = selCountry
+    ? (selectedCountry?.states ?? []).map(s => ({ ...s, countryId: selCountry, countryName: selectedCountry?.name ?? '' }))
+    : allActiveStates
 
-  /* ── Row component ── */
-  const Row = ({ label, active, onToggle, onRename, onDelete, onSelect, selected, count }: {
-    label: string; active: boolean; onToggle: () => void; onRename: (v: string) => void
-    onDelete: () => void; onSelect?: () => void; selected?: boolean; count?: number
+  // Cities column: all cities from ALL active states of selected country (or selected state)
+  const allActiveCities = selectedCountry
+    ? selectedCountry.states.filter(s => s.active).flatMap(s => s.cities.map(ci => ({ ...ci, stateId: s.id, stateName: s.name })))
+    : []
+  const displayedCities = selState
+    ? (selectedState?.cities ?? []).map(ci => ({ ...ci, stateId: selState, stateName: selectedState?.name ?? '' }))
+    : allActiveCities
+
+  const filteredCountries = countries.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase()))
+  const filteredStates    = displayedStates.filter(s => s.name.toLowerCase().includes(stateSearch.toLowerCase()))
+  const filteredCities    = displayedCities.filter(ci => ci.name.toLowerCase().includes(citySearch.toLowerCase()))
+
+  // Stats
+  const totalActive   = countries.filter(c => c.active).length
+  const totalStates   = countries.reduce((a, c) => a + c.states.length, 0)
+  const activeStates  = countries.reduce((a, c) => a + c.states.filter(s => s.active).length, 0)
+  const totalCities   = countries.reduce((a, c) => a + c.states.reduce((b, s) => b + s.cities.length, 0), 0)
+  const activeCities  = countries.reduce((a, c) => a + c.states.reduce((b, s) => b + s.cities.filter(ci => ci.active).length, 0), 0)
+
+  const colStyle: React.CSSProperties = {
+    background: BG2, border: '1px solid rgba(255,255,255,0.07)',
+    borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1,
+  }
+  const colHeaderStyle: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', background: BG3, flexShrink: 0,
+  }
+  const listStyle: React.CSSProperties = {
+    padding: '10px 12px', display: 'flex', flexDirection: 'column',
+    gap: 5, overflowY: 'auto', flex: 1, scrollbarWidth: 'none',
+  }
+
+  const RowItem = ({ id, label, active, onToggle, onRename, onDelete, onSelect, selected, badge }: {
+    id: string; label: string; active: boolean
+    onToggle: (e: React.MouseEvent) => void
+    onRename: (v: string) => void
+    onDelete: (e: React.MouseEvent) => void
+    onSelect?: () => void; selected?: boolean; badge?: string
   }) => {
-    const isRenaming = renamingId === label + '_' + active
+    const isRenaming = renamingId === id
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, background: selected ? 'rgba(200,32,42,0.08)' : 'rgba(255,255,255,0.02)', border: `1px solid ${selected ? 'rgba(200,32,42,0.25)' : 'rgba(255,255,255,0.06)'}`, cursor: onSelect ? 'pointer' : 'default' }}
-        onClick={onSelect}
+      <div onClick={onSelect}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderRadius: 8, cursor: onSelect ? 'pointer' : 'default', background: selected ? 'rgba(212,166,74,0.08)' : 'rgba(255,255,255,0.02)', border: `1px solid ${selected ? 'rgba(212,166,74,0.3)' : 'rgba(255,255,255,0.05)'}`, transition: 'all 0.15s' }}
+        onMouseEnter={e => { if (!selected) e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
+        onMouseLeave={e => { if (!selected) e.currentTarget.style.background = 'rgba(255,255,255,0.02)' }}
       >
-        <Toggle on={active} onClick={e => { (e as any).stopPropagation?.(); onToggle() }} />
+        <Toggle on={active} onClick={e => { e.stopPropagation(); onToggle(e) }} />
         {isRenaming ? (
           <input value={renameVal} onChange={e => setRenameVal(e.target.value)} autoFocus
-            style={{ ...inp, flex: 1, padding: '4px 8px', fontSize: 14 }}
+            style={{ ...inp, flex: 1, padding: '3px 8px', fontSize: 13 }}
             onClick={e => e.stopPropagation()}
-            onKeyDown={e => {
-              if (e.key === 'Enter') { onRename(renameVal); setRenamingId(null) }
-              if (e.key === 'Escape') setRenamingId(null)
-            }}
-          />
+            onKeyDown={e => { if (e.key === 'Enter') { onRename(renameVal); setRenamingId(null) } if (e.key === 'Escape') setRenamingId(null) }} />
         ) : (
-          <span style={{ flex: 1, fontSize: 16, fontFamily: BARLOW, fontWeight: 600, color: active ? '#fff' : 'rgba(255,255,255,0.35)', textDecoration: active ? 'none' : 'line-through' }}>{label}</span>
+          <span style={{ flex: 1, fontSize: 15, fontFamily: BARLOW, fontWeight: 600, color: active ? '#fff' : 'rgba(255,255,255,0.3)' }}>{label}</span>
         )}
-        {count !== undefined && (
-          <span style={{ fontSize: 13, fontFamily: BARLOW, color: 'rgba(255,255,255,0.3)', background: BG4, borderRadius: 10, padding: '1px 8px' }}>{count}</span>
+        {badge !== undefined && (
+          <span style={{ fontSize: 12, fontFamily: BARLOW, color: 'rgba(255,255,255,0.3)', background: BG4, borderRadius: 10, padding: '1px 7px', flexShrink: 0 }}>{badge}</span>
         )}
-        <div style={{ display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
-          <button onClick={() => { setRenamingId(label + '_' + active); setRenameVal(label) }}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.35)', padding: 4, borderRadius: 5 }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#fff')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.35)')}
-          ><Pencil size={13} /></button>
+        <div style={{ display: 'flex', gap: 2 }} onClick={e => e.stopPropagation()}>
+          <button onClick={() => { setRenamingId(id); setRenameVal(label) }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: 4, borderRadius: 4 }}
+            onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+            onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}><Pencil size={12} /></button>
           <button onClick={onDelete}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.35)', padding: 4, borderRadius: 5 }}
-            onMouseEnter={e => (e.currentTarget.style.color = RED)}
-            onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.35)')}
-          ><Trash2 size={13} /></button>
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: 4, borderRadius: 4 }}
+            onMouseEnter={e => e.currentTarget.style.color = RED}
+            onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}><Trash2 size={12} /></button>
         </div>
-        {onSelect && <ChevronRight size={14} color={selected ? RED : 'rgba(255,255,255,0.2)'} />}
       </div>
     )
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: BG, fontFamily: BARLOW, color: '#F5F5F5' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: BG, fontFamily: BARLOW, color: '#F5F5F5' }}>
+      <AdminTopnav />
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        <AdminSidebar onCollapse={() => {}} />
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px 40px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-      {/* Topnav */}
-      <header style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '0 28px', height: 60, background: BG2, borderBottom: '1px solid rgba(255,255,255,0.07)', position: 'sticky', top: 0, zIndex: 50 }}>
-        <button onClick={() => router.back()} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 15, fontFamily: BARLOW, cursor: 'pointer', padding: 0 }}
-          onMouseEnter={e => (e.currentTarget.style.color = '#fff')}
-          onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.5)')}
-        >← Back</button>
-        <div style={{ fontFamily: BEBAS, fontSize: 22, letterSpacing: 2 }}>LOCATION <span style={{ color: RED }}>MANAGEMENT</span></div>
-        <div style={{ flex: 1 }} />
-        {saved && <span style={{ fontSize: 15, fontFamily: BARLOW, color: GREEN, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}><Check size={14} /> Saved</span>}
-        <button onClick={resetDefaults} style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '8px 16px', color: 'rgba(255,255,255,0.6)', fontSize: 15, fontFamily: BARLOW, cursor: 'pointer' }}>
-          <RotateCcw size={14} /> Reset Defaults
-        </button>
-      </header>
-
-      <div style={{ padding: '24px 28px 48px', maxWidth: 1200, margin: '0 auto' }}>
-
-        {/* Info banner */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', background: 'rgba(212,166,74,0.07)', border: '1px solid rgba(212,166,74,0.2)', borderRadius: 10, marginBottom: 24 }}>
-          <AlertCircle size={16} color={GOLD} />
-          <span style={{ fontSize: 15, fontFamily: BARLOW, color: 'rgba(255,255,255,0.6)' }}>
-            Deactivated locations are hidden from all dropdowns in the app. Changes are saved immediately to your browser.
-          </span>
-        </div>
-
-        {/* Stats row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 28 }}>
-          {[
-            { icon: <Globe size={18} color={GOLD} />, label: 'Countries', val: countries.length, active: countries.filter(c => c.active).length },
-            { icon: <MapPin size={18} color={GOLD} />, label: 'States', val: countries.reduce((a, c) => a + c.states.length, 0), active: countries.reduce((a, c) => a + c.states.filter(s => s.active).length, 0) },
-            { icon: <Building size={18} color={GOLD} />, label: 'Cities', val: countries.reduce((a, c) => a + c.states.reduce((b, s) => b + s.cities.length, 0), 0), active: countries.reduce((a, c) => a + c.states.reduce((b, s) => b + s.cities.filter(ci => ci.active).length, 0), 0) },
-            { icon: <Check size={18} color={GREEN} />, label: 'Active Locations', val: countries.reduce((a, c) => a + c.states.reduce((b, s) => b + s.cities.filter(ci => ci.active).length, 0), 0) + countries.reduce((a, c) => a + c.states.filter(s => s.active).length, 0) + countries.filter(c => c.active).length, active: null },
-          ].map(stat => (
-            <div key={stat.label} style={{ background: BG2, border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '14px 18px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>{stat.icon}<span style={{ fontSize: 14, fontFamily: BARLOW, color: 'rgba(255,255,255,0.4)' }}>{stat.label}</span></div>
-              <div style={{ fontFamily: BEBAS, fontSize: 28, color: '#fff', lineHeight: 1 }}>{stat.val}</div>
-              {stat.active !== null && <div style={{ fontSize: 13, fontFamily: BARLOW, color: GREEN, marginTop: 3 }}>{stat.active} active</div>}
-            </div>
-          ))}
-        </div>
-
-        {/* Three-column drill-down */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20, alignItems: 'start' }}>
-
-          {/* Countries column */}
-          <div style={{ background: BG2, border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, overflow: 'hidden' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', background: BG3 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Globe size={16} color={GOLD} />
-                <span style={{ fontFamily: BEBAS, fontSize: 18, letterSpacing: 1 }}>Countries</span>
-                <span style={{ fontSize: 13, fontFamily: BARLOW, color: 'rgba(255,255,255,0.35)' }}>{countries.filter(c => c.active).length}/{countries.length}</span>
-              </div>
-              <button onClick={() => setAddingCountry(true)} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(200,32,42,0.1)', border: '1px solid rgba(200,32,42,0.25)', borderRadius: 6, padding: '5px 10px', color: RED, fontSize: 13, fontFamily: BARLOW, cursor: 'pointer' }}>
-                <Plus size={12} /> Add
-              </button>
-            </div>
-            <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: BG3, borderRadius: 7, padding: '7px 10px' }}>
-                <Search size={13} color="rgba(255,255,255,0.35)" />
-                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search countries..." style={{ background: 'none', border: 'none', outline: 'none', color: '#fff', fontSize: 14, fontFamily: BARLOW, flex: 1 }} />
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontFamily: BEBAS, fontSize: 28, letterSpacing: 2 }}>LOCATION MANAGEMENT</div>
+              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>
+                Toggle countries on to activate all their states and cities automatically
               </div>
             </div>
-            <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 480, overflowY: 'auto' }}>
-              {filteredCountries.map(c => (
-                <Row key={c.id} label={c.name} active={c.active}
-                  onToggle={() => toggleCountry(c.id)}
-                  onRename={v => renameCountry(c.id, v)}
-                  onDelete={() => deleteCountry(c.id)}
-                  onSelect={() => { setSelCountry(c.id); setSelState(null) }}
-                  selected={selCountry === c.id}
-                  count={c.states.length}
-                />
-              ))}
-              {addingCountry && (
-                <AddForm placeholder="Country name..." onAdd={addCountry} onCancel={() => setAddingCountry(false)} />
-              )}
-              {filteredCountries.length === 0 && !addingCountry && (
-                <div style={{ textAlign: 'center', padding: '24px 0', fontSize: 14, fontFamily: BARLOW, color: 'rgba(255,255,255,0.25)' }}>No countries found</div>
-              )}
-            </div>
+            {flashSaved && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 8, color: GREEN, fontSize: 14, fontFamily: BARLOW }}>
+                <Check size={14} /> Saved
+              </div>
+            )}
           </div>
 
-          {/* States column */}
-          <div style={{ background: BG2, border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, overflow: 'hidden' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', background: BG3 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <MapPin size={16} color={GOLD} />
-                <span style={{ fontFamily: BEBAS, fontSize: 18, letterSpacing: 1 }}>
-                  {selectedCountry ? `${selectedCountry.name} — States` : 'States'}
-                </span>
-                {selectedCountry && <span style={{ fontSize: 13, fontFamily: BARLOW, color: 'rgba(255,255,255,0.35)' }}>{selectedCountry.states.filter(s => s.active).length}/{selectedCountry.states.length}</span>}
+          {/* Stats */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+            {[
+              { label: 'Countries', value: countries.length, sub: `${totalActive} active`,     icon: <Globe size={18} />,    color: GOLD  },
+              { label: 'States',    value: totalStates,      sub: `${activeStates} active`,    icon: <MapPin size={18} />,   color: '#3B82F6' },
+              { label: 'Cities',    value: totalCities,      sub: `${activeCities} active`,    icon: <Building size={18} />, color: '#8B5CF6' },
+              { label: 'Active',    value: totalActive + activeStates + activeCities, sub: 'total active items', icon: <Check size={18} />, color: GREEN },
+            ].map(s => (
+              <div key={s.label} style={{ background: BG2, border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: s.color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', color: s.color, flexShrink: 0 }}>{s.icon}</div>
+                <div>
+                  <div style={{ fontFamily: BEBAS, fontSize: 24, letterSpacing: 1, lineHeight: 1, color: '#F5F5F5' }}>{s.value.toLocaleString()}</div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{s.label} · {s.sub}</div>
+                </div>
               </div>
-              {selectedCountry && (
-                <button onClick={() => setAddingState(true)} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(200,32,42,0.1)', border: '1px solid rgba(200,32,42,0.25)', borderRadius: 6, padding: '5px 10px', color: RED, fontSize: 13, fontFamily: BARLOW, cursor: 'pointer' }}>
-                  <Plus size={12} /> Add
-                </button>
-              )}
+            ))}
+          </div>
+
+          {/* Info banner */}
+          <div style={{ background: 'rgba(212,166,74,0.06)', border: '1px solid rgba(212,166,74,0.2)', borderRadius: 8, padding: '10px 16px', fontSize: 14, color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ color: GOLD, fontSize: 16 }}>ℹ</span>
+            <span>
+              <strong style={{ color: GOLD }}>Toggle a country ON</strong> to automatically activate all its states and cities.
+              Click a country to view its states. Click a state to view its cities.
+              You can then toggle individual states or cities off if needed.
+            </span>
+          </div>
+
+          {loading ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 300 }}>
+              <div style={{ width: 28, height: 28, border: `2px solid ${GOLD}20`, borderTop: `2px solid ${GOLD}`, borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
             </div>
-            <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 530, overflowY: 'auto' }}>
-              {!selectedCountry ? (
-                <div style={{ textAlign: 'center', padding: '48px 0', fontSize: 14, fontFamily: BARLOW, color: 'rgba(255,255,255,0.25)' }}>← Select a country</div>
-              ) : (
-                <>
-                  {selectedCountry.states.map(s => (
-                    <Row key={s.id} label={s.name} active={s.active}
-                      onToggle={() => toggleState(selectedCountry.id, s.id)}
-                      onRename={v => renameState(selectedCountry.id, s.id, v)}
-                      onDelete={() => deleteState(selectedCountry.id, s.id)}
-                      onSelect={() => setSelState(s.id)}
+          ) : (
+            <div style={{ display: 'flex', gap: 16, flex: 1, minHeight: 0 }}>
+
+              {/* ── COUNTRIES ── */}
+              <div style={colStyle}>
+                <div style={colHeaderStyle}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Globe size={16} color={GOLD} />
+                    <span style={{ fontFamily: BEBAS, fontSize: 18, letterSpacing: 1 }}>COUNTRIES</span>
+                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', fontFamily: BARLOW }}>{totalActive} active</span>
+                  </div>
+                  <button onClick={() => setAddingCountry(true)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(200,32,42,0.1)', border: '1px solid rgba(200,32,42,0.25)', borderRadius: 6, padding: '4px 10px', color: RED, fontSize: 13, fontFamily: BARLOW, cursor: 'pointer' }}>
+                    <Plus size={12} /> Add
+                  </button>
+                </div>
+                <div style={{ padding: '8px 12px', flexShrink: 0 }}>
+                  <div style={{ position: 'relative' }}>
+                    <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
+                    <input value={countrySearch} onChange={e => setCountrySearch(e.target.value)} placeholder="Search countries..." style={{ ...inp, paddingLeft: 30, fontSize: 13 }} />
+                  </div>
+                </div>
+                <div style={listStyle}>
+                  {addingCountry && <AddForm placeholder="Country name..." onAdd={addCountry} onCancel={() => setAddingCountry(false)} />}
+                  {filteredCountries.map(c => (
+                    <RowItem key={c.id} id={c.id} label={c.name} active={c.active}
+                      onToggle={e => { e.stopPropagation(); toggleCountry(c.id) }}
+                      onRename={v => renameCountry(c.id, v)}
+                      onDelete={e => { e.stopPropagation(); if (confirm(`Delete ${c.name}?`)) deleteCountry(c.id) }}
+                      onSelect={() => { setSelCountry(selCountry === c.id ? null : c.id); setSelState(null) }}
+                      selected={selCountry === c.id}
+                      badge={c.states.filter(s => s.active).length + '/' + c.states.length}
+                    />
+                  ))}
+                  {filteredCountries.length === 0 && !addingCountry && (
+                    <div style={{ textAlign: 'center', padding: '32px 0', fontSize: 14, color: 'rgba(255,255,255,0.25)' }}>No countries found</div>
+                  )}
+                </div>
+              </div>
+
+              {/* ── STATES ── */}
+              <div style={colStyle}>
+                <div style={colHeaderStyle}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <MapPin size={16} color={GOLD} />
+                    <span style={{ fontFamily: BEBAS, fontSize: 18, letterSpacing: 1 }}>
+                      {selCountry ? `${selectedCountry?.name} — STATES` : 'ALL ACTIVE STATES'}
+                    </span>
+                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', fontFamily: BARLOW }}>{filteredStates.filter(s => s.active).length} active</span>
+                  </div>
+                  {selCountry && (
+                    <button onClick={() => setAddingState(true)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(200,32,42,0.1)', border: '1px solid rgba(200,32,42,0.25)', borderRadius: 6, padding: '4px 10px', color: RED, fontSize: 13, fontFamily: BARLOW, cursor: 'pointer' }}>
+                      <Plus size={12} /> Add
+                    </button>
+                  )}
+                </div>
+                <div style={{ padding: '8px 12px', flexShrink: 0 }}>
+                  <div style={{ position: 'relative' }}>
+                    <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
+                    <input value={stateSearch} onChange={e => setStateSearch(e.target.value)} placeholder="Search states..." style={{ ...inp, paddingLeft: 30, fontSize: 13 }} />
+                  </div>
+                </div>
+                <div style={listStyle}>
+                  {!selCountry && activeCountries.length === 0 && (
+                    <div style={{ textAlign: 'center', padding: '48px 0', fontSize: 14, color: 'rgba(255,255,255,0.25)' }}>← Toggle a country on to see states</div>
+                  )}
+                  {addingState && selCountry && <AddForm placeholder="State / Province name..." onAdd={name => addState(selCountry, name)} onCancel={() => setAddingState(false)} />}
+                  {filteredStates.map(s => (
+                    <RowItem key={s.id} id={s.id} label={s.name} active={s.active}
+                      onToggle={e => { e.stopPropagation(); toggleState(s.countryId, s.id) }}
+                      onRename={v => renameState(s.countryId, s.id, v)}
+                      onDelete={e => { e.stopPropagation(); if (confirm(`Delete ${s.name}?`)) deleteState(s.countryId, s.id) }}
+                      onSelect={() => { setSelCountry(s.countryId); setSelState(selState === s.id ? null : s.id) }}
                       selected={selState === s.id}
-                      count={s.cities.length}
+                      badge={s.cities.filter(ci => ci.active).length + '/' + s.cities.length}
                     />
                   ))}
-                  {addingState && (
-                    <AddForm placeholder="State / Province name..." onAdd={name => addState(selectedCountry.id, name)} onCancel={() => setAddingState(false)} />
+                  {filteredStates.length === 0 && !addingState && activeCountries.length > 0 && (
+                    <div style={{ textAlign: 'center', padding: '32px 0', fontSize: 14, color: 'rgba(255,255,255,0.25)' }}>No states found</div>
                   )}
-                  {selectedCountry.states.length === 0 && !addingState && (
-                    <div style={{ textAlign: 'center', padding: '24px 0', fontSize: 14, fontFamily: BARLOW, color: 'rgba(255,255,255,0.25)' }}>No states yet — click Add</div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Cities column */}
-          <div style={{ background: BG2, border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, overflow: 'hidden' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', background: BG3 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Building size={16} color={GOLD} />
-                <span style={{ fontFamily: BEBAS, fontSize: 18, letterSpacing: 1 }}>
-                  {selectedState ? `${selectedState.name} — Cities` : 'Cities'}
-                </span>
-                {selectedState && <span style={{ fontSize: 13, fontFamily: BARLOW, color: 'rgba(255,255,255,0.35)' }}>{selectedState.cities.filter(c => c.active).length}/{selectedState.cities.length}</span>}
+                </div>
               </div>
-              {selectedState && (
-                <button onClick={() => setAddingCity(true)} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(200,32,42,0.1)', border: '1px solid rgba(200,32,42,0.25)', borderRadius: 6, padding: '5px 10px', color: RED, fontSize: 13, fontFamily: BARLOW, cursor: 'pointer' }}>
-                  <Plus size={12} /> Add
-                </button>
-              )}
-            </div>
-            <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 530, overflowY: 'auto' }}>
-              {!selectedState ? (
-                <div style={{ textAlign: 'center', padding: '48px 0', fontSize: 14, fontFamily: BARLOW, color: 'rgba(255,255,255,0.25)' }}>← Select a state</div>
-              ) : (
-                <>
-                  {selectedState.cities.map(ci => (
-                    <Row key={ci.id} label={ci.name} active={ci.active}
-                      onToggle={() => toggleCity(selectedCountry!.id, selectedState.id, ci.id)}
-                      onRename={v => renameCity(selectedCountry!.id, selectedState.id, ci.id, v)}
-                      onDelete={() => deleteCity(selectedCountry!.id, selectedState.id, ci.id)}
+
+              {/* ── CITIES ── */}
+              <div style={colStyle}>
+                <div style={colHeaderStyle}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Building size={16} color={GOLD} />
+                    <span style={{ fontFamily: BEBAS, fontSize: 18, letterSpacing: 1 }}>
+                      {selState ? `${selectedState?.name} — CITIES` : selCountry ? `${selectedCountry?.name} — ALL CITIES` : 'ALL ACTIVE CITIES'}
+                    </span>
+                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', fontFamily: BARLOW }}>{filteredCities.filter(ci => ci.active).length} active</span>
+                  </div>
+                  {selState && (
+                    <button onClick={() => setAddingCity(true)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(200,32,42,0.1)', border: '1px solid rgba(200,32,42,0.25)', borderRadius: 6, padding: '4px 10px', color: RED, fontSize: 13, fontFamily: BARLOW, cursor: 'pointer' }}>
+                      <Plus size={12} /> Add
+                    </button>
+                  )}
+                </div>
+                <div style={{ padding: '8px 12px', flexShrink: 0 }}>
+                  <div style={{ position: 'relative' }}>
+                    <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
+                    <input value={citySearch} onChange={e => setCitySearch(e.target.value)} placeholder="Search cities..." style={{ ...inp, paddingLeft: 30, fontSize: 13 }} />
+                  </div>
+                </div>
+                <div style={listStyle}>
+                  {!selCountry && activeCountries.length === 0 && (
+                    <div style={{ textAlign: 'center', padding: '48px 0', fontSize: 14, color: 'rgba(255,255,255,0.25)' }}>← Toggle a country on to see cities</div>
+                  )}
+                  {selCountry && filteredCities.length === 0 && !addingCity && (
+                    <div style={{ textAlign: 'center', padding: '32px 0', fontSize: 14, color: 'rgba(255,255,255,0.25)' }}>No cities found</div>
+                  )}
+                  {addingCity && selState && selCountry && <AddForm placeholder="City name..." onAdd={name => addCity(selCountry, selState, name)} onCancel={() => setAddingCity(false)} />}
+                  {filteredCities.map(ci => (
+                    <RowItem key={ci.id} id={ci.id} label={ci.name} active={ci.active}
+                      onToggle={e => { e.stopPropagation(); toggleCity(ci.stateId ? (countries.find(c => c.states.some(s => s.id === ci.stateId))?.id ?? '') : '', ci.stateId ?? '', ci.id) }}
+                      onRename={v => renameCity(ci.stateId ? (countries.find(c => c.states.some(s => s.id === ci.stateId))?.id ?? '') : '', ci.stateId ?? '', ci.id, v)}
+                      onDelete={e => { e.stopPropagation(); if (confirm(`Delete ${ci.name}?`)) deleteCity(ci.stateId ? (countries.find(c => c.states.some(s => s.id === ci.stateId))?.id ?? '') : '', ci.stateId ?? '', ci.id) }}
                     />
                   ))}
-                  {addingCity && (
-                    <AddForm placeholder="City name..." onAdd={name => addCity(selectedCountry!.id, selectedState.id, name)} onCancel={() => setAddingCity(false)} />
-                  )}
-                  {selectedState.cities.length === 0 && !addingCity && (
-                    <div style={{ textAlign: 'center', padding: '24px 0', fontSize: 14, fontFamily: BARLOW, color: 'rgba(255,255,255,0.25)' }}>No cities yet — click Add</div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
+                </div>
+              </div>
 
+            </div>
+          )}
         </div>
       </div>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 }

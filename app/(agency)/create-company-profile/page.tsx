@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo'
 import {
   LayoutDashboard, Megaphone, PlusCircle, ClipboardList,
@@ -32,8 +32,8 @@ const NAV_PRIMARY = [
   { icon: Star,            label: 'Shortlisted Talents',    href: '/agency/shortlisted'   },
   { icon: CalendarCheck,   label: 'Audition Management',    href: '/agency/auditions'     },
   { icon: Bookmark,        label: 'Saved Talents',          href: '/agency/saved-talents' },
-  { icon: MessageSquare,   label: 'Messages',     badge: 12, href: '/agency/messages'     },
-  { icon: Bell,            label: 'Notifications',badge: 3,  href: '/agency/notifications'},
+  { icon: MessageSquare,   label: 'Messages',               href: '/agency/messages'     },
+  { icon: Bell,            label: 'Notifications',           href: '/agency/notifications'},
 ]
 
 const COMPANY_TYPES   = ['Production House', 'Casting Agency', 'Talent Management', 'Advertising Agency', 'OTT Platform', 'Broadcasting Network', 'Music Label', 'Theatre Company', 'Event Management', 'PR Agency', 'Other']
@@ -159,6 +159,7 @@ function Donut({ pct }: { pct: number }) {
 
 export default function CreateCompanyProfilePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const logoRef    = useRef<HTMLInputElement>(null)
   const bannerRef  = useRef<HTMLInputElement>(null)
   const galleryRef = useRef<HTMLInputElement>(null)
@@ -166,35 +167,49 @@ export default function CreateCompanyProfilePage() {
 
   // ── Form state ──
   const [form, setForm] = useState({
-    companyName: 'DreamLine Films', companyType: 'Production House', establishedYear: '2018',
-    website: 'www.dreamlinefilms.com', email: 'hello@dreamlinefilms.com', phone: '+91 98765 43210',
-    headquarters: 'Mumbai, Maharashtra, India',
-    bio: 'DreamLine Films is a Mumbai based production house passionate about creating powerful stories that entertain, inspire and leave a lasting impact. We specialize in feature films, web series, commercials and branded content.',
-    companySize: '11 - 50 Employees', regNo: '27AABCD1234E1Z5', gst: '27AABCD1234E1Z5', pan: 'AABCD1234E',
-    subsidiary: 'DreamLine Studios',
-    talentManagement: 'yes',
-    instagram: 'https://instagram.com/dreamlinefilms',
-    facebook: 'https://facebook.com/dreamlinefilms',
-    linkedin: 'https://linkedin.com/company/dreamlinefilms',
-    youtube: 'https://youtube.com/@dreamlinefilms',
-    twitter: 'https://twitter.com/dreamlinefilms',
+    companyName: '', companyType: '', establishedYear: '',
+    contactPerson: '', contactDesignation: '',
+    website: '', email: '', phone: '',
+    headquarters: '',   // address_line1
+    city: '', state: '', country: 'India',
+    bio: '',
+    companySize: '', regNo: '', gst: '', pan: '',
+    subsidiary: '',
+    talentManagement: 'no',
+    instagram: '', facebook: '', linkedin: '', youtube: '', twitter: '',
   })
-  const [expertise,       setExpertise]       = useState<string[]>(['Feature Films', 'Web Series', 'Short Films', 'Commercials', 'Branded Content'])
-  const [languages,       setLanguages]       = useState<string[]>(['Hindi', 'English', 'Marathi'])
-  const [genres,          setGenres]          = useState<string[]>(['Drama', 'Thriller', 'Romance', 'Action'])
-  const [operatingCities, setOperatingCities] = useState<string[]>(['Mumbai', 'Delhi', 'Bangalore'])
+  const [expertise,       setExpertise]       = useState<string[]>([])
+  const [languages,       setLanguages]       = useState<string[]>([])
+  const [genres,          setGenres]          = useState<string[]>([])
+  const [operatingCities, setOperatingCities] = useState<string[]>([])
   const [cityInput,       setCityInput]       = useState('')
   const [logoSrc,         setLogoSrc]         = useState<string>('')
   const [bannerSrc,       setBannerSrc]       = useState<string>('')
   const [gallery,         setGallery]         = useState<string[]>([])
+  const [logoUrl,         setLogoUrl]         = useState<string>('')   // saved Supabase URL
+  const [bannerUrl,       setBannerUrl]       = useState<string>('')   // saved Supabase URL
+  const [galleryUrls,     setGalleryUrls]     = useState<string[]>([]) // saved Supabase URLs
+  const [uploadingLogo,   setUploadingLogo]   = useState(false)
+  const [uploadingBanner, setUploadingBanner] = useState(false)
+  const [uploadingGallery,setUploadingGallery]= useState(false)
   const [videoName,       setVideoName]       = useState<string>('')
   const [activeStep,      setActiveStep]      = useState(0)
   const [userMenuOpen,    setUserMenuOpen]    = useState(false)
   const [sidebarOpen,     setSidebarOpen]     = useState(false)
   const [profileOpen,     setProfileOpen]     = useState(false)
   const [isEditMode,      setIsEditMode]      = useState(false)
+  const [agencyName,      setAgencyName]      = useState('My Agency')
+  const [agencyInitials,  setAgencyInitials]  = useState('AG')
+  const [msgCount,        setMsgCount]        = useState(0)
+  const [notifCount,      setNotifCount]      = useState(0)
 
   useEffect(() => {
+    // Check URL param first — Edit Profile button passes ?mode=edit
+    if (searchParams.get('mode') === 'edit') {
+      setIsEditMode(true)
+      return
+    }
+    // Fallback: check localStorage draft
     try {
       const raw = localStorage.getItem('ss_agency_profile_draft')
       if (raw) {
@@ -202,6 +217,126 @@ export default function CreateCompanyProfilePage() {
         if (draft?.editMode) setIsEditMode(true)
       }
     } catch {}
+  }, [searchParams])
+
+  // Load agency name + live badge counts + pre-fill form from saved profile
+  useEffect(() => {
+    // Instant identity from localStorage
+    try {
+      const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
+      if (u.name) {
+        setAgencyName(u.name)
+        setAgencyInitials(u.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase())
+      }
+    } catch {}
+
+    // ── Get a fresh token (Supabase tokens expire after 1 hour) ──
+    const getAuthHeaders = async (): Promise<Record<string, string>> => {
+      try {
+        const { createClient } = await import('@supabase/supabase-js')
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        )
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.access_token) return { Authorization: `Bearer ${session.access_token}` }
+      } catch {}
+      // fallback to cached token
+      try {
+        const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
+        if (u.token) return { Authorization: `Bearer ${u.token}` }
+      } catch {}
+      return {}
+    }
+
+    // Fetch profile — used for BOTH topnav name AND pre-filling the form
+    getAuthHeaders().then(headers => fetch('/api/profile/agency', { headers }))
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        // The route returns { data: { profile: agency_profiles & { profiles: ... } } }
+        const p = d?.data?.profile ?? d?.profile ?? null
+        if (!p) return
+
+        // ── Update topnav identity ──
+        if (p.company_name) {
+          setAgencyName(p.company_name)
+          setAgencyInitials(
+            p.company_name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
+          )
+        }
+
+        // ── Pre-fill all form fields from saved DB values ──
+        // years_of_experience stores the founding year (e.g. 2014)
+        const estYear = p.years_of_experience ? String(p.years_of_experience) : ''
+
+        // Parse city/state/country into headquarters string
+        const hq = [p.address_line1, p.city, p.state, p.pincode, p.country]
+          .filter(Boolean).join(', ')
+
+        // Parse social links JSON
+        const social = (p.social_links ?? {}) as Record<string, string>
+
+        setForm({
+          companyName:      p.company_name            ?? '',
+          companyType:      p.company_type            ?? '',
+          establishedYear:  estYear,
+          website:          p.website_url             ?? '',
+          contactPerson:      p.contact_person_name     ?? '',
+          contactDesignation: p.contact_designation    ?? '',
+          email:            p.contact_email           ?? '',
+          phone:            p.contact_phone           ?? '',
+          headquarters:     p.address_line1         ?? '',
+          city:             p.city                  ?? '',
+          state:            p.state                 ?? '',
+          country:          p.country               ?? 'India',
+          bio:              p.company_description     ?? '',
+          companySize:      p.company_size            ?? '',
+          regNo:            p.registration_number     ?? '',
+          gst:              p.gst_number              ?? '',
+          pan:              p.pan_number              ?? '',
+          subsidiary:       p.subsidiary              ?? '',
+          talentManagement: p.talent_management ?? 'no',
+          instagram:        social.instagram          ?? '',
+          facebook:         social.facebook           ?? '',
+          linkedin:         social.linkedin           ?? '',
+          youtube:          social.youtube            ?? '',
+          twitter:          social.twitter            ?? '',
+        })
+
+        // Multi-select fields
+        if (Array.isArray(p.expertise)        && p.expertise.length > 0)        setExpertise(p.expertise)
+        if (Array.isArray(p.languages)        && p.languages.length > 0)        setLanguages(p.languages)
+        if (Array.isArray(p.genres)           && p.genres.length > 0)           setGenres(p.genres)
+        if (Array.isArray(p.operating_cities) && p.operating_cities.length > 0) setOperatingCities(p.operating_cities)
+
+        // Media — show existing logo/banner as preview
+        if (p.logo_url)   { setLogoSrc(p.logo_url);   setLogoUrl(p.logo_url) }
+        if (p.banner_url) { setBannerSrc(p.banner_url); setBannerUrl(p.banner_url) }
+        if (Array.isArray(p.gallery_urls) && p.gallery_urls.length > 0) {
+          setGallery(p.gallery_urls)
+          setGalleryUrls(p.gallery_urls)
+        }
+      }).catch(() => {})
+
+    // Live notification count
+    getAuthHeaders().then(headers =>
+      fetch('/api/notifications', { headers })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          const list = d?.data?.notifications ?? d?.notifications ?? []
+          if (Array.isArray(list)) setNotifCount(list.filter((n: any) => !n.is_read).length)
+        }).catch(() => {})
+    )
+
+    // Live message count
+    getAuthHeaders().then(headers =>
+      fetch('/api/messages/conversations', { headers })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          const list = d?.data?.conversations ?? d?.conversations ?? []
+          if (Array.isArray(list)) setMsgCount(list.filter((c: any) => c.unreadCount > 0).length)
+        }).catch(() => {})
+    )
   }, [])
 
   useEffect(() => {
@@ -216,23 +351,88 @@ export default function CreateCompanyProfilePage() {
   const toggle = (arr: string[], set: (v: string[]) => void, val: string) =>
     set(arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val])
 
-  const handleImg = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Upload a file to Supabase Storage via the agency upload API
+  const uploadToStorage = async (file: File, type: 'logo' | 'banner' | 'gallery'): Promise<string | null> => {
+    try {
+      // Get token — try localStorage first (always available in client), then Supabase session
+      let token: string | null = null
+      try {
+        const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
+        token = u.token ?? null
+      } catch {}
+      // If cached token missing or possibly expired, refresh via Supabase
+      if (!token) {
+        try {
+          const { createClient } = await import('@supabase/supabase-js')
+          const sb = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+          )
+          const { data: { session } } = await sb.auth.getSession()
+          token = session?.access_token ?? null
+        } catch {}
+      }
+      if (!token) { console.error('[uploadToStorage] no token'); return null }
+
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('type', type)
+
+      const res = await fetch('/api/agency/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      })
+      if (!res.ok) {
+        const errText = await res.text()
+        console.error('[uploadToStorage] API error', res.status, errText)
+        return null
+      }
+      const d = await res.json()
+      return d?.data?.url ?? null
+    } catch (e) {
+      console.error('[uploadToStorage] exception', e)
+      return null
+    }
+  }
+
+  const handleImg = (
+    setter: (v: string) => void,
+    urlSetter: (v: string) => void,
+    type: 'logo' | 'banner',
+    setUploading: (v: boolean) => void,
+  ) => async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return
+    // Show preview immediately
     const reader = new FileReader()
     reader.onload = ev => setter(ev.target?.result as string)
     reader.readAsDataURL(file)
+    // Upload in background
+    setUploading(true)
+    const url = await uploadToStorage(file, type)
+    setUploading(false)
+    if (url) urlSetter(url)
   }
-  const handleGallery = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+  const handleGallery = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []).slice(0, 6 - gallery.length)
+    if (!files.length) return
+    // Preview all immediately
     files.forEach(file => {
       const reader = new FileReader()
       reader.onload = ev => setGallery(g => [...g, ev.target?.result as string])
       reader.readAsDataURL(file)
     })
+    // Upload all in background
+    setUploadingGallery(true)
+    const urls = await Promise.all(files.map(f => uploadToStorage(f, 'gallery')))
+    setUploadingGallery(false)
+    const validUrls = urls.filter(Boolean) as string[]
+    if (validUrls.length) setGalleryUrls(g => [...g, ...validUrls])
   }
 
   // Completion
-  const checks = [!!form.companyName, !!form.companyType, !!form.email, !!form.phone, !!form.headquarters, !!form.bio, expertise.length > 0, !!form.companySize, languages.length > 0, !!logoSrc, !!bannerSrc]
+  const checks = [!!form.companyName, !!form.companyType, !!form.email, !!form.phone, !!form.city, !!form.bio, expertise.length > 0, !!form.companySize, languages.length > 0, !!logoSrc, !!bannerSrc]
   const completion = Math.round((checks.filter(Boolean).length / checks.length) * 100)
 
   // Checklist items
@@ -244,6 +444,80 @@ export default function CreateCompanyProfilePage() {
     { label: 'Team Members',       done: false },
     { label: 'Review & Submit',    done: false },
   ]
+
+  const saveProfile = async (): Promise<boolean> => {
+    try {
+      // ── Always get a fresh token — ss_user.token expires after 1 hour ──
+      let token: string | null = null
+      try {
+        const { createClient } = await import('@supabase/supabase-js')
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        )
+        const { data: { session } } = await supabase.auth.getSession()
+        token = session?.access_token ?? null
+      } catch {}
+      // fallback to cached token if Supabase client fails
+      if (!token) {
+        try {
+          const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
+          token = u.token ?? null
+        } catch {}
+      }
+      if (!token) return false
+
+      const payload = {
+        company_name:        form.companyName,
+        company_type:        form.companyType        || null,
+        company_size:        form.companySize        || null,
+        company_description: form.bio,
+        website_url:         form.website            || null,
+        years_of_experience: form.establishedYear ? parseInt(form.establishedYear) : null,
+        registration_number: form.regNo              || null,
+        gst_number:          form.gst                || null,
+        pan_number:          form.pan                || null,
+        contact_email:       form.email,
+        contact_phone:       form.phone,
+        contact_person_name: form.contactPerson || form.companyName,
+        contact_designation:  form.contactDesignation || null,
+        address_line1:       form.headquarters       || null,
+        city:                form.city               || null,
+        state:               form.state              || null,
+        country:             form.country            || 'India',
+        languages:           languages.length > 0  ? languages  : null,
+        genres:              genres.length > 0     ? genres     : null,
+        expertise:           expertise.length > 0  ? expertise  : null,
+        operating_cities:    operatingCities.length > 0 ? operatingCities : null,
+        social_links: {
+          instagram: form.instagram || null,
+          facebook:  form.facebook  || null,
+          linkedin:  form.linkedin  || null,
+          youtube:   form.youtube   || null,
+          twitter:   form.twitter   || null,
+        },
+        logo_url:     logoUrl                          || null,
+        banner_url:   bannerUrl                        || null,
+        gallery_urls: galleryUrls.length > 0 ? galleryUrls : null,
+      }
+
+      const res = await fetch('/api/profile/agency', {
+        method:  'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body:    JSON.stringify(payload),
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        console.error('[saveProfile] API error', res.status, err)
+      }
+
+      return res.ok
+    } catch (e) {
+      console.error('[saveProfile] exception', e)
+      return false
+    }
+  }
 
   const SB_W = sidebarOpen ? 230 : 52
 
@@ -261,19 +535,19 @@ export default function CreateCompanyProfilePage() {
           <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <MessageSquare size={15} color="rgba(255,255,255,0.7)" />
           </div>
-          <div style={{ position: 'absolute' as const, top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', pointerEvents: 'none' }}>12</div>
+          <div style={{ position: 'absolute' as const, top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', pointerEvents: 'none' }}>{msgCount > 0 ? msgCount : null}</div>
         </div>
         <div onClick={() => router.push('/agency/notifications')} style={{ position: 'relative' as const, cursor: 'pointer' }}>
           <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Bell size={15} color="rgba(255,255,255,0.7)" />
           </div>
-          <div style={{ position: 'absolute' as const, top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', pointerEvents: 'none' }}>3</div>
+          <div style={{ position: 'absolute' as const, top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', pointerEvents: 'none' }}>{notifCount > 0 ? notifCount : null}</div>
         </div>
         <div style={{ position: 'relative' as const }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer' }} onClick={() => setProfileOpen(v => !v)}>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#1a1410,#2a1e0e)', border: `2px solid ${GOLD}60`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: GOLD, fontFamily: BEBAS }}>DP</div>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#1a1410,#2a1e0e)', border: `2px solid ${GOLD}60`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: GOLD, fontFamily: BEBAS }}>{agencyInitials}</div>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>Dharma Productions</div>
+              <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>{agencyName}</div>
               <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Production House</div>
             </div>
             <ChevronDown size={12} color="rgba(255,255,255,0.4)" />
@@ -283,16 +557,21 @@ export default function CreateCompanyProfilePage() {
               <div onClick={() => setProfileOpen(false)} style={{ position: 'fixed' as const, inset: 0, zIndex: 150 }} />
               <div style={{ position: 'absolute' as const, top: 46, right: 0, width: 200, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', zIndex: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
                 {[
-                  { label: 'Company Profile',    href: '/agency-profile'  },
-                  { label: 'Account Settings',   href: '/agency/settings' },
-                  { label: 'Billing & Plans',    href: '/pricing'         },
-                  { label: 'Support',            href: '/contact'         },
-                  { label: 'Logout',             href: '/login'           },
+                  { label: 'Company Profile', href: '/create-company-profile' },
+                  { label: 'Support',         href: '/contact'                },
+                  { label: 'Logout',          href: '/login'                  },
                 ].map(({ label, href }) => (
-                  <div key={label} onClick={() => { router.push(href); setProfileOpen(false); }}
-                    style={{ padding: '10px 16px', fontSize: 15, fontFamily: M, cursor: 'pointer', color: label === 'Logout' ? '#ff6b6b' : '#F5F5F5', borderTop: label === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
+                  <div key={label} onClick={() => {
+                    if (label === 'Logout') { localStorage.removeItem('ss_user'); window.location.replace('/login'); }
+                    else { router.push(href); setProfileOpen(false); }
+                  }}
+                    style={{ padding: '10px 16px', fontSize: 15, fontFamily: M, cursor: 'pointer',
+                      color: label === 'Logout' ? '#ff6b6b' : label === 'Company Profile' ? GOLD : '#F5F5F5',
+                      fontWeight: label === 'Company Profile' ? 700 : 400,
+                      background: label === 'Company Profile' ? 'rgba(212,166,74,0.08)' : 'transparent',
+                      borderTop: label === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    onMouseLeave={e => (e.currentTarget.style.background = label === 'Company Profile' ? 'rgba(212,166,74,0.08)' : 'transparent')}
                   >{label}</div>
                 ))}
               </div>
@@ -314,9 +593,9 @@ export default function CreateCompanyProfilePage() {
           </div>
           {sidebarOpen && (
             <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-              <div style={{ width: 38, height: 38, borderRadius: 9, flexShrink: 0, background: 'linear-gradient(135deg,#1a1410,#2a1e0e)', border: `1px solid ${GOLD}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: GOLD, fontFamily: BEBAS }}>DP</div>
+              <div style={{ width: 38, height: 38, borderRadius: 9, flexShrink: 0, background: 'linear-gradient(135deg,#1a1410,#2a1e0e)', border: `1px solid ${GOLD}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: GOLD, fontFamily: BEBAS }}>{agencyInitials}</div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#F5F5F5', whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' }}>Dharma Productions</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#F5F5F5', whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' }}>{agencyName}</div>
                 <div onClick={() => router.push('/agency-profile')} style={{ fontSize: 13, color: RED, fontWeight: 600, cursor: 'pointer' }}>View Profile</div>
               </div>
             </div>
@@ -332,8 +611,10 @@ export default function CreateCompanyProfilePage() {
                   <Icon size={15} color="rgba(255,255,255,0.42)" strokeWidth={1.8} />
                   {sidebarOpen && <span style={{ fontSize: 15, color: 'rgba(255,255,255,0.6)', whiteSpace: 'nowrap' as const }}>{label}</span>}
                 </div>
-                {sidebarOpen && badge && <div style={{ background: RED, color: '#fff', borderRadius: 10, fontSize: 13, fontWeight: 700, padding: '1px 6px' }}>{badge}</div>}
-                {!sidebarOpen && badge && <div style={{ position: 'absolute' as const, top: 6, right: 4, background: RED, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff' }}>{badge}</div>}
+                {sidebarOpen && label === 'Messages' && msgCount > 0 && <div style={{ background: RED, color: '#fff', borderRadius: 10, fontSize: 13, fontWeight: 700, padding: '1px 6px' }}>{msgCount}</div>}
+                {sidebarOpen && label === 'Notifications' && notifCount > 0 && <div style={{ background: RED, color: '#fff', borderRadius: 10, fontSize: 13, fontWeight: 700, padding: '1px 6px' }}>{notifCount}</div>}
+                {!sidebarOpen && label === 'Messages' && msgCount > 0 && <div style={{ position: 'absolute' as const, top: 6, right: 4, background: RED, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff' }}>{msgCount}</div>}
+                {!sidebarOpen && label === 'Notifications' && notifCount > 0 && <div style={{ position: 'absolute' as const, top: 6, right: 4, background: RED, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff' }}>{notifCount}</div>}
               </div>
             ))}
           </nav>
@@ -436,9 +717,30 @@ export default function CreateCompanyProfilePage() {
                     <input value={form.phone} onChange={f('phone')} style={{ ...inp(), flex: 1 }} />
                   </div>
                 </div>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={lbl}>Contact Person Name {reqStar}</label>
+                  <input value={form.contactPerson} onChange={f('contactPerson')} placeholder="e.g. Subaskaran Allirajah" style={inp()} />
+                </div>
                 <div>
-                  <label style={lbl}>Headquarters Location {reqStar}</label>
-                  <input value={form.headquarters} onChange={f('headquarters')} style={inp()} />
+                  <label style={lbl}>Contact Person Designation</label>
+                  <input value={form.contactDesignation} onChange={f('contactDesignation')} placeholder="e.g. Managing Director" style={inp()} />
+                </div>
+                <div style={{ gridColumn: '2 / -1' }} />
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={lbl}>Address / Headquarters {reqStar}</label>
+                  <input value={form.headquarters} onChange={f('headquarters')} placeholder="e.g. 55, Block B, 4th Floor, Vijaya Raghava Road, T. Nagar" style={inp()} />
+                </div>
+                <div>
+                  <label style={lbl}>City {reqStar}</label>
+                  <input value={form.city} onChange={f('city')} placeholder="e.g. Chennai" style={inp()} />
+                </div>
+                <div>
+                  <label style={lbl}>State {reqStar}</label>
+                  <input value={form.state} onChange={f('state')} placeholder="e.g. Tamil Nadu" style={inp()} />
+                </div>
+                <div>
+                  <label style={lbl}>Country</label>
+                  <input value={form.country} onChange={f('country')} placeholder="e.g. India" style={inp()} />
                 </div>
                 <div style={{ gridColumn: '2 / 4' }}>
                   <label style={lbl}>Operating Cities</label>
@@ -557,7 +859,7 @@ export default function CreateCompanyProfilePage() {
                 {/* Logo */}
                 <div>
                   <label style={lbl}>Company Logo {reqStar}</label>
-                  <input ref={logoRef} type="file" accept="image/*" onChange={handleImg(setLogoSrc)} style={{ display: 'none' }} />
+                  <input ref={logoRef} type="file" accept="image/*" onChange={handleImg(setLogoSrc, setLogoUrl, 'logo', setUploadingLogo)} style={{ display: 'none' }} />
                   <div style={{ position: 'relative' as const, width: 140, height: 140, background: BG3, border: `1px solid rgba(255,255,255,0.1)`, borderRadius: 10, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {logoSrc
                       ? <img src={logoSrc} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="logo" />
@@ -567,7 +869,7 @@ export default function CreateCompanyProfilePage() {
                         </div>
                     }
                     <button onClick={() => logoRef.current?.click()} style={{ position: 'absolute' as const, bottom: 8, left: '50%', transform: 'translateX(-50%)', padding: '5px 14px', background: 'rgba(0,0,0,0.7)', border: `1px solid ${GOLD_BORDER}`, borderRadius: 5, color: GOLD, fontFamily: M, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
-                      {logoSrc ? 'Change Logo' : 'Upload Logo'}
+                      {uploadingLogo ? 'Uploading...' : logoSrc ? 'Change Logo' : 'Upload Logo'}
                     </button>
                   </div>
                   <div style={{ fontFamily: M, fontSize: 14, color: '#6A7080', marginTop: 6 }}>JPG, PNG or SVG. Max size 2MB</div>
@@ -576,7 +878,7 @@ export default function CreateCompanyProfilePage() {
                 {/* Banner */}
                 <div>
                   <label style={lbl}>Cover Banner {reqStar}</label>
-                  <input ref={bannerRef} type="file" accept="image/*" onChange={handleImg(setBannerSrc)} style={{ display: 'none' }} />
+                  <input ref={bannerRef} type="file" accept="image/*" onChange={handleImg(setBannerSrc, setBannerUrl, 'banner', setUploadingBanner)} style={{ display: 'none' }} />
                   <div style={{ position: 'relative' as const, height: 140, background: bannerSrc ? 'transparent' : BG3, border: `1px solid rgba(255,255,255,0.1)`, borderRadius: 10, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {bannerSrc
                       ? <img src={bannerSrc} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="banner" />
@@ -586,7 +888,7 @@ export default function CreateCompanyProfilePage() {
                         </div>
                     }
                     <button onClick={() => bannerRef.current?.click()} style={{ position: 'absolute' as const, bottom: 8, right: 10, padding: '5px 14px', background: 'rgba(0,0,0,0.7)', border: `1px solid ${GOLD_BORDER}`, borderRadius: 5, color: GOLD, fontFamily: M, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
-                      {bannerSrc ? 'Change Banner' : 'Upload Banner'}
+                      {uploadingBanner ? 'Uploading...' : bannerSrc ? 'Change Banner' : 'Upload Banner'}
                     </button>
                   </div>
                   <div style={{ fontFamily: M, fontSize: 14, color: '#6A7080', marginTop: 6 }}>Recommended size: 2400 × 800 px. Max size 5MB</div>
@@ -606,9 +908,9 @@ export default function CreateCompanyProfilePage() {
                     </div>
                   ))}
                   {gallery.length < 6 && (
-                    <div onClick={() => galleryRef.current?.click()} style={{ width: 100, height: 80, borderRadius: 8, border: '1px dashed rgba(255,255,255,0.15)', background: BG3, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', cursor: 'pointer', gap: 4 }}>
-                      <span style={{ fontSize: 20, color: '#6A7080' }}>+</span>
-                      <span style={{ fontFamily: M, fontSize: 14, color: '#6A7080' }}>Add More</span>
+                    <div onClick={() => !uploadingGallery && galleryRef.current?.click()} style={{ width: 100, height: 80, borderRadius: 8, border: '1px dashed rgba(255,255,255,0.15)', background: BG3, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', cursor: uploadingGallery ? 'wait' : 'pointer', gap: 4 }}>
+                      <span style={{ fontSize: 20, color: '#6A7080' }}>{uploadingGallery ? '⏳' : '+'}</span>
+                      <span style={{ fontFamily: M, fontSize: 14, color: '#6A7080' }}>{uploadingGallery ? 'Uploading...' : 'Add More'}</span>
                     </div>
                   )}
                 </div>
@@ -676,9 +978,24 @@ export default function CreateCompanyProfilePage() {
               <button style={{ padding: '11px 28px', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, color: '#A8B0BD', fontFamily: M, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
                 Save as Draft
               </button>
-              <button onClick={() => {
+              <button onClick={async () => {
+                const saved = await saveProfile()
+                if (!saved) { alert('Failed to save profile. Please try again.'); return; }
                 try { localStorage.setItem('ss_agency_profile_draft', JSON.stringify({ editMode: false })) } catch {}
-                router.push(isEditMode ? '/agency-profile' : '/pricing?for=agency')
+                if (isEditMode) {
+                  router.push('/agency-profile')
+                } else {
+                  try {
+                    const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
+                    if (u.subscribed) {
+                      router.push('/agency/dashboard')
+                    } else {
+                      router.push('/pricing?for=agency')
+                    }
+                  } catch {
+                    router.push('/pricing?for=agency')
+                  }
+                }
               }} style={{ padding: '11px 28px', background: GOLD, border: 'none', borderRadius: 8, color: '#050505', fontFamily: M, fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: `0 6px 20px rgba(212,166,74,0.3)`, display: 'flex', alignItems: 'center', gap: 8 }}>
                 {isEditMode ? 'Save Changes' : 'Submit for Review'} <span>→</span>
               </button>

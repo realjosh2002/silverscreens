@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabase-admin'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
 
@@ -25,8 +25,6 @@ export async function POST(req: NextRequest) {
     if (!finalConvId) {
       if (!recipient_id) return errorResponse('Either conversationId or recipient_id is required', 400)
 
-      // Check if conversation already exists between these two users
-      // participant_1_id is always the smaller UUID to enforce uniqueness
       const p1 = user.id < recipient_id ? user.id : recipient_id
       const p2 = user.id < recipient_id ? recipient_id : user.id
 
@@ -51,7 +49,6 @@ export async function POST(req: NextRequest) {
         finalConvId = newConv.id
       }
     } else {
-      // Verify user is part of the conversation
       const conv = await prisma.conversations.findUnique({
         where: { id: finalConvId },
       })
@@ -72,19 +69,26 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    // Update conversation last_message_at
-    await prisma.conversations.update({
-      where: { id: finalConvId },
-      data:  {
-        last_message:    content.trim(),
-        last_message_at: new Date(),
-      },
-    })
-
-    // Notify recipient
+    // Fetch conversation to determine which unread slot to increment
     const conv = await prisma.conversations.findUnique({
       where: { id: finalConvId },
     })
+
+    // Increment unread count for the RECIPIENT (not the sender)
+    const recipientIsParticipant1 = conv?.participant_2_id === user.id
+    await prisma.conversations.update({
+      where: { id: finalConvId },
+      data: {
+        last_message:    content.trim(),
+        last_message_at: new Date(),
+        // Increment the recipient's unread slot
+        ...(recipientIsParticipant1
+          ? { unread_count_1: { increment: 1 } }
+          : { unread_count_2: { increment: 1 } }
+        ),
+      },
+    })
+
     const recipientUserId = conv?.participant_1_id === user.id
       ? conv?.participant_2_id
       : conv?.participant_1_id

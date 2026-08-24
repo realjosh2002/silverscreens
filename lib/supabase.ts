@@ -1,17 +1,23 @@
+// lib/supabase.ts
+
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseUrl     = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-// Client-side Supabase (uses anon key — safe for browser)
+// ✅ Client-side Supabase — safe for browser, use in all 'use client' components
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Server-side Supabase (uses service role key — NEVER expose to browser)
-// Use this only in API routes and server components
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-})
+// ✅ Server-side Supabase — only created when the service key actually exists
+// In the browser this key is undefined, so supabaseAdmin is null there
+// In API routes (server), the key exists and it works fully
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+export const supabaseAdmin = supabaseServiceKey
+  ? createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    })
+  : null

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
 
@@ -12,11 +12,15 @@ export async function GET(req: NextRequest) {
     const token = req.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return errorResponse('Authentication required', 401)
 
-    const { data: { user }, error } = await supabase.auth.getUser(token)
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
     if (error || !user) return errorResponse('Invalid session', 401)
 
+    const { searchParams } = new URL(req.url)
+    const agencyUserId  = searchParams.get('agency_user_id') || ''
+    const lookupUserId  = agencyUserId || user.id
+
     const agencyProfile = await prisma.agency_profiles.findUnique({
-      where:  { user_id: user.id },
+      where:  { user_id: lookupUserId },
       select: { id: true },
     })
 
@@ -34,6 +38,8 @@ export async function GET(req: NextRequest) {
             profile_number:      true,
             category:            true,
             role:                true,
+            gender:              true,
+            date_of_birth:       true,
             experience_level:    true,
             city:                true,
             state:               true,
@@ -61,7 +67,7 @@ export async function POST(req: NextRequest) {
     const token = req.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return errorResponse('Authentication required', 401)
 
-    const { data: { user }, error } = await supabase.auth.getUser(token)
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
     if (error || !user) return errorResponse('Invalid session', 401)
 
     const agencyProfile = await prisma.agency_profiles.findUnique({
@@ -72,7 +78,7 @@ export async function POST(req: NextRequest) {
     if (!agencyProfile) return errorResponse('Agency profile not found', 404)
 
     const body = await req.json()
-    const { aspirant_id, notes } = body
+    const { aspirant_id, casting_call_id, notes } = body
 
     if (!aspirant_id) return errorResponse('Aspirant ID is required', 400)
 
@@ -85,9 +91,9 @@ export async function POST(req: NextRequest) {
 
     const shortlisted = await prisma.shortlisted_talents.create({
       data: {
-        agency_id:   agencyProfile.id,
+        agency_id:        agencyProfile.id,
         aspirant_id,
-        notes:       notes || '',
+        notes:            notes || '',
       },
     })
 
@@ -106,7 +112,7 @@ export async function POST(req: NextRequest) {
       await prisma.notifications.create({
         data: {
           user_id:    aspirant.user_id,
-          type:       'shortlisted',
+          type:       'system_announcement' as any,
           title:      '⭐ You have been shortlisted!',
           message:    `${agency?.company_name || 'An agency'} has shortlisted your profile.`,
           action_url: '/dashboard',
@@ -127,7 +133,7 @@ export async function DELETE(req: NextRequest) {
     const token = req.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return errorResponse('Authentication required', 401)
 
-    const { data: { user }, error } = await supabase.auth.getUser(token)
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
     if (error || !user) return errorResponse('Invalid session', 401)
 
     const agencyProfile = await prisma.agency_profiles.findUnique({
@@ -137,14 +143,29 @@ export async function DELETE(req: NextRequest) {
 
     if (!agencyProfile) return errorResponse('Agency profile not found', 404)
 
-    const body = await req.json()
-    const { aspirant_id } = body
+    const { searchParams } = new URL(req.url)
+    const aspirant_id = searchParams.get('aspirant_id')
 
     if (!aspirant_id) return errorResponse('Aspirant ID is required', 400)
 
     await prisma.shortlisted_talents.deleteMany({
       where: { agency_id: agencyProfile.id, aspirant_id },
     })
+
+    // Revert any shortlisted applications back to in_review
+    try {
+      await prisma.applications.updateMany({
+        where: {
+          aspirant_id,
+          agency_id: agencyProfile.id,
+          status:    'shortlisted',
+        },
+        data: { status: 'in_review' },
+      })
+    } catch (e) {
+      // Non-blocking — shortlist removal still succeeds
+      console.error('[UNSHORTLIST APP REVERT ERROR]', e)
+    }
 
     return successResponse({ message: 'Talent removed from shortlist' })
   } catch (error: unknown) {

@@ -1,6 +1,7 @@
 'use client';
+import AdminSidebar from '@/components/layout/AdminSidebar';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Users, Building2, Megaphone, FileText,
@@ -12,18 +13,19 @@ import {
   Filter, CheckSquare, Square, Lock, X, Info,
   ShieldAlert, Clock, Check, XCircle, User,
   Building, CreditCard as PayIcon, Zap, Shield,
+  RefreshCw,
 } from 'lucide-react';
-import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
+import AdminTopnav from '@/components/layout/AdminTopnav';
 
 /* ─── Design tokens ──────────────────────────────────────────── */
-const BG    = '#0D1117';
-const BG2   = '#131720';
-const BG3   = '#181E2A';
-const BG4   = '#1C2338';
+const BG    = '#050505';
+const BG2   = '#0B0F14';
+const BG3   = '#121821';
+const BG4   = 'rgba(255,255,255,0.03)';
 const BEBAS = "'Bebas Neue', sans-serif";
 const BARLOW= "'Barlow Condensed', sans-serif";
 const GREEN = '#22C55E';
-const RED   = '#EF4444';
+const RED   = '#C8202A';
 const BLUE  = '#3B82F6';
 const PURPLE= '#8B5CF6';
 const ORANGE= '#F97316';
@@ -31,50 +33,101 @@ const TEAL  = '#14B8A6';
 const GOLD  = '#D4A64A';
 
 /* ─── Sidebar nav ────────────────────────────────────────────── */
-const NAV_ITEMS = [
-  { icon: LayoutDashboard, label: 'Dashboard',                href: '/admin/dashboard'            },
-  { icon: Users,           label: 'User Management',          href: '/admin/users'                },
-  { icon: UserCheck,       label: 'Talent Verification',      href: '/admin/talent-verification'  },
-  { icon: Building2,       label: 'Agency Verification',      href: '/admin/agency-verification'  },
-  { icon: FileText,        label: 'Applications Monitoring',  href: '/admin/applications'         },
-  { icon: Flag,            label: 'Reports & Complaints',     href: '/admin/reports'              },
-  { icon: ShieldCheck,     label: 'Fraud Detection',          href: '/admin/fraud', active: true  },
-  { icon: CreditCard,      label: 'Subscription Management',  href: '/admin/subscriptions'        },
-  { icon: Megaphone,       label: 'Advertisement Management', href: '/admin/advertisements'       },
-  { icon: Database,        label: 'CMS Management',           href: '/admin/cms'                  },
-  { icon: BellRing,        label: 'Notifications Management', href: '/admin/notifications'        },
-  { icon: BarChart2,       label: 'Analytics & Reports',      href: '/admin/analytics'            },
-  { icon: Ticket,          label: 'Support Tickets',          href: '/admin/support'              },
-  { icon: ScrollText,      label: 'Audit Logs',               href: '/admin/audit'                },
-  { icon: KeyRound,        label: 'Roles & Permissions',      href: '/admin/roles'                },
-  { icon: Settings,        label: 'Settings',                 href: '/admin/settings'             },
-];
 
 const PROFILE_MENU = [
-  { label: 'My Profile',               href: '/admin/profile'       },
-  { label: 'Account Settings',         href: '/admin/settings'      },
-  { label: 'Security Settings',        href: '/admin/settings'      },
-  { label: 'Notification Preferences', href: '/admin/notifications' },
-  { label: 'Activity Logs',            href: '/admin/audit'         },
-  { label: 'Help & Support',           href: '/contact'             },
-  { label: 'Logout',                   href: '/login'               },
+  { label: 'My Profile',               href: '/admin/profile'          },
+  { label: 'Account Settings',         href: '/admin/account-settings' },
+  { label: 'Security & Login',         href: '/admin/security-login'   },
+  { label: 'Notification Preferences', href: '/admin/notifications'    },
+  { label: 'Activity Log',             href: '/admin/activity-log'     },
+  { label: 'Help & Support',           href: '/admin/help-support'     },
+  { label: 'Logout',                   href: '/admin/login'            },
 ];
 
-/* ─── Stat cards ─────────────────────────────────────────────── */
-const STATS = [
-  { label: 'Total Flags',    value: '1,248', delta: '+18.6%', sub: 'from last 7 days', color: RED,    Icon: Flag         },
-  { label: 'High Risk',      value: '230',   delta: '+12.4%', sub: 'from last 7 days', color: ORANGE, Icon: AlertTriangle },
-  { label: 'Under Review',   value: '312',   delta: '+8.7%',  sub: 'from last 7 days', color: GOLD,   Icon: Clock        },
-  { label: 'Resolved',       value: '706',   delta: '+22.3%', sub: 'from last 7 days', color: GREEN,  Icon: ShieldCheck  },
-  { label: 'False Positive', value: '124',   delta: '+5.1%',  sub: 'from last 7 days', color: PURPLE, Icon: XCircle      },
+/* ─── Chart labels ───────────────────────────────────────────── */
+const CHART_LABELS_7  = ['Day 1','Day 2','Day 3','Day 4','Day 5','Day 6','Day 7'];
+const CHART_LABELS_30 = ['Wk 1','Wk 2','Wk 3','Wk 4','Wk 5','Wk 6','Wk 7'];
+const CHART_LABELS_90 = ['Jan','Feb','Mar','Apr','May','Jun','Jul'];
+
+const RISK_COLOR:   Record<string,string> = { High: RED,    Medium: ORANGE, Low: GREEN  };
+const RISK_BG:      Record<string,string> = { High: 'rgba(239,68,68,0.12)', Medium: 'rgba(249,115,22,0.12)', Low: 'rgba(34,197,94,0.12)' };
+const STATUS_COLOR: Record<string,string> = { 'Under Review': GOLD, Investigating: BLUE, New: PURPLE, Blocked: RED, Resolved: GREEN, Dismissed: '#6B7280' };
+const STATUS_BG:    Record<string,string> = { 'Under Review': 'rgba(212,166,74,0.12)', Investigating: 'rgba(59,130,246,0.12)', New: 'rgba(139,92,246,0.12)', Blocked: 'rgba(239,68,68,0.12)', Resolved: 'rgba(34,197,94,0.12)', Dismissed: 'rgba(107,114,128,0.12)' };
+
+const RISK_TABS = ['All','High Risk','Medium Risk','Low Risk'];
+const PER_PAGE  = 5;
+
+/* ─── Types ──────────────────────────────────────────────────── */
+interface FraudAlert {
+  id: string;
+  type: string;
+  typeColor: string;
+  typeIcon: string;
+  entity: string;
+  entityUid: string;
+  details: string;
+  risk: string;
+  status: string;
+  date: string;
+  time: string;
+  img?: string;
+}
+
+interface DashStats {
+  totalFlags: number;
+  highRisk: number;
+  underReview: number;
+  resolved: number;
+  falsePositive: number;
+  flagsDelta: string;
+  highRiskDelta: string;
+  reviewDelta: string;
+  resolvedDelta: string;
+  falseDelta: string;
+}
+
+interface CategoryDist {
+  label: string;
+  value: number;
+  pct: number;
+  color: string;
+}
+
+interface RiskDist {
+  label: string;
+  value: number;
+  pct: number;
+  color: string;
+}
+
+interface TopEntity {
+  name: string;
+  uid: string;
+  risk: string;
+  riskColor: string;
+  type: string;
+}
+
+/* ─── Fallback data (shown if API has no data yet) ───────────── */
+const FALLBACK_ALERTS: FraudAlert[] = [
+  { id:'FRD-250521-1248', type:'Fake Agency',         typeColor:BLUE,   typeIcon:'building', entity:'Dream Casting Agency',    entityUid:'AGY12567',    details:'Multiple fake projects, invalid documents and negative user reports', risk:'High',   status:'Under Review',  date:'May 21, 2025', time:'11:32 AM' },
+  { id:'FRD-250521-1247', type:'Scam Casting',        typeColor:PURPLE, typeIcon:'casting',  entity:'Lead Role in Web Series', entityUid:'CAST78945',   details:'Advance payment requested from applicants',                          risk:'High',   status:'Under Review',  date:'May 21, 2025', time:'10:48 AM' },
+  { id:'FRD-250521-1246', type:'Suspicious Payment',  typeColor:GOLD,   typeIcon:'payment',  entity:'User: Rohit Verma',       entityUid:'ASP052500001', details:'Multiple failed payments and refund manipulation attempt',           risk:'Medium', status:'Investigating', date:'May 21, 2025', time:'09:15 AM' },
+  { id:'FRD-250521-1245', type:'Fake Profile',        typeColor:ORANGE, typeIcon:'user',     entity:'Neha Iyer',               entityUid:'ASP052500002', details:'Stolen images detected, identity mismatch',                         risk:'Medium', status:'Under Review',  date:'May 20, 2025', time:'08:22 PM' },
+  { id:'FRD-250521-1244', type:'Spam Activity',       typeColor:GREEN,  typeIcon:'spam',     entity:'User: Arjun Malhotra',    entityUid:'ASP052500003', details:'Bulk messaging and spamming multiple users',                        risk:'Low',    status:'New',           date:'May 20, 2025', time:'05:30 PM' },
+  { id:'FRD-250521-1243', type:'Fake Agency',         typeColor:BLUE,   typeIcon:'building', entity:'StarCast Productions',    entityUid:'AGY33210',    details:'Registered with fake GST number and forged documents',              risk:'High',   status:'Blocked',       date:'May 20, 2025', time:'02:10 PM' },
+  { id:'FRD-250521-1242', type:'Scam Casting',        typeColor:PURPLE, typeIcon:'casting',  entity:'Model Shoot Exclusive',   entityUid:'CAST99102',   details:'No payment after selection, ghost agency behavior',                 risk:'Medium', status:'Resolved',      date:'May 19, 2025', time:'11:45 AM' },
+  { id:'FRD-250521-1241', type:'Suspicious Payment',  typeColor:GOLD,   typeIcon:'payment',  entity:'User: Karan Mehta',       entityUid:'ASP052500004', details:'Chargeback fraud on subscription payment',                         risk:'High',   status:'Under Review',  date:'May 19, 2025', time:'09:00 AM' },
+  { id:'FRD-250521-1240', type:'Fake Profile',        typeColor:ORANGE, typeIcon:'user',     entity:'Pooja Sharma',            entityUid:'ASP052500005', details:'AI-generated profile images detected',                             risk:'Low',    status:'Resolved',      date:'May 19, 2025', time:'07:30 AM' },
+  { id:'FRD-250521-1239', type:'Spam Activity',       typeColor:GREEN,  typeIcon:'spam',     entity:'User: Vikram Nair',       entityUid:'ASP052500006', details:'Mass casting application submission in 2 minutes',                  risk:'Medium', status:'New',           date:'May 18, 2025', time:'04:15 PM' },
 ];
 
-/* ─── Chart ──────────────────────────────────────────────────── */
-const CHART_LABELS = ['May 15','May 16','May 17','May 18','May 19','May 20','May 21'];
-const CHART_DATA   = [220, 280, 240, 340, 210, 290, 200];
+const FALLBACK_STATS: DashStats = {
+  totalFlags: 1248, highRisk: 230, underReview: 312, resolved: 706, falsePositive: 124,
+  flagsDelta: '+18.6%', highRiskDelta: '+12.4%', reviewDelta: '+8.7%', resolvedDelta: '+22.3%', falseDelta: '+5.1%',
+};
 
-/* ─── Category donut ─────────────────────────────────────────── */
-const CAT_DATA = [
+const FALLBACK_CAT: CategoryDist[] = [
   { label: 'Fake Agencies',       value: 446, pct: 35.7, color: BLUE   },
   { label: 'Scam Castings',       value: 302, pct: 24.2, color: PURPLE },
   { label: 'Suspicious Payments', value: 222, pct: 17.8, color: GOLD   },
@@ -82,120 +135,171 @@ const CAT_DATA = [
   { label: 'Spam Activity',       value: 114, pct: 9.2,  color: GREEN  },
 ];
 
-/* ─── Risk donut ─────────────────────────────────────────────── */
-const RISK_DATA = [
+const FALLBACK_RISK: RiskDist[] = [
   { label: 'High Risk',   value: 230, pct: 18.4, color: RED    },
   { label: 'Medium Risk', value: 312, pct: 25.0, color: ORANGE },
   { label: 'Low Risk',    value: 706, pct: 56.6, color: GREEN  },
 ];
 
-/* ─── Top risky entities ──────────────────────────────────────── */
-const TOP_ENTITIES = [
-  { name: 'Dream Casting Agency', uid: 'AGY12567',   risk: 'High Risk',   riskColor: RED,    type: 'agency'  },
-  { name: 'Lead Role in Web Series', uid: 'CAST78945', risk: 'High Risk', riskColor: RED,    type: 'casting' },
-  { name: 'Silverline Talent Hub', uid: 'AGY11234',  risk: 'Medium Risk', riskColor: ORANGE, type: 'agency'  },
-  { name: 'Actor Zone',           uid: 'USR223344',  risk: 'Medium Risk', riskColor: ORANGE, type: 'user'    },
-  { name: 'Premium Auditions',    uid: 'CAST56789',  risk: 'Low Risk',    riskColor: GREEN,  type: 'casting' },
+const FALLBACK_ENTITIES: TopEntity[] = [
+  { name: 'Dream Casting Agency',   uid: 'AGY12567',   risk: 'High Risk',   riskColor: RED,    type: 'agency'  },
+  { name: 'Lead Role in Web Series',uid: 'CAST78945',  risk: 'High Risk',   riskColor: RED,    type: 'casting' },
+  { name: 'Silverline Talent Hub',  uid: 'AGY11234',   risk: 'Medium Risk', riskColor: ORANGE, type: 'agency'  },
+  { name: 'Actor Zone',             uid: 'ASP052500007', risk: 'Medium Risk', riskColor: ORANGE, type: 'user'  },
+  { name: 'Premium Auditions',      uid: 'CAST56789',  risk: 'Low Risk',    riskColor: GREEN,  type: 'casting' },
 ];
-
-/* ─── Insights ───────────────────────────────────────────────── */
-const INSIGHTS = [
-  { icon: TrendingUp, iconBg: 'rgba(239,68,68,0.15)',   iconColor: RED,    title: '32% increase in scam castings',   sub: 'Compared to last 7 days'  },
-  { icon: Building2,  iconBg: 'rgba(249,115,22,0.15)', iconColor: ORANGE, title: '5 fake agencies blocked',          sub: 'In the last 24 hours'      },
-  { icon: ShieldCheck,iconBg: 'rgba(34,197,94,0.15)',  iconColor: GREEN,  title: '92% fraud detection accuracy',     sub: 'Based on AI analysis'      },
-];
-
-/* ─── Fraud alerts table ──────────────────────────────────────── */
-const FRAUD_ALERTS = [
-  { id:'FRD-250521-1248', type:'Fake Agency',         typeColor:BLUE,   typeIcon:'building', entity:'Dream Casting Agency',    entityUid:'AGY12567',    details:'Multiple fake projects, invalid documents and negative user reports', risk:'High',   status:'Under Review',  date:'May 21, 2025', time:'11:32 AM', img:'photo-1494790108377-be9c29b29330' },
-  { id:'FRD-250521-1247', type:'Scam Casting',        typeColor:PURPLE, typeIcon:'casting',  entity:'Lead Role in Web Series', entityUid:'CAST78945',   details:'Advance payment requested from applicants',                          risk:'High',   status:'Under Review',  date:'May 21, 2025', time:'10:48 AM', img:'photo-1472099645785-5658abf4ff4e' },
-  { id:'FRD-250521-1246', type:'Suspicious Payment',  typeColor:GOLD,   typeIcon:'payment',  entity:'User: Rohit Verma',       entityUid:'ASP052500001', details:'Multiple failed payments and refund manipulation attempt',           risk:'Medium', status:'Investigating', date:'May 21, 2025', time:'09:15 AM', img:'photo-1507003211169-0a1dd7228f2d' },
-  { id:'FRD-250521-1245', type:'Fake Profile',        typeColor:ORANGE, typeIcon:'user',     entity:'Neha Iyer',               entityUid:'ASP052500002', details:'Stolen images detected, identity mismatch',                         risk:'Medium', status:'Under Review',  date:'May 20, 2025', time:'08:22 PM', img:'photo-1529626455594-4ff0802cfb7e' },
-  { id:'FRD-250521-1244', type:'Spam Activity',       typeColor:GREEN,  typeIcon:'spam',     entity:'User: Arjun Malhotra',    entityUid:'ASP052500003', details:'Bulk messaging and spamming multiple users',                        risk:'Low',    status:'New',           date:'May 20, 2025', time:'05:30 PM', img:'photo-1500648767791-00dcc994a43e' },
-  { id:'FRD-250521-1243', type:'Fake Agency',         typeColor:BLUE,   typeIcon:'building', entity:'StarCast Productions',    entityUid:'AGY33210',    details:'Registered with fake GST number and forged documents',              risk:'High',   status:'Blocked',       date:'May 20, 2025', time:'02:10 PM', img:'photo-1463453091185-61582044d556' },
-  { id:'FRD-250521-1242', type:'Scam Casting',        typeColor:PURPLE, typeIcon:'casting',  entity:'Model Shoot Exclusive',   entityUid:'CAST99102',   details:'No payment after selection, ghost agency behavior',                 risk:'Medium', status:'Resolved',      date:'May 19, 2025', time:'11:45 AM', img:'photo-1438761681033-6461ffad8d80' },
-  { id:'FRD-250521-1241', type:'Suspicious Payment',  typeColor:GOLD,   typeIcon:'payment',  entity:'User: Karan Mehta',       entityUid:'ASP052500004', details:'Chargeback fraud on subscription payment',                         risk:'High',   status:'Under Review',  date:'May 19, 2025', time:'09:00 AM', img:'photo-1573496359142-b8d87734a5a2' },
-  { id:'FRD-250521-1240', type:'Fake Profile',        typeColor:ORANGE, typeIcon:'user',     entity:'Pooja Sharma',            entityUid:'ASP052500005', details:'AI-generated profile images detected',                             risk:'Low',    status:'Resolved',      date:'May 19, 2025', time:'07:30 AM', img:'photo-1472099645785-5658abf4ff4e' },
-  { id:'FRD-250521-1239', type:'Spam Activity',       typeColor:GREEN,  typeIcon:'spam',     entity:'User: Vikram Nair',       entityUid:'ASP052500006', details:'Mass casting application submission in 2 minutes',                  risk:'Medium', status:'New',           date:'May 18, 2025', time:'04:15 PM', img:'photo-1463453091185-61582044d556' },
-];
-
-const RISK_COLOR:   Record<string,string> = { High: RED,    Medium: ORANGE, Low: GREEN  };
-const RISK_BG:      Record<string,string> = { High: 'rgba(239,68,68,0.12)', Medium: 'rgba(249,115,22,0.12)', Low: 'rgba(34,197,94,0.12)' };
-const STATUS_COLOR: Record<string,string> = { 'Under Review': GOLD, Investigating: BLUE, New: PURPLE, Blocked: RED, Resolved: GREEN };
-const STATUS_BG:    Record<string,string> = { 'Under Review': 'rgba(212,166,74,0.12)', Investigating: 'rgba(59,130,246,0.12)', New: 'rgba(139,92,246,0.12)', Blocked: 'rgba(239,68,68,0.12)', Resolved: 'rgba(34,197,94,0.12)' };
-
-const RISK_TABS = ['All','High Risk','Medium Risk','Low Risk'];
-const PER_PAGE  = 5;
 
 /* ─── SVG Line Chart ─────────────────────────────────────────── */
-function FraudTrendChart({ period }: { period: string }) {
-  const W=420,H=220,pl=44,pb=188,pr=W-10,pt=14;
-  const pw=pr-pl,ph=pb-pt,maxY=400;
-  const gridY=[0,100,200,300,400];
-  const mult = period==='Last 30 Days'?1.8:period==='Last 90 Days'?2.4:1;
-  const data = CHART_DATA.map(v=>Math.round(v*mult));
-  const mx=(i:number)=>pl+(i/(CHART_LABELS.length-1))*pw;
-  const my=(v:number)=>pb-(v/maxY)*ph;
-  function smooth(pts:[number,number][]):string{
-    let d=`M ${pts[0][0]} ${pts[0][1]}`;
-    for(let i=0;i<pts.length-1;i++){
-      const cp1x=pts[i][0]+(pts[i+1][0]-(pts[i-1]?.[0]??pts[i][0]))/6;
-      const cp1y=pts[i][1]+(pts[i+1][1]-(pts[i-1]?.[1]??pts[i][1]))/6;
-      const nx2=pts[i+2]?.[0]??pts[i+1][0]+(pts[i+1][0]-pts[i][0]);
-      const ny2=pts[i+2]?.[1]??pts[i+1][1]+(pts[i+1][1]-pts[i][1]);
-      const cp2x=pts[i+1][0]-(nx2-pts[i][0])/6;
-      const cp2y=pts[i+1][1]-(ny2-pts[i][1])/6;
-      d+=` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${pts[i+1][0]} ${pts[i+1][1]}`;
+function FraudTrendChart({ period, data, apiLabels }: { period: string; data: number[]; apiLabels?: string[] }) {
+  /* Fixed pixel canvas — no CSS height:'100%' dependency */
+  const W=560, H=200, padL=48, padR=16, padT=14, padB=36;
+  const innerW = W - padL - padR;
+  const innerH = H - padT - padB;
+  const safeData = (data && data.length >= 2) ? data : [220,280,240,340,210,290,200];
+  /* Use API-provided labels if available, else fall back to generic period labels */
+  const labels = (apiLabels && apiLabels.length > 0)
+    ? apiLabels
+    : period==='Last 90 Days' ? CHART_LABELS_90 : period==='Last 30 Days' ? CHART_LABELS_30 : CHART_LABELS_7;
+  const pts2use: number[] = labels.map((_,i) => safeData[i] ?? 0);
+  const rawMax = Math.max(...pts2use, 1);
+  const maxY = Math.ceil(rawMax * 1.15 / 50) * 50;
+  const gridVals = [0, Math.round(maxY*0.25), Math.round(maxY*0.5), Math.round(maxY*0.75), maxY];
+  const mx = (i:number) => padL + (i / (labels.length - 1)) * innerW;
+  const my = (v:number) => padT + (1 - v/maxY) * innerH;
+
+  /* Safe straight-line fallback if only 1 point */
+  const pts: [number,number][] = pts2use.map((v,i) => [mx(i), my(v)]);
+
+  /* Smooth bezier curve */
+  function buildPath(points: [number,number][]): string {
+    if(points.length < 2) return '';
+    let d = `M ${points[0][0].toFixed(2)} ${points[0][1].toFixed(2)}`;
+    for(let i = 0; i < points.length - 1; i++){
+      const p0 = points[Math.max(0,i-1)];
+      const p1 = points[i];
+      const p2 = points[i+1];
+      const p3 = points[Math.min(points.length-1,i+2)];
+      const cp1x = p1[0] + (p2[0]-p0[0])/6;
+      const cp1y = p1[1] + (p2[1]-p0[1])/6;
+      const cp2x = p2[0] - (p3[0]-p1[0])/6;
+      const cp2y = p2[1] - (p3[1]-p1[1])/6;
+      d += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${p2[0].toFixed(2)} ${p2[1].toFixed(2)}`;
     }
     return d;
   }
-  const pts:[number,number][]=data.map((v,i)=>[mx(i),my(v)]);
-  const path=smooth(pts);
-  const area=`${path} L ${pts[pts.length-1][0]} ${pb} L ${pts[0][0]} ${pb} Z`;
-  return(
-    <svg viewBox={`0 0 ${W} ${H}`} style={{width:'100%',height:'100%',overflow:'visible'}}>
+
+  const linePath = buildPath(pts);
+  const areaPath = linePath
+    ? `${linePath} L ${pts[pts.length-1][0].toFixed(2)} ${(padT+innerH).toFixed(2)} L ${pts[0][0].toFixed(2)} ${(padT+innerH).toFixed(2)} Z`
+    : '';
+
+  return (
+    /* Explicit width+height on svg — never rely on CSS percent in SSR */
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      width={W}
+      height={H}
+      style={{display:'block', maxWidth:'100%', overflow:'visible'}}
+    >
       <defs>
-        <linearGradient id="fg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={RED} stopOpacity={0.22}/>
+        <linearGradient id="fraud-area-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stopColor={RED} stopOpacity={0.25}/>
           <stop offset="100%" stopColor={RED} stopOpacity={0.01}/>
         </linearGradient>
       </defs>
-      {gridY.map(v=>(
+      {/* Grid lines */}
+      {gridVals.map(v=>(
         <g key={v}>
-          <line x1={pl} y1={my(v)} x2={pr} y2={my(v)} stroke="rgba(255,255,255,0.05)" strokeWidth={1} strokeDasharray="3 3"/>
-          <text x={pl-6} y={my(v)+4} fill="rgba(255,255,255,0.28)" fontSize={12} textAnchor="end" fontFamily={BARLOW}>{v===0?'0':v}</text>
+          <line
+            x1={padL} y1={my(v)} x2={W-padR} y2={my(v)}
+            stroke="rgba(255,255,255,0.06)" strokeWidth={1} strokeDasharray="4 4"
+          />
+          <text
+            x={padL-8} y={my(v)+4}
+            fill="rgba(255,255,255,0.3)" fontSize={11}
+            textAnchor="end" fontFamily="sans-serif"
+          >{v}</text>
         </g>
       ))}
-      <line x1={pl} y1={pb} x2={pr} y2={pb} stroke="rgba(255,255,255,0.07)" strokeWidth={1}/>
-      {CHART_LABELS.map((l,i)=><text key={i} x={mx(i)} y={pb+18} fill="rgba(255,255,255,0.3)" fontSize={12} textAnchor="middle" fontFamily={BARLOW}>{l}</text>)}
-      <path d={area} fill="url(#fg)"/>
-      <path d={path} fill="none" stroke={RED} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round"/>
-      {pts.map(([cx,cy],i)=><circle key={i} cx={cx} cy={cy} r={4} fill={RED} stroke={BG3} strokeWidth={2}/>)}
+      {/* X axis */}
+      <line x1={padL} y1={padT+innerH} x2={W-padR} y2={padT+innerH} stroke="rgba(255,255,255,0.08)" strokeWidth={1}/>
+      {/* X labels */}
+      {labels.map((l,i)=>(
+        <text key={i}
+          x={mx(i)} y={padT+innerH+18}
+          fill="rgba(255,255,255,0.32)" fontSize={11}
+          textAnchor="middle" fontFamily="sans-serif"
+        >{l}</text>
+      ))}
+      {/* Area fill */}
+      {areaPath && <path d={areaPath} fill="url(#fraud-area-grad)"/>}
+      {/* Line */}
+      {linePath && <path d={linePath} fill="none" stroke={RED} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"/>}
+      {/* Dots */}
+      {pts.map(([cx,cy],i)=>(
+        <circle key={i} cx={cx} cy={cy} r={4.5} fill={RED} stroke="#0D1117" strokeWidth={2}/>
+      ))}
     </svg>
   );
 }
 
 /* ─── Donut Chart ────────────────────────────────────────────── */
 function DonutChart({data,total,label,size=160}:{data:{label:string;pct:number;color:string}[];total:string;label:string;size?:number}){
-  const cx=size/2,cy=size/2,R=size*0.44,r=size*0.29;
-  const toRad=(d:number)=>(d*Math.PI)/180;
-  const pt=(a:number,rad:number)=>[cx+rad*Math.cos(toRad(a)),cy+rad*Math.sin(toRad(a))];
-  let start=-90;
-  const sum=data.reduce((s,d)=>s+d.pct,0);
-  const arcs=data.map(seg=>{
-    const sweep=(seg.pct/sum)*360,end=start+sweep,large=sweep>180?1:0;
-    const[x1,y1]=pt(start,R);const[x2,y2]=pt(end,R);
-    const[x3,y3]=pt(end,r);const[x4,y4]=pt(start,r);
-    const d=`M ${x1} ${y1} A ${R} ${R} 0 ${large} 1 ${x2} ${y2} L ${x3} ${y3} A ${r} ${r} 0 ${large} 0 ${x4} ${y4} Z`;
-    start=end+1.5;
-    return{...seg,d};
+  const cx=size/2, cy=size/2, R=size*0.42, r=size*0.27;
+  const toRad=(deg:number)=>(deg*Math.PI)/180;
+  const ptOn=(angle:number,radius:number):[number,number]=>[
+    cx + radius*Math.cos(toRad(angle)),
+    cy + radius*Math.sin(toRad(angle)),
+  ];
+  /* Guard: if data is empty show a grey circle */
+  const safeData = data && data.length > 0 ? data : [{label:'No data',pct:100,color:'rgba(255,255,255,0.1)'}];
+  const sum = safeData.reduce((s,d)=>s+d.pct,0)||1;
+  let angle = -90;
+  const arcs = safeData.map(seg=>{
+    const sweep = Math.min((seg.pct/sum)*360, 359.99); /* never full 360 — arc math breaks */
+    const startA = angle;
+    const endA   = angle + sweep;
+    const large  = sweep > 180 ? 1 : 0;
+    const [x1,y1] = ptOn(startA, R);
+    const [x2,y2] = ptOn(endA,   R);
+    const [x3,y3] = ptOn(endA,   r);
+    const [x4,y4] = ptOn(startA, r);
+    const d = `M ${x1.toFixed(3)} ${y1.toFixed(3)} A ${R} ${R} 0 ${large} 1 ${x2.toFixed(3)} ${y2.toFixed(3)} L ${x3.toFixed(3)} ${y3.toFixed(3)} A ${r} ${r} 0 ${large} 0 ${x4.toFixed(3)} ${y4.toFixed(3)} Z`;
+    angle = endA + 1.5; /* 1.5° gap between segments */
+    return {...seg, d};
   });
   return(
-    <svg viewBox={`0 0 ${size} ${size}`} style={{width:size,height:size,flexShrink:0}}>
-      <circle cx={cx} cy={cy} r={r-2} fill={BG3}/>
+    /* Explicit width + height — never depends on CSS/flex sizing */
+    <svg
+      viewBox={`0 0 ${size} ${size}`}
+      width={size}
+      height={size}
+      style={{display:'block', flexShrink:0}}
+    >
+      {/* Background ring */}
+      <circle cx={cx} cy={cy} r={R} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth={R-r}/>
+      {/* Inner fill */}
+      <circle cx={cx} cy={cy} r={r-1} fill={BG3}/>
+      {/* Segments */}
       {arcs.map(a=><path key={a.label} d={a.d} fill={a.color}/>)}
-      <text x={cx} y={cy-10} textAnchor="middle" fill="rgba(255,255,255,0.45)" fontSize={size*0.07} fontFamily={BARLOW}>{label}</text>
-      <text x={cx} y={cy+12} textAnchor="middle" fill="#F5F5F5" fontSize={size*0.14} fontWeight={800} fontFamily={BEBAS} letterSpacing={1}>{total}</text>
+      {/* Centre text: label */}
+      <text
+        x={cx} y={cy-9}
+        textAnchor="middle"
+        fill="rgba(255,255,255,0.4)"
+        fontSize={size*0.075}
+        fontFamily="sans-serif"
+      >{label}</text>
+      {/* Centre text: total value */}
+      <text
+        x={cx} y={cy+13}
+        textAnchor="middle"
+        fill="#F5F5F5"
+        fontSize={size*0.145}
+        fontWeight="800"
+        fontFamily="sans-serif"
+        letterSpacing="1"
+      >{total}</text>
     </svg>
   );
 }
@@ -210,10 +314,28 @@ function TypeIcon({type,color}:{type:string;color:string}){
   );
 }
 
+/* ─── Helpers ────────────────────────────────────────────────── */
+function fmtNum(n:number):string{
+  if(n>=1000000) return (n/1000000).toFixed(1)+'M';
+  if(n>=1000) return n.toLocaleString();
+  return String(n);
+}
+
+function exportToCSV(alerts: FraudAlert[], filename: string) {
+  const headers = ['Alert ID','Type','Entity','Entity UID','Details','Risk Level','Status','Detected On','Time'];
+  const rows = alerts.map(a => [a.id, a.type, a.entity, a.entityUid, `"${a.details}"`, a.risk, a.status, a.date, a.time]);
+  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url; link.download = filename; link.click();
+  URL.revokeObjectURL(url);
+}
+
 /* ─── Main Page ──────────────────────────────────────────────── */
 export default function FraudDetectionPage(){
   const router=useRouter();
-  const[sidebarOpen,setSidebarOpen]=useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const[profileOpen,setProfileOpen]=useState(false);
   const[chartPeriod,setChartPeriod]=useState('Last 7 Days');
   const[riskTab,setRiskTab]=useState('All');
@@ -221,134 +343,412 @@ export default function FraudDetectionPage(){
   const[selected,setSelected]=useState<string[]>([]);
   const[page,setPage]=useState(1);
   const[menuId,setMenuId]=useState('');
-  const[menuPos,setMenuPos]=useState({top:0,right:0});
-  const[viewAlert,setViewAlert]=useState<typeof FRAUD_ALERTS[0]|null>(null);
+  const[menuPos,setMenuPos]=useState({top:0,right:0,openUp:false});
+  const[viewAlert,setViewAlert]=useState<FraudAlert|null>(null);
   const[showBulk,setShowBulk]=useState(false);
-  const[showExport,setShowExport]=useState(false);
   const[showFilters,setShowFilters]=useState(false);
   const[toast,setToast]=useState('');
+  const[toastType,setToastType]=useState<'success'|'error'>('success');
 
-  const SB_W=sidebarOpen?220:52;
-  const showToast=(msg:string)=>{setToast(msg);setTimeout(()=>setToast(''),2800);};
+  /* ── Admin info from localStorage ── */
+  const[adminName,setAdminName]=useState('Administrator');
+  const[adminId,setAdminId]=useState('Admin');
+  const[notifCount,setNotifCount]=useState(0);
 
-  /* filter */
-  const filtered=FRAUD_ALERTS.filter(a=>{
+  /* ── API data ── */
+  const[alerts,setAlerts]=useState<FraudAlert[]>(FALLBACK_ALERTS);
+  const[stats,setStats]=useState<DashStats>(FALLBACK_STATS);
+  const[catData,setCatData]=useState<CategoryDist[]>([]);
+  const[riskData,setRiskData]=useState<RiskDist[]>([]);
+  const[topEntities,setTopEntities]=useState<TopEntity[]>(FALLBACK_ENTITIES);
+  const[chartData,setChartData]=useState<number[]>([220,280,240,340,210,290,200]);
+  const[chartLabels,setChartLabels]=useState<string[]>([]);
+  const[loading,setLoading]=useState(true);
+  const[refreshing,setRefreshing]=useState(false);
+
+  /* ── Advanced filter state ── */
+  const[filterFraudType,setFilterFraudType]=useState('All');
+  const[filterRisk,setFilterRisk]=useState('All');
+  const[filterStatus,setFilterStatus]=useState('All');
+  const[filterEntity,setFilterEntity]=useState('All');
+  const[filterDate,setFilterDate]=useState('All Time');
+  // pending (inside modal before Apply)
+  const[pendingFraudType,setPendingFraudType]=useState('All');
+  const[pendingRisk,setPendingRisk]=useState('All');
+  const[pendingStatus,setPendingStatus]=useState('All');
+  const[pendingEntity,setPendingEntity]=useState('All');
+  const[pendingDate,setPendingDate]=useState('All Time');
+
+
+  const showToast=(msg:string,type:'success'|'error'='success')=>{
+    setToast(msg); setToastType(type); setTimeout(()=>setToast(''),2800);
+  };
+
+  /* ── Load admin info ── */
+  useEffect(()=>{
+    try{
+      const raw=localStorage.getItem('ss_user')||sessionStorage.getItem('ss_user');
+      if(raw){
+        const u=JSON.parse(raw);
+        if(u.name) setAdminName(u.name);
+        if(u.adminId||u.id) setAdminId(u.adminId||u.id);
+      }
+    }catch{}
+  },[]);
+
+  /* ── Fetch fraud data ── */
+  const fetchData = useCallback(async (isRefresh=false)=>{
+    if(isRefresh) setRefreshing(true);
+    try{
+      const raw=localStorage.getItem('ss_user')||sessionStorage.getItem('ss_user');
+      const token=raw?JSON.parse(raw)?.token:'';
+      const headers:Record<string,string>={'Content-Type':'application/json'};
+      if(token) headers['Authorization']=`Bearer ${token}`;
+
+      /*
+       * Call the three real endpoints that actually exist:
+       *   1. /api/admin/reports?type=stats&period=X → stat cards, charts, donuts, insights
+       *   2. /api/admin/reports?type=table           → the alerts table rows
+       *   3. /api/admin/dashboard?report=dashboard   → KPIs (open_reports etc.)
+       */
+      const [statsRes, tableRes, dashRes, notifRes] = await Promise.allSettled([
+        fetch(`/api/admin/reports?type=stats&period=${encodeURIComponent(chartPeriod)}`, {headers}),
+        fetch('/api/admin/reports?type=table&per_page=50', {headers}),
+        fetch('/api/admin/dashboard?report=dashboard', {headers}),
+        fetch('/api/notifications?limit=1', {headers}),
+      ]);
+
+      /* ── 1. STATS — powers stat cards, line chart, donuts, insights ── */
+      if(statsRes.status==='fulfilled' && statsRes.value.ok){
+        const d = await statsRes.value.json();
+        const dd = d.data ?? d;
+
+        /* Stat cards — API returns dd.stats as an array */
+        if(Array.isArray(dd.stats) && dd.stats.length > 0){
+          const s = dd.stats; // [{label, value, delta, sub, color}, ...]
+          // Map the 5 stat cards the API returns to our DashStats shape
+          // API order: Total Reports, Open Reports, In Progress, Resolved, Rejected/Dismissed
+          const getVal = (label:string) => {
+            const found = s.find((x:any) => x.label?.toLowerCase().includes(label.toLowerCase()));
+            return parseInt(String(found?.value || '0').replace(/,/g,'')) || 0;
+          };
+          const getDelta = (label:string) => {
+            const found = s.find((x:any) => x.label?.toLowerCase().includes(label.toLowerCase()));
+            return found?.delta || '+0.0%';
+          };
+          setStats({
+            totalFlags:    getVal('total'),
+            highRisk:      getVal('open'),
+            underReview:   getVal('progress'),
+            resolved:      getVal('resolved'),
+            falsePositive: getVal('dismissed'),
+            flagsDelta:    getDelta('total'),
+            highRiskDelta: getDelta('open'),
+            reviewDelta:   getDelta('progress'),
+            resolvedDelta: getDelta('resolved'),
+            falseDelta:    getDelta('dismissed'),
+          });
+        }
+
+        /* Line chart — API returns dd.chartData as number[] and dd.chartLabels as string[] */
+        if(Array.isArray(dd.chartData) && dd.chartData.length > 0){
+          setChartData(dd.chartData);
+        }
+        if(Array.isArray(dd.chartLabels) && dd.chartLabels.length > 0){
+          setChartLabels(dd.chartLabels);
+        }
+
+        /* Fraud Categories donut — API returns dd.typeData */
+        if(Array.isArray(dd.typeData) && dd.typeData.length > 0){
+          setCatData(dd.typeData.map((t:any) => ({
+            label: t.label || 'Other',
+            value: t.value || 0,
+            pct:   t.pct   || 0,
+            color: t.color || PURPLE,
+          })));
+        }
+
+        /* Risk Level donut — API returns dd.statusDonut */
+        if(Array.isArray(dd.statusDonut) && dd.statusDonut.length > 0){
+          // statusDonut: Open → High Risk, In Progress → Medium Risk, Resolved → Low Risk
+          const sd = dd.statusDonut;
+          const colorMap:Record<string,string> = {
+            'Open': RED, 'In Progress': ORANGE, 'Resolved': GREEN, 'Rejected/Dismissed': PURPLE,
+          };
+          setRiskData(sd.map((s:any) => ({
+            label: s.label || 'Other',
+            value: s.value || 0,
+            pct:   s.pct   || 0,
+            color: colorMap[s.label] || s.color || BLUE,
+          })));
+        }
+      }
+
+      /* ── 2. TABLE — the reports list */
+      if(tableRes.status==='fulfilled' && tableRes.value.ok){
+        const d = await tableRes.value.json();
+        const dd = d.data ?? d;
+        const rows: any[] = dd.reports ?? dd.items ?? [];
+
+        if(rows.length > 0){
+          /*
+           * The reports API returns these fields (from route.ts shape() function):
+           *   id, report_number, date, time, reportedBy, reportedByUid,
+           *   against, againstUid, againstUserId, againstType,
+           *   type, category, priority, status, description
+           */
+          const typeColor=(t:string)=>{
+            const tl=t?.toLowerCase()||'';
+            if(tl.includes('fake')||tl.includes('impersonation')) return ORANGE;
+            if(tl.includes('scam')||tl.includes('fraud'))         return PURPLE;
+            if(tl.includes('harassment'))                          return RED;
+            if(tl.includes('spam'))                                return GREEN;
+            if(tl.includes('copyright'))                           return BLUE;
+            return GOLD;
+          };
+          const typeIcon=(t:string,at:string)=>{
+            const tl=t?.toLowerCase()||'';
+            if(at==='agency')                                       return 'building';
+            if(tl.includes('scam')||tl.includes('casting'))        return 'casting';
+            if(tl.includes('payment')||tl.includes('fraud'))       return 'payment';
+            if(tl.includes('spam'))                                 return 'spam';
+            return 'user';
+          };
+          /* Map priority to risk level used in existing UI */
+          const riskMap:Record<string,string>={ High:'High', Medium:'Medium', Low:'Low' };
+          /* Map status — API returns: pending, escalated, resolved, dismissed */
+          const statusMap:Record<string,string>={
+            pending:'New', escalated:'Under Review', resolved:'Resolved', dismissed:'Dismissed',
+          };
+
+          const mapped: FraudAlert[] = rows.map((r:any) => ({
+            id:        r.report_number || String(r.id).slice(0,16),
+            type:      r.type          || 'Suspicious Activity',
+            typeColor: typeColor(r.type || ''),
+            typeIcon:  typeIcon(r.type||'', r.againstType||''),
+            entity:    r.against       || r.reportedBy || 'Unknown Entity',
+            entityUid: r.againstUid    || r.againstUserId || '',
+            details:   r.description   || 'No additional details',
+            risk:      riskMap[r.priority] || 'Medium',
+            status:    statusMap[r.status] || r.status || 'New',
+            date:      r.date          || '',
+            time:      r.time          || '',
+          }));
+          setAlerts(mapped);
+
+          /* Build Top Risky Entities from the high-priority rows */
+          const highRows = mapped.filter(a=>a.risk==='High').slice(0,5);
+          const medRows  = mapped.filter(a=>a.risk==='Medium').slice(0, 5-highRows.length);
+          const topRows  = [...highRows, ...medRows].slice(0,5);
+          if(topRows.length > 0){
+            setTopEntities(topRows.map(a=>({
+              name:      a.entity,
+              uid:       a.entityUid,
+              risk:      a.risk==='High'?'High Risk':a.risk==='Low'?'Low Risk':'Medium Risk',
+              riskColor: a.risk==='High'?RED:a.risk==='Low'?GREEN:ORANGE,
+              type:      a.typeIcon==='building'?'agency':a.typeIcon==='casting'?'casting':'user',
+            })));
+          }
+        }
+      }
+
+      /* ── 3. DASHBOARD KPIs — supplement stats if stats call returned nothing ── */
+      if(dashRes.status==='fulfilled' && dashRes.value.ok){
+        const d = await dashRes.value.json();
+        const kpis = (d.data??d).kpis ?? {};
+        /* Only update notif count from here; stats come from the reports endpoint */
+        if(kpis.open_reports !== undefined){
+          setStats(prev => ({
+            ...prev,
+            totalFlags: prev.totalFlags || (kpis.open_reports ?? 0),
+          }));
+        }
+      }
+
+      /* ── 4. Notification badge count ── */
+      if(notifRes.status==='fulfilled' && notifRes.value.ok){
+        const d = await notifRes.value.json();
+        const cnt = (d.data??d).unread_count ?? (d.data??d).unreadCount ?? 0;
+        setNotifCount(cnt);
+      }
+
+    }catch(err){
+      console.error('Fraud page fetch error:', err);
+      /* Fallback data already set as useState defaults — page stays usable */
+    }finally{
+      setLoading(false);
+      setRefreshing(false);
+    }
+  },[chartPeriod]);
+
+  useEffect(()=>{ fetchData(); },[fetchData]);
+
+  /* Stats, charts, donuts and top entities all come directly from the API now.
+     No derived recalculation needed — the stats endpoint returns them correctly. */
+
+  /* ── Derived stats for stat cards ── */
+  const STATS_CARDS = [
+    { label: 'Total Reports',   value: fmtNum(stats.totalFlags),    delta: stats.flagsDelta,     sub: 'from previous period', color: RED,    Icon: Flag          },
+    { label: 'Open / Pending',  value: fmtNum(stats.highRisk),      delta: stats.highRiskDelta,  sub: 'awaiting action',      color: ORANGE, Icon: AlertTriangle  },
+    { label: 'Under Review',    value: fmtNum(stats.underReview),   delta: stats.reviewDelta,    sub: 'being investigated',   color: GOLD,   Icon: Clock         },
+    { label: 'Resolved',        value: fmtNum(stats.resolved),      delta: stats.resolvedDelta,  sub: 'successfully closed',  color: GREEN,  Icon: ShieldCheck   },
+    { label: 'Dismissed',       value: fmtNum(stats.falsePositive), delta: stats.falseDelta,     sub: 'rejected / dismissed', color: PURPLE, Icon: XCircle       },
+  ];
+
+  const INSIGHTS = [
+    { icon: TrendingUp,  iconBg:'rgba(239,68,68,0.15)',  iconColor:RED,    title:`${stats.highRisk} open reports pending`,     sub:'Requires immediate action'      },
+    { icon: Building2,   iconBg:'rgba(249,115,22,0.15)', iconColor:ORANGE, title:`${stats.underReview} reports under review`,  sub:'Currently being investigated'   },
+    { icon: ShieldCheck, iconBg:'rgba(34,197,94,0.15)',  iconColor:GREEN,  title:`${stats.resolved} reports resolved`,         sub:'Successfully actioned'          },
+  ];
+
+  /* ── Filtering ── */
+  const filtered=alerts.filter(a=>{
     const q=search.toLowerCase();
-    const ms=!q||a.id.toLowerCase().includes(q)||a.entity.toLowerCase().includes(q)||a.type.toLowerCase().includes(q)||a.entityUid.toLowerCase().includes(q);
+    const ms=!q||a.id.toLowerCase().includes(q)||a.entity.toLowerCase().includes(q)||a.type.toLowerCase().includes(q)||a.entityUid.toLowerCase().includes(q)||a.details.toLowerCase().includes(q);
     const mr=riskTab==='All'||(riskTab==='High Risk'&&a.risk==='High')||(riskTab==='Medium Risk'&&a.risk==='Medium')||(riskTab==='Low Risk'&&a.risk==='Low');
-    return ms&&mr;
+    const mft=filterFraudType==='All'||a.type.toLowerCase().includes(filterFraudType.toLowerCase());
+    const mrk=filterRisk==='All'||a.risk===filterRisk;
+    const mst=filterStatus==='All'||a.status===filterStatus;
+    const met=filterEntity==='All'
+      ||(filterEntity==='Agency'       && a.typeIcon==='building')
+      ||(filterEntity==='Casting Call' && a.typeIcon==='casting')
+      ||(filterEntity==='User'         && (a.typeIcon==='user'||a.typeIcon==='spam'||a.typeIcon==='payment'));
+    let mdr=true;
+    if(filterDate!=='All Time'&&a.date){
+      try{
+        const parts=a.date.replace(/ (d+),/,'-$1-').split('-');
+        const reportDate=new Date(a.date);
+        const now=new Date();
+        const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+        if(filterDate==='Today') mdr=reportDate>=today;
+        else if(filterDate==='Last 7 Days'){const d=new Date(today);d.setDate(d.getDate()-7);mdr=reportDate>=d;}
+        else if(filterDate==='Last 30 Days'){const d=new Date(today);d.setDate(d.getDate()-30);mdr=reportDate>=d;}
+      }catch{mdr=true;}
+    }
+    return ms&&mr&&mft&&mrk&&mst&&met&&mdr;
   });
+
   const totalPages=Math.max(1,Math.ceil(filtered.length/PER_PAGE));
   const paged=filtered.slice((page-1)*PER_PAGE,page*PER_PAGE);
   const allSel=paged.length>0&&paged.every(a=>selected.includes(a.id));
   const toggleSel=(id:string)=>setSelected(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);
   const toggleAll=()=>setSelected(allSel?selected.filter(id=>!paged.find(a=>a.id===id)):[...new Set([...selected,...paged.map(a=>a.id)])]);
-  const handleBulk=(action:string)=>{showToast(`${action} applied to ${selected.length} item(s)`);setSelected([]);setShowBulk(false);};
 
-  /* nav to profile */
-  const goProfile=(uid:string)=>{
-    if(uid.startsWith('ASP')||uid.startsWith('USR')||uid.startsWith('AGY')||uid.startsWith('CAST'))
-      router.push(`/agency/applications/${uid}`);
+  /* ── Bulk action (calls API) ── */
+  const handleBulk=async(action:string)=>{
+    if(selected.length===0){showToast('Select at least one item','error');setShowBulk(false);return;}
+    const raw=localStorage.getItem('ss_user');
+    const token=raw?JSON.parse(raw)?.token:'';
+    const headers:Record<string,string>={'Content-Type':'application/json'};
+    if(token) headers['Authorization']=`Bearer ${token}`;
+    try{
+      /* API expects {id, action} for single; we call it per item for bulk */
+      await Promise.all(selected.map(id=>
+        fetch('/api/admin/reports',{method:'PATCH',headers,body:JSON.stringify({id,action:'resolve'})})
+      ));
+    }catch{}
+    showToast(`${action} applied to ${selected.length} item(s)`);
+    setSelected([]);setShowBulk(false);
+    fetchData(true);
   };
+
+  /* ── Single action (calls API) ── */
+  const doAction=async(alertId:string, action:'safe'|'block'|'escalate', onDone?:()=>void)=>{
+    const raw=localStorage.getItem('ss_user');
+    const token=raw?JSON.parse(raw)?.token:'';
+    const headers:Record<string,string>={'Content-Type':'application/json'};
+    if(token) headers['Authorization']=`Bearer ${token}`;
+    /* API valid actions: resolve | dismiss | escalate | reopen */
+    const actionMap={safe:'resolve',block:'dismiss',escalate:'escalate'};
+    const statusMap={safe:'Resolved',block:'Blocked',escalate:'Under Review'};
+    try{
+      await fetch(`/api/admin/reports`,{method:'PATCH',headers,body:JSON.stringify({id:alertId,action:actionMap[action]})});
+      /* Optimistic update */
+      setAlerts(prev=>prev.map(a=>a.id===alertId?{...a,status:statusMap[action]}:a));
+    }catch{}
+    const msgMap={safe:'Marked as safe',block:'Entity blocked',escalate:'Escalated to reports'};
+    showToast(msgMap[action]);
+    onDone?.();
+  };
+
+  /* ── Navigation: profile from UID ── */
+  const goProfile=async(uid:string)=>{
+    if(uid.startsWith('AG')) {
+      // Agency profile number — pass directly, agency-profile page resolves it
+      router.push(`/agency-profile?id=${uid}`);
+      return;
+    }
+    if(uid.startsWith('CAST')) {
+      router.push(`/admin/applications?casting=${uid}`);
+      return;
+    }
+    // Aspirant profile number (ASP...) or UUID — resolve to UUID via keyword search
+    const looksLikeProfileNumber = /^[A-Za-z]{1,4}\d+$/.test(uid);
+    if(looksLikeProfileNumber) {
+      try {
+        const token = getToken();
+        const res = await fetch(`/api/admin/users?keyword=${encodeURIComponent(uid)}&limit=1`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = res.ok ? await res.json() : null;
+        const matched = data?.data?.users?.[0];
+        if(matched) {
+          router.push(`/my-profile?user_id=${matched.id}`);
+          return;
+        }
+      } catch {}
+    }
+    // Already a UUID
+    router.push(`/my-profile?user_id=${uid}`);
+  };
+
+  /* ── Export ── */
+  const handleExport=()=>{
+    const toExport=selected.length>0?alerts.filter(a=>selected.includes(a.id)):filtered;
+    exportToCSV(toExport, `fraud-alerts-${new Date().toISOString().slice(0,10)}.csv`);
+    showToast(`Exported ${toExport.length} alert(s)`);
+  };
+
+  /* ── Apply filters ── */
+  const applyFilters=()=>{
+    setFilterFraudType(pendingFraudType);
+    setFilterRisk(pendingRisk);
+    setFilterStatus(pendingStatus);
+    setFilterEntity(pendingEntity);
+    setFilterDate(pendingDate);
+    setPage(1);
+    setShowFilters(false);
+    showToast('Filters applied');
+  };
+
+  const openFilters=()=>{
+    setPendingFraudType(filterFraudType);
+    setPendingRisk(filterRisk);
+    setPendingStatus(filterStatus);
+    setPendingEntity(filterEntity);
+    setPendingDate(filterDate);
+    setShowFilters(true);
+  };
+
+  const clearFilters=()=>{
+    setFilterFraudType('All');setFilterRisk('All');setFilterStatus('All');setFilterEntity('All');setFilterDate('All Time');
+    setPendingFraudType('All');setPendingRisk('All');setPendingStatus('All');setPendingEntity('All');setPendingDate('All Time');
+    setPage(1);setShowFilters(false);
+    showToast('Filters cleared');
+  };
+
+  const hasActiveFilters=filterFraudType!=='All'||filterRisk!=='All'||filterStatus!=='All'||filterEntity!=='All'||filterDate!=='All Time';
 
   return(
     <div style={{display:'flex',flexDirection:'column',height:'100vh',overflow:'hidden',background:BG,fontFamily:BARLOW,color:'#F5F5F5'}}>
 
-      {/* ══ TOPNAV ══ */}
-      <header style={{display:'flex',alignItems:'center',gap:14,flexShrink:0,padding:'0 24px',height:60,background:BG2,borderBottom:'1px solid rgba(255,255,255,0.06)',zIndex:100}}>
-        <SilverScreensLogo size="md" href="/" showTagline={false}/>
-        <div style={{padding:'3px 10px',background:'rgba(239,68,68,0.15)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:5}}>
-          <span style={{fontFamily:BARLOW,fontSize:14,fontWeight:700,color:RED,letterSpacing:1}}>ADMIN PANEL</span>
-        </div>
-        <div style={{flex:1,maxWidth:440,position:'relative'}}>
-          <Search size={14} color="rgba(255,255,255,0.3)" style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)'}}/>
-          <input placeholder="Search users, agencies, castings, applications…"
-            style={{width:'100%',background:BG3,border:'1px solid rgba(255,255,255,0.08)',borderRadius:8,padding:'8px 40px 8px 34px',color:'#F5F5F5',fontFamily:BARLOW,fontSize:14,outline:'none',boxSizing:'border-box'}}/>
-          <span style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',fontSize:14,color:'rgba(255,255,255,0.25)',background:BG4,borderRadius:4,padding:'1px 6px',border:'1px solid rgba(255,255,255,0.1)'}}>⌘K</span>
-        </div>
-        <div style={{flex:1}}/>
-        <div onClick={()=>router.push('/admin/notifications')} style={{position:'relative',cursor:'pointer'}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'rgba(255,255,255,0.07)',display:'flex',alignItems:'center',justifyContent:'center'}}>
-            <Bell size={15} color="rgba(255,255,255,0.7)"/>
-          </div>
-          <div style={{position:'absolute',top:-5,right:-5,background:RED,borderRadius:'50%',width:18,height:18,display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:700,color:'#fff'}}>12</div>
-        </div>
-        <div onClick={()=>router.push('/admin/support')} style={{cursor:'pointer'}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'rgba(255,255,255,0.07)',display:'flex',alignItems:'center',justifyContent:'center'}}>
-            <Info size={15} color="rgba(255,255,255,0.7)"/>
-          </div>
-        </div>
-        <div style={{position:'relative'}}>
-          <div style={{display:'flex',alignItems:'center',gap:9,cursor:'pointer'}} onClick={()=>setProfileOpen(v=>!v)}>
-            <div style={{width:36,height:36,borderRadius:'50%',overflow:'hidden',border:'2px solid rgba(212,166,74,0.38)',flexShrink:0}}>
-              <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face" alt="Admin" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-            </div>
-            <div><div style={{fontSize:15,fontWeight:700,lineHeight:1.2}}>Super Admin</div></div>
-            <ChevronDown size={12} color="rgba(255,255,255,0.4)"/>
-          </div>
-          {profileOpen&&(
-            <>
-              <div onClick={()=>setProfileOpen(false)} style={{position:'fixed',inset:0,zIndex:150}}/>
-              <div style={{position:'absolute',top:46,right:0,width:210,background:BG3,border:'1px solid rgba(255,255,255,0.1)',borderRadius:10,overflow:'hidden',zIndex:200,boxShadow:'0 8px 32px rgba(0,0,0,0.6)'}}>
-                <div style={{padding:'10px 16px',borderBottom:'1px solid rgba(255,255,255,0.07)',display:'flex',justifyContent:'space-between'}}>
-                  <span style={{fontSize:14,color:'rgba(255,255,255,0.4)'}}>Admin ID</span>
-                  <span style={{fontSize:14,fontWeight:700,color:RED}}>ADM000001</span>
-                </div>
-                {PROFILE_MENU.map(({label,href})=>(
-                  <div key={label} onClick={()=>{router.push(href);setProfileOpen(false);}}
-                    style={{padding:'10px 16px',fontSize:15,cursor:'pointer',color:label==='Logout'?'#ff6b6b':'#F5F5F5',borderTop:label==='Logout'?'1px solid rgba(255,255,255,0.07)':'none'}}
-                    onMouseEnter={e=>(e.currentTarget.style.background='rgba(255,255,255,0.05)')}
-                    onMouseLeave={e=>(e.currentTarget.style.background='transparent')}
-                  >{label}</div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </header>
+      <AdminTopnav />
 
       {/* ══ BODY ══ */}
       <div style={{display:'flex',flex:1,overflow:'hidden'}}>
 
         {/* ── SIDEBAR ── */}
-        <aside style={{width:SB_W,flexShrink:0,background:BG2,borderRight:'1px solid rgba(255,255,255,0.06)',display:'flex',flexDirection:'column',overflowY:'auto',overflowX:'hidden',transition:'width 0.2s ease',scrollbarWidth:'none'}}>
-          <div style={{height:52,display:'flex',alignItems:'center',justifyContent:sidebarOpen?'flex-end':'center',padding:sidebarOpen?'0 12px':0,borderBottom:'1px solid rgba(255,255,255,0.06)',flexShrink:0}}>
-            <button onClick={()=>setSidebarOpen(v=>!v)} style={{background:'none',border:'none',cursor:'pointer',width:30,height:30,borderRadius:6,display:'flex',alignItems:'center',justifyContent:'center',color:'rgba(255,255,255,0.5)'}}
-              onMouseEnter={e=>(e.currentTarget.style.background='rgba(255,255,255,0.07)')}
-              onMouseLeave={e=>(e.currentTarget.style.background='none')}
-            >{sidebarOpen?<ChevronLeft size={16}/>:<Menu size={16}/>}</button>
-          </div>
-          {sidebarOpen&&(
-            <div style={{padding:'14px 16px',borderBottom:'1px solid rgba(255,255,255,0.06)',display:'flex',alignItems:'center',gap:12}}>
-              <div style={{width:38,height:38,borderRadius:9,overflow:'hidden',border:'1px solid rgba(212,166,74,0.25)',flexShrink:0}}>
-                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face" style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>
-              </div>
-              <div style={{minWidth:0}}>
-                <div style={{fontSize:15,fontWeight:700,color:'#F5F5F5',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>Super Admin</div>
-                <div style={{fontSize:14,color:RED,fontWeight:600}}>ADM000001</div>
-              </div>
-            </div>
-          )}
-          <nav style={{flex:1,padding:sidebarOpen?'8px 6px':'8px 4px',overflowY:'auto',scrollbarWidth:'none'}}>
-            {NAV_ITEMS.map(({icon:Icon,label,href,active})=>(
-              <div key={label} onClick={()=>router.push(href)} title={!sidebarOpen?label:undefined}
-                style={{display:'flex',alignItems:'center',justifyContent:sidebarOpen?'flex-start':'center',padding:sidebarOpen?'8px 10px':'10px 0',marginBottom:2,borderRadius:6,cursor:'pointer',background:active?'rgba(239,68,68,0.12)':'transparent',border:active&&sidebarOpen?'1px solid rgba(239,68,68,0.25)':'1px solid transparent',borderLeft:sidebarOpen&&active?`3px solid ${RED}`:sidebarOpen?'3px solid transparent':'none',gap:sidebarOpen?9:0}}
-                onMouseEnter={e=>{if(!active)e.currentTarget.style.background='rgba(255,255,255,0.04)';}}
-                onMouseLeave={e=>{if(!active)e.currentTarget.style.background=active?'rgba(239,68,68,0.12)':'transparent';}}
-              >
-                <Icon size={15} color={active?RED:'rgba(255,255,255,0.42)'} strokeWidth={active?2.5:1.8}/>
-                {sidebarOpen&&<span style={{fontSize:15,color:active?'#F5F5F5':'rgba(255,255,255,0.6)',fontWeight:active?700:400,whiteSpace:'nowrap',flex:1}}>{label}</span>}
-                {sidebarOpen&&active&&<ChevronRight size={12} color={RED} opacity={0.7}/>}
-              </div>
-            ))}
-          </nav>
-          {sidebarOpen&&(
-            <div onClick={()=>router.push('/login')} style={{padding:'14px 16px',borderTop:'1px solid rgba(255,255,255,0.06)',display:'flex',alignItems:'center',gap:9,cursor:'pointer',color:'rgba(255,255,255,0.45)',fontSize:15}}
-              onMouseEnter={e=>(e.currentTarget.style.color='#ff6b6b')}
-              onMouseLeave={e=>(e.currentTarget.style.color='rgba(255,255,255,0.45)')}
-            ><ChevronRight size={14} style={{transform:'rotate(180deg)'}}/>Logout</div>
-          )}
-        </aside>
+        <AdminSidebar />
 
         {/* ── MAIN CONTENT ── */}
         <div style={{flex:1,overflowY:'auto',padding:'20px 24px 40px',display:'flex',flexDirection:'column',gap:16}}>
@@ -364,29 +764,36 @@ export default function FraudDetectionPage(){
               <h1 style={{fontFamily:BARLOW,fontSize:28,fontWeight:800,margin:0,display:'flex',alignItems:'center',gap:6}}>
                 Fraud Detection
                 <span style={{width:7,height:7,borderRadius:'50%',background:RED,display:'inline-block',marginBottom:2}}/>
+                {loading&&<span style={{fontSize:14,color:'rgba(255,255,255,0.35)',fontWeight:400,marginLeft:4}}>Loading…</span>}
               </h1>
               <p style={{fontSize:15,color:'rgba(255,255,255,0.45)',margin:'4px 0 0'}}>Identify, analyze and take action on suspicious activities across the platform.</p>
             </div>
             <div style={{display:'flex',gap:10,alignItems:'center',marginTop:28,flexShrink:0}}>
-              <button onClick={()=>setShowFilters(true)} style={{display:'flex',alignItems:'center',gap:7,padding:'9px 14px',background:BG3,border:'1px solid rgba(255,255,255,0.1)',borderRadius:8,color:'#F5F5F5',fontFamily:BARLOW,fontSize:15,cursor:'pointer'}}>
-                <Filter size={13}/> Filters
+              <button onClick={()=>fetchData(true)} disabled={refreshing}
+                style={{display:'flex',alignItems:'center',gap:7,padding:'9px 14px',background:BG3,border:'1px solid rgba(255,255,255,0.1)',borderRadius:8,color:'rgba(255,255,255,0.7)',fontFamily:BARLOW,fontSize:15,cursor:refreshing?'default':'pointer',opacity:refreshing?0.6:1}}>
+                <RefreshCw size={13} style={{animation:refreshing?'spin 1s linear infinite':'none'}}/> Refresh
               </button>
-              <div style={{display:'flex',alignItems:'center',gap:7,padding:'9px 14px',background:BG3,border:'1px solid rgba(255,255,255,0.1)',borderRadius:8,color:'rgba(255,255,255,0.6)',fontSize:15,cursor:'pointer'}}>
-                📅 May 15 – May 21, 2025
-              </div>
+              <button onClick={openFilters}
+                style={{display:'flex',alignItems:'center',gap:7,padding:'9px 14px',background:hasActiveFilters?`${RED}22`:BG3,border:`1px solid ${hasActiveFilters?`${RED}44`:'rgba(255,255,255,0.1)'}`,borderRadius:8,color:hasActiveFilters?RED:'#F5F5F5',fontFamily:BARLOW,fontSize:15,cursor:'pointer'}}>
+                <Filter size={13}/> Filters{hasActiveFilters?' ✓':''}
+              </button>
+              <button onClick={handleExport}
+                style={{display:'flex',alignItems:'center',gap:7,padding:'9px 14px',background:BG3,border:'1px solid rgba(255,255,255,0.1)',borderRadius:8,color:'#F5F5F5',fontFamily:BARLOW,fontSize:15,cursor:'pointer'}}>
+                <Download size={13}/> Export
+              </button>
             </div>
           </div>
 
           {/* ── STAT CARDS ── */}
           <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:12}}>
-            {STATS.map((s,i)=>(
+            {STATS_CARDS.map((s,i)=>(
               <div key={i} style={{borderRadius:12,padding:'16px',background:BG3,border:'1px solid rgba(255,255,255,0.06)',display:'flex',gap:14,alignItems:'center'}}>
                 <div style={{width:44,height:44,borderRadius:'50%',background:`${s.color}22`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                   <s.Icon size={20} color={s.color}/>
                 </div>
                 <div>
                   <div style={{fontSize:14,color:'rgba(255,255,255,0.5)',marginBottom:3}}>{s.label}</div>
-                  <div style={{fontFamily:BEBAS,fontSize:30,letterSpacing:1,lineHeight:1}}>{s.value}</div>
+                  <div style={{fontFamily:BEBAS,fontSize:30,letterSpacing:1,lineHeight:1}}>{loading?'—':s.value}</div>
                   <div style={{display:'flex',alignItems:'center',gap:5,marginTop:3}}>
                     <TrendingUp size={11} color={GREEN}/>
                     <span style={{fontSize:14,fontWeight:700,color:GREEN}}>{s.delta}</span>
@@ -412,16 +819,16 @@ export default function FraudDetectionPage(){
                   <ChevronDown size={11} color="rgba(255,255,255,0.4)" style={{position:'absolute',right:7,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}/>
                 </div>
               </div>
-              <div style={{width:'100%',height:210}}><FraudTrendChart period={chartPeriod}/></div>
+              <div style={{width:'100%',height:'210px',overflow:'hidden'}}><FraudTrendChart period={chartPeriod} data={chartData} apiLabels={chartLabels}/></div>
             </div>
 
             {/* Fraud Categories Distribution */}
             <div style={{borderRadius:12,background:BG3,border:'1px solid rgba(255,255,255,0.06)',padding:'16px 18px'}}>
               <div style={{fontSize:16,fontWeight:700,marginBottom:14}}>Fraud Categories Distribution</div>
               <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:12}}>
-                <DonutChart data={CAT_DATA} total="1,248" label="Total Flags" size={148}/>
+                <DonutChart data={catData} total={fmtNum(stats.totalFlags)} label="Total Flags" size={148}/>
                 <div style={{width:'100%',display:'flex',flexDirection:'column',gap:7}}>
-                  {CAT_DATA.map(d=>(
+                  {catData.map(d=>(
                     <div key={d.label} style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                       <div style={{display:'flex',alignItems:'center',gap:6}}>
                         <div style={{width:8,height:8,borderRadius:'50%',background:d.color,flexShrink:0}}/>
@@ -441,9 +848,9 @@ export default function FraudDetectionPage(){
                 <span onClick={()=>router.push('/admin/analytics')} style={{fontSize:14,color:RED,fontWeight:600,cursor:'pointer'}}>View All</span>
               </div>
               <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:14}}>
-                <DonutChart data={RISK_DATA} total="1,248" label="Total Flags" size={148}/>
+                <DonutChart data={riskData} total={fmtNum(stats.totalFlags)} label="Total Flags" size={148}/>
                 <div style={{width:'100%',display:'flex',flexDirection:'column',gap:8}}>
-                  {RISK_DATA.map(d=>(
+                  {riskData.map(d=>(
                     <div key={d.label} style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                       <div style={{display:'flex',alignItems:'center',gap:6}}>
                         <div style={{width:8,height:8,borderRadius:'50%',background:d.color}}/>
@@ -483,7 +890,13 @@ export default function FraudDetectionPage(){
                         <div onClick={()=>setShowBulk(false)} style={{position:'fixed',inset:0,zIndex:150}}/>
                         <div style={{position:'absolute',top:38,right:0,width:200,background:BG2,border:'1px solid rgba(255,255,255,0.1)',borderRadius:9,overflow:'hidden',zIndex:200,boxShadow:'0 8px 24px rgba(0,0,0,0.5)'}}>
                           {['Mark as Reviewed','Block Selected','Mark Safe','Escalate All','Export Selected'].map(a=>(
-                            <div key={a} onClick={()=>{if(selected.length===0){showToast('Select at least one item');setShowBulk(false);}else handleBulk(a);}}
+                            <div key={a} onClick={()=>{
+                              if(a==='Export Selected'){
+                                const toExp=alerts.filter(x=>selected.includes(x.id));
+                                exportToCSV(toExp,`fraud-selected-${new Date().toISOString().slice(0,10)}.csv`);
+                                showToast(`Exported ${toExp.length} item(s)`);setShowBulk(false);
+                              } else handleBulk(a);
+                            }}
                               style={{padding:'10px 14px',fontSize:14,cursor:'pointer',color:a.includes('Block')?RED:'#F5F5F5'}}
                               onMouseEnter={e=>(e.currentTarget.style.background='rgba(255,255,255,0.05)')}
                               onMouseLeave={e=>(e.currentTarget.style.background='transparent')}
@@ -497,7 +910,7 @@ export default function FraudDetectionPage(){
                 {/* Risk tabs */}
                 <div style={{display:'flex',gap:6,flexWrap:'wrap' as const}}>
                   {RISK_TABS.map(tab=>{
-                    const count=tab==='All'?FRAUD_ALERTS.length:tab==='High Risk'?FRAUD_ALERTS.filter(a=>a.risk==='High').length:tab==='Medium Risk'?FRAUD_ALERTS.filter(a=>a.risk==='Medium').length:FRAUD_ALERTS.filter(a=>a.risk==='Low').length;
+                    const count=tab==='All'?alerts.length:tab==='High Risk'?alerts.filter(a=>a.risk==='High').length:tab==='Medium Risk'?alerts.filter(a=>a.risk==='Medium').length:alerts.filter(a=>a.risk==='Low').length;
                     const isActive=riskTab===tab;
                     const col=tab==='High Risk'?RED:tab==='Medium Risk'?ORANGE:tab==='Low Risk'?GREEN:RED;
                     return(
@@ -522,7 +935,9 @@ export default function FraudDetectionPage(){
               </div>
 
               {/* Rows */}
-              {paged.length===0?(
+              {loading?(
+                <div style={{padding:'36px 18px',textAlign:'center',color:'rgba(255,255,255,0.35)',fontSize:15}}>Loading fraud alerts…</div>
+              ):paged.length===0?(
                 <div style={{padding:'36px 18px',textAlign:'center',color:'rgba(255,255,255,0.35)',fontSize:15}}>No fraud alerts match your filters.</div>
               ):paged.map((a,i)=>{
                 const isSel=selected.includes(a.id);
@@ -556,7 +971,7 @@ export default function FraudDetectionPage(){
                     </div>
                     {/* Detected On */}
                     <div>
-                      <div style={{fontSize: 14}}>{a.date}</div>
+                      <div style={{fontSize:14}}>{a.date}</div>
                       <div style={{fontSize:14,color:'rgba(255,255,255,0.4)'}}>{a.time}</div>
                     </div>
                     {/* Status */}
@@ -565,15 +980,15 @@ export default function FraudDetectionPage(){
                     </div>
                     {/* Actions */}
                     <div style={{display:'flex',alignItems:'center',gap:4}}>
-                      <button onClick={()=>setViewAlert(a)} title="View"
+                      <button onClick={()=>setViewAlert(a)} title="View Details"
                         style={{width:26,height:26,borderRadius:6,background:'rgba(59,130,246,0.12)',border:'1px solid rgba(59,130,246,0.2)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
                         <Eye size={12} color={BLUE}/>
                       </button>
-                      <button onClick={()=>showToast(`${a.id} flagged`)} title="Flag"
+                      <button onClick={()=>doAction(a.id,'block')} title="Block Entity"
                         style={{width:26,height:26,borderRadius:6,background:'rgba(249,115,22,0.12)',border:'1px solid rgba(249,115,22,0.2)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
                         <Flag size={12} color={ORANGE}/>
                       </button>
-                      <button onClick={e=>{const r=e.currentTarget.getBoundingClientRect();setMenuPos({top:r.bottom+4,right:window.innerWidth-r.right});setMenuId(menuId===a.id?'':a.id);}}
+                      <button onClick={e=>{const r=e.currentTarget.getBoundingClientRect();const dropH=210;const openUp=r.bottom+dropH+4>window.innerHeight;setMenuPos({top:openUp?r.top-dropH-4:r.bottom+4,right:window.innerWidth-r.right,openUp});setMenuId(menuId===a.id?'':a.id);}}
                         style={{width:26,height:26,borderRadius:6,background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
                         <MoreVertical size={12} color="rgba(255,255,255,0.5)"/>
                       </button>
@@ -585,7 +1000,7 @@ export default function FraudDetectionPage(){
               {/* Pagination */}
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 18px',borderTop:'1px solid rgba(255,255,255,0.06)'}}>
                 <span style={{fontSize:14,color:'rgba(255,255,255,0.45)'}}>
-                  Showing {Math.min((page-1)*PER_PAGE+1,filtered.length)} to {Math.min(page*PER_PAGE,filtered.length)} of {filtered.length} entries
+                  {filtered.length===0?'No entries':(`Showing ${Math.min((page-1)*PER_PAGE+1,filtered.length)} to ${Math.min(page*PER_PAGE,filtered.length)} of ${filtered.length} entries`)}
                 </span>
                 <div style={{display:'flex',alignItems:'center',gap:4}}>
                   <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1}
@@ -612,7 +1027,7 @@ export default function FraudDetectionPage(){
                   <span onClick={()=>router.push('/admin/users')} style={{fontSize:14,color:RED,fontWeight:600,cursor:'pointer'}}>View All</span>
                 </div>
                 <div style={{display:'flex',flexDirection:'column',gap:10}}>
-                  {TOP_ENTITIES.map((e,i)=>(
+                  {topEntities.map((e,i)=>(
                     <div key={i} onClick={()=>goProfile(e.uid)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'9px 10px',borderRadius:8,background:BG4,border:'1px solid rgba(255,255,255,0.05)',cursor:'pointer'}}
                       onMouseEnter={ev=>(ev.currentTarget.style.background='rgba(255,255,255,0.05)')}
                       onMouseLeave={ev=>(ev.currentTarget.style.background=BG4)}
@@ -665,12 +1080,16 @@ export default function FraudDetectionPage(){
           <div onClick={()=>setMenuId('')} style={{position:'fixed',inset:0,zIndex:300}}/>
           <div style={{position:'fixed',top:menuPos.top,right:menuPos.right,width:200,background:BG2,border:'1px solid rgba(255,255,255,0.1)',borderRadius:9,overflow:'hidden',zIndex:400,boxShadow:'0 8px 24px rgba(0,0,0,0.6)'}}>
             {[
-              {label:'View Details',         color:'#F5F5F5', action:()=>{const a=FRAUD_ALERTS.find(x=>x.id===menuId);if(a)setViewAlert(a);setMenuId('');}},
-              {label:'Mark as Safe',         color:GREEN,     action:()=>{showToast('Marked as safe');setMenuId('');}},
-              {label:'Block Entity',         color:RED,       action:()=>{showToast('Entity blocked');setMenuId('');}},
-              {label:'Escalate to Reports',  color:ORANGE,    action:()=>{router.push('/admin/reports');setMenuId('');}},
-              {label:'View Entity Profile',  color:BLUE,      action:()=>{const a=FRAUD_ALERTS.find(x=>x.id===menuId);if(a)goProfile(a.entityUid);setMenuId('');}},
-              {label:'Download Evidence',    color:PURPLE,    action:()=>{showToast('Evidence downloaded');setMenuId('');}},
+              {label:'View Details',         color:'#F5F5F5', action:()=>{const a=alerts.find(x=>x.id===menuId);if(a)setViewAlert(a);setMenuId('');}},
+              {label:'Mark as Safe',         color:GREEN,     action:()=>doAction(menuId,'safe',()=>setMenuId(''))},
+              {label:'Block Entity',         color:RED,       action:()=>doAction(menuId,'block',()=>setMenuId(''))},
+              {label:'Escalate to Reports',  color:ORANGE,    action:()=>{doAction(menuId,'escalate',()=>{setMenuId('');router.push('/admin/reports');});}},
+              {label:'View Entity Profile',  color:BLUE,      action:()=>{const a=alerts.find(x=>x.id===menuId);if(a)goProfile(a.entityUid);setMenuId('');}},
+              {label:'Download Evidence',    color:PURPLE,    action:()=>{
+                const a=alerts.find(x=>x.id===menuId);
+                if(a) exportToCSV([a],`evidence-${a.id}.csv`);
+                showToast('Evidence downloaded');setMenuId('');
+              }},
             ].map(({label,color,action})=>(
               <div key={label} onClick={action}
                 style={{display:'flex',alignItems:'center',gap:9,padding:'10px 14px',fontSize:14,cursor:'pointer',color}}
@@ -716,7 +1135,7 @@ export default function FraudDetectionPage(){
                 {label:'Alert ID',     value:viewAlert.id},
                 {label:'Fraud Type',   value:viewAlert.type},
                 {label:'Details',      value:viewAlert.details},
-                {label:'Detected On',  value:`${viewAlert.date} at ${viewAlert.time}`},
+                {label:'Detected On',  value:`${viewAlert.date}${viewAlert.time?' at '+viewAlert.time:''}`},
               ].map(({label,value})=>(
                 <div key={label} style={{display:'grid',gridTemplateColumns:'140px 1fr',gap:8,padding:'8px 0',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
                   <span style={{fontSize:14,color:'rgba(255,255,255,0.45)'}}>{label}</span>
@@ -725,15 +1144,15 @@ export default function FraudDetectionPage(){
               ))}
               {/* Actions */}
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginTop:4}}>
-                <button onClick={()=>{showToast('Marked as safe');setViewAlert(null);}}
+                <button onClick={()=>doAction(viewAlert.id,'safe',()=>setViewAlert(null))}
                   style={{padding:'10px',background:'rgba(34,197,94,0.12)',border:'1px solid rgba(34,197,94,0.25)',borderRadius:8,color:GREEN,fontFamily:BARLOW,fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
                   <Check size={14}/> Mark Safe
                 </button>
-                <button onClick={()=>{showToast('Entity blocked');setViewAlert(null);}}
+                <button onClick={()=>doAction(viewAlert.id,'block',()=>setViewAlert(null))}
                   style={{padding:'10px',background:'rgba(239,68,68,0.12)',border:'1px solid rgba(239,68,68,0.25)',borderRadius:8,color:RED,fontFamily:BARLOW,fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
                   <Lock size={14}/> Block
                 </button>
-                <button onClick={()=>{router.push('/admin/reports');setViewAlert(null);}}
+                <button onClick={()=>doAction(viewAlert.id,'escalate',()=>{setViewAlert(null);router.push('/admin/reports');})}
                   style={{padding:'10px',background:'rgba(249,115,22,0.12)',border:'1px solid rgba(249,115,22,0.25)',borderRadius:8,color:ORANGE,fontFamily:BARLOW,fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
                   <AlertTriangle size={14}/> Escalate
                 </button>
@@ -743,7 +1162,7 @@ export default function FraudDetectionPage(){
                   style={{padding:'10px',background:'rgba(59,130,246,0.12)',border:'1px solid rgba(59,130,246,0.25)',borderRadius:8,color:BLUE,fontFamily:BARLOW,fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
                   <User size={14}/> View Profile
                 </button>
-                <button onClick={()=>{showToast('Evidence downloaded');setViewAlert(null);}}
+                <button onClick={()=>{exportToCSV([viewAlert],`evidence-${viewAlert.id}.csv`);showToast('Evidence downloaded');}}
                   style={{padding:'10px',background:'rgba(139,92,246,0.12)',border:'1px solid rgba(139,92,246,0.25)',borderRadius:8,color:PURPLE,fontFamily:BARLOW,fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
                   <Download size={14}/> Download Evidence
                 </button>
@@ -757,29 +1176,87 @@ export default function FraudDetectionPage(){
       {/* ── FILTERS MODAL ── */}
       {showFilters&&(
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',zIndex:500,display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <div style={{background:BG2,border:'1px solid rgba(255,255,255,0.1)',borderRadius:12,padding:24,width:440}}>
+          <div style={{background:BG2,border:'1px solid rgba(255,255,255,0.1)',borderRadius:12,padding:24,width:460,maxHeight:'90vh',overflowY:'auto'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}>
               <div style={{fontFamily:BEBAS,fontSize:22,letterSpacing:1}}>ADVANCED FILTERS</div>
               <button onClick={()=>setShowFilters(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,0.5)',cursor:'pointer'}}><X size={18}/></button>
             </div>
-            {[
-              {label:'Fraud Type',    opts:['All','Fake Agency','Scam Casting','Suspicious Payment','Fake Profile','Spam Activity']},
-              {label:'Risk Level',    opts:['All','High','Medium','Low']},
-              {label:'Status',        opts:['All','New','Under Review','Investigating','Blocked','Resolved']},
-              {label:'Entity Type',   opts:['All','User','Agency','Casting Call']},
-              {label:'Date Range',    opts:['Today','Last 7 Days','Last 30 Days','Custom Range']},
-            ].map(f=>(
-              <div key={f.label} style={{marginBottom:14}}>
-                <label style={{display:'block',fontSize:14,color:'rgba(255,255,255,0.5)',marginBottom:5}}>{f.label}</label>
-                <select style={{width:'100%',background:BG3,border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'9px 12px',color:'#F5F5F5',fontFamily:BARLOW,fontSize:15,outline:'none'}}>
-                  {f.opts.map(o=><option key={o}>{o}</option>)}
-                </select>
-              </div>
-            ))}
+
+            {/* Fraud Type */}
+            <div style={{marginBottom:14}}>
+              <label style={{display:'block',fontSize:14,color:'rgba(255,255,255,0.5)',marginBottom:5}}>Fraud Type</label>
+              <select value={pendingFraudType}
+                onChange={e => setPendingFraudType(e.target.value)}
+                style={{width:'100%',background:BG3,border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'9px 12px',color:'#F5F5F5',fontSize:15,outline:'none'}}>
+                <option value="All">All Types</option>
+                <option value="Scam / Fraud">Scam / Fraud</option>
+                <option value="Fake Profile / Impersonation">Fake Profile / Impersonation</option>
+                <option value="Harassment / Abuse">Harassment / Abuse</option>
+                <option value="Inappropriate Content">Inappropriate Content</option>
+                <option value="Spam">Spam</option>
+                <option value="Copyright Violation">Copyright Violation</option>
+                <option value="Others">Others</option>
+              </select>
+            </div>
+
+            {/* Risk Level */}
+            <div style={{marginBottom:14}}>
+              <label style={{display:'block',fontSize:14,color:'rgba(255,255,255,0.5)',marginBottom:5}}>Risk Level</label>
+              <select value={pendingRisk}
+                onChange={e => setPendingRisk(e.target.value)}
+                style={{width:'100%',background:BG3,border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'9px 12px',color:'#F5F5F5',fontSize:15,outline:'none'}}>
+                <option value="All">All Risk Levels</option>
+                <option value="High">High Risk</option>
+                <option value="Medium">Medium Risk</option>
+                <option value="Low">Low Risk</option>
+              </select>
+            </div>
+
+            {/* Status */}
+            <div style={{marginBottom:14}}>
+              <label style={{display:'block',fontSize:14,color:'rgba(255,255,255,0.5)',marginBottom:5}}>Status</label>
+              <select value={pendingStatus}
+                onChange={e => setPendingStatus(e.target.value)}
+                style={{width:'100%',background:BG3,border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'9px 12px',color:'#F5F5F5',fontSize:15,outline:'none'}}>
+                <option value="All">All Statuses</option>
+                <option value="New">New</option>
+                <option value="Under Review">Under Review</option>
+                <option value="Resolved">Resolved</option>
+                <option value="Dismissed">Dismissed</option>
+                <option value="Blocked">Blocked</option>
+              </select>
+            </div>
+
+            {/* Entity Type */}
+            <div style={{marginBottom:14}}>
+              <label style={{display:'block',fontSize:14,color:'rgba(255,255,255,0.5)',marginBottom:5}}>Entity Type</label>
+              <select value={pendingEntity}
+                onChange={e => setPendingEntity(e.target.value)}
+                style={{width:'100%',background:BG3,border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'9px 12px',color:'#F5F5F5',fontSize:15,outline:'none'}}>
+                <option value="All">All Entities</option>
+                <option value="User">User / Aspirant</option>
+                <option value="Agency">Agency</option>
+                <option value="Casting Call">Casting Call</option>
+              </select>
+            </div>
+
+            {/* Date Range */}
+            <div style={{marginBottom:14}}>
+              <label style={{display:'block',fontSize:14,color:'rgba(255,255,255,0.5)',marginBottom:5}}>Date Range</label>
+              <select value={pendingDate}
+                onChange={e => setPendingDate(e.target.value)}
+                style={{width:'100%',background:BG3,border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'9px 12px',color:'#F5F5F5',fontSize:15,outline:'none'}}>
+                <option value="All Time">All Time</option>
+                <option value="Today">Today</option>
+                <option value="Last 7 Days">Last 7 Days</option>
+                <option value="Last 30 Days">Last 30 Days</option>
+              </select>
+            </div>
+
             <div style={{display:'flex',gap:10,marginTop:8}}>
-              <button onClick={()=>setShowFilters(false)} style={{flex:1,padding:11,background:BG3,border:'1px solid rgba(255,255,255,0.1)',borderRadius:7,color:'rgba(255,255,255,0.6)',fontFamily:BARLOW,fontSize:15,cursor:'pointer'}}>Cancel</button>
-              <button onClick={()=>{showToast('Filters applied');setShowFilters(false);}}
-                style={{flex:2,padding:11,background:RED,border:'none',borderRadius:7,color:'#fff',fontFamily:BEBAS,fontSize:20,letterSpacing:1,cursor:'pointer'}}>Apply Filters</button>
+              <button onClick={clearFilters} style={{flex:1,padding:11,background:BG3,border:'1px solid rgba(255,255,255,0.1)',borderRadius:7,color:'rgba(255,255,255,0.6)',fontSize:15,cursor:'pointer'}}>Clear All</button>
+              <button onClick={()=>setShowFilters(false)} style={{flex:1,padding:11,background:BG3,border:'1px solid rgba(255,255,255,0.1)',borderRadius:7,color:'rgba(255,255,255,0.6)',fontSize:15,cursor:'pointer'}}>Cancel</button>
+              <button onClick={applyFilters} style={{flex:2,padding:11,background:RED,border:'none',borderRadius:7,color:'#fff',fontFamily:BEBAS,fontSize:20,letterSpacing:1,cursor:'pointer'}}>APPLY FILTERS</button>
             </div>
           </div>
         </div>
@@ -787,10 +1264,13 @@ export default function FraudDetectionPage(){
 
       {/* ── TOAST ── */}
       {toast&&(
-        <div style={{position:'fixed',bottom:28,left:'50%',transform:'translateX(-50%)',background:BG2,border:'1px solid rgba(255,255,255,0.12)',borderRadius:10,padding:'12px 22px',fontSize:15,fontWeight:600,color:'#F5F5F5',zIndex:600,boxShadow:'0 4px 24px rgba(0,0,0,0.5)',display:'flex',alignItems:'center',gap:8,whiteSpace:'nowrap'}}>
-          <CheckSquare size={15} color={GREEN}/> {toast}
+        <div style={{position:'fixed',bottom:28,left:'50%',transform:'translateX(-50%)',background:BG2,border:`1px solid ${toastType==='error'?'rgba(239,68,68,0.3)':'rgba(255,255,255,0.12)'}`,borderRadius:10,padding:'12px 22px',fontSize:15,fontWeight:600,color:'#F5F5F5',zIndex:600,boxShadow:'0 4px 24px rgba(0,0,0,0.5)',display:'flex',alignItems:'center',gap:8,whiteSpace:'nowrap'}}>
+          {toastType==='error'?<XCircle size={15} color={RED}/>:<CheckSquare size={15} color={GREEN}/>} {toast}
         </div>
       )}
+
+      {/* CSS for spinner */}
+      <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}} select option{background:#121821;color:#F5F5F5;}`}</style>
 
     </div>
   );

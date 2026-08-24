@@ -1,7 +1,7 @@
-'use client';
+﻿'use client';
 
 import AgencyTopnav from '@/components/layout/AgencyTopnav'
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Megaphone, PlusCircle, ClipboardList,
   UserSearch, Star, CalendarCheck, MessageSquare, Bell,
   Bookmark, ChevronDown, ChevronLeft, ChevronRight, Menu, Plus,
-  Clock, MapPin, Users, Download, X,
+  Clock, MapPin, Users, Download,
 } from 'lucide-react';
 
 const RED    = '#C8202A';
@@ -35,57 +35,10 @@ const EVENT_TYPES = [
 ];
 function evColor(type: string) { return EVENT_TYPES.find(e => e.key === type)?.color ?? BLUE; }
 
-/* ── Events Data ── */
-const EVENTS: Record<string, { type: string; title: string; time: string; location: string; project: string }[]> = {
-  '2026-06-01': [{ type:'Audition', title:'Audition – Web Series',   time:'10:00 AM', location:'Studio 3',        project:'City of Dreams S2'  },
-                 { type:'Meeting',  title:'Team Meeting',             time:'11:00 AM', location:'Conference Room', project:'Internal'           },
-                 { type:'Other',    title:'Project Discussion',       time:'2:30 PM',  location:'Google Meet',     project:'Internal'           },
-                 { type:'Other',    title:'Client Call',              time:'4:00 PM',  location:'Phone',           project:'External'           }],
-  '2026-06-02': [{ type:'Audition', title:'Audition – Ad Film',      time:'11:00 AM', location:'Studio 1',        project:'Brand Campaign'     },
-                 { type:'Other',    title:'Client Call',              time:'4:00 PM',  location:'Phone',           project:'External'           }],
-  '2026-06-03': [{ type:'Callback', title:'Callback – TV Show',      time:'10:00 AM', location:'Studio 2',        project:'Dastaan-e-Mohabbat' },
-                 { type:'Meeting',  title:'Script Reading',           time:'3:00 PM',  location:'Office',          project:'City of Dreams S2'  }],
-  '2026-06-04': [{ type:'Look Test',title:'Look Test – Models',      time:'11:00 AM', location:'Studio 2',        project:'Brand Campaign'     },
-                 { type:'Meeting',  title:'Production Meeting',       time:'2:00 PM',  location:'Conference Room', project:'Internal'           }],
-  '2026-06-05': [{ type:'Audition', title:'Audition – Feature Film', time:'10:00 AM', location:'Studio 2',        project:'Beyond Limits'      },
-                 { type:'Meeting',  title:'Team Sync',                time:'3:30 PM',  location:'Google Meet',     project:'Internal'           }],
-  '2026-06-08': [{ type:'Audition', title:'Audition – Ad Film',      time:'10:30 AM', location:'Studio 1',        project:'Brand Campaign'     },
-                 { type:'Meeting',  title:'Client Meeting',           time:'2:00 PM',  location:'Client Office',   project:'External'           }],
-  '2026-06-09': [{ type:'Callback', title:'Callback – Web Series',   time:'11:00 AM', location:'Studio 3',        project:'City of Dreams S2'  },
-                 { type:'Other',    title:'Location Recce',           time:'4:30 PM',  location:'Mumbai Suburbs',  project:'Beyond Limits'      }],
-  '2026-06-10': [{ type:'Audition', title:'Audition – TV Show',      time:'10:00 AM', location:'Studio 2',        project:'Dastaan-e-Mohabbat' },
-                 { type:'Meeting',  title:'Production Meeting',       time:'3:00 PM',  location:'Conference Room', project:'Internal'           }],
-  '2026-06-11': [{ type:'Look Test',title:'Look Test – Actors',      time:'11:00 AM', location:'Studio 1',        project:'Beyond Limits'      },
-                 { type:'Meeting',  title:'Casting Review',           time:'2:00 PM',  location:'Conference Room', project:'Internal'           }],
-  '2026-06-12': [{ type:'Audition', title:'Audition – Short Film',   time:'10:00 AM', location:'Studio 3',        project:'The Silent Call'    },
-                 { type:'Meeting',  title:'Budget Review',            time:'2:30 PM',  location:'Conference Room', project:'Internal'           }],
-  '2026-06-15': [{ type:'Meeting',  title:'Team Meeting',            time:'10:00 AM', location:'Conference Room', project:'Internal'           },
-                 { type:'Audition', title:'Audition – Web Series',   time:'1:00 PM',  location:'Studio 3',        project:'City of Dreams S2'  }],
-  '2026-06-16': [{ type:'Callback', title:'Callback – Ad Film',      time:'11:00 AM', location:'Studio 1',        project:'Brand Campaign'     },
-                 { type:'Other',    title:'Client Call',              time:'4:00 PM',  location:'Phone',           project:'External'           }],
-  '2026-06-17': [{ type:'Audition', title:'Audition – Feature Film', time:'10:00 AM', location:'Studio 2',        project:'Beyond Limits'      },
-                 { type:'Meeting',  title:'Script Discussion',        time:'3:30 PM',  location:'Office',          project:'City of Dreams S2'  }],
-  '2026-06-18': [{ type:'Look Test',title:'Look Test – Models',      time:'11:00 AM', location:'Studio 2',        project:'Brand Campaign'     },
-                 { type:'Meeting',  title:'Casting Review',           time:'2:00 PM',  location:'Conference Room', project:'Internal'           }],
-  '2026-06-19': [{ type:'Callback', title:'Callback – TV Show',      time:'10:00 AM', location:'Studio 2',        project:'Dastaan-e-Mohabbat' },
-                 { type:'Meeting',  title:'Marketing Meeting',        time:'3:00 PM',  location:'Google Meet',     project:'Internal'           }],
-  '2026-06-22': [{ type:'Audition', title:'Audition – Ad Film',      time:'10:30 AM', location:'Studio 1',        project:'Brand Campaign'     },
-                 { type:'Meeting',  title:'Client Meeting',           time:'2:00 PM',  location:'Client Office',   project:'External'           }],
-  '2026-06-23': [{ type:'Meeting',  title:'Script Reading',          time:'11:00 AM', location:'Office',          project:'City of Dreams S2'  },
-                 { type:'Other',    title:'Location Visit',           time:'4:00 PM',  location:'Andheri West',    project:'Beyond Limits'      }],
-  '2026-06-24': [{ type:'Audition', title:'Audition – Web Series',   time:'10:00 AM', location:'Studio 3',        project:'City of Dreams S2'  },
-                 { type:'Other',    title:'Lunch Break',              time:'12:00 PM', location:'Office Canteen',  project:'Internal'           },
-                 { type:'Meeting',  title:'Team Sync',                time:'3:00 PM',  location:'Google Meet',     project:'Internal'           },
-                 { type:'Meeting',  title:'Talent Review',            time:'5:00 PM',  location:'Conference Room', project:'Internal'           }],
-  '2026-06-25': [{ type:'Look Test',title:'Look Test – Actors',      time:'11:00 AM', location:'Studio 1',        project:'Beyond Limits'      },
-                 { type:'Meeting',  title:'Callback Review',          time:'2:30 PM',  location:'Conference Room', project:'Internal'           }],
-  '2026-06-26': [{ type:'Audition', title:'Audition – Short Film',   time:'10:00 AM', location:'Studio 3',        project:'The Silent Call'    },
-                 { type:'Meeting',  title:'Finance Review',           time:'4:00 PM',  location:'Conference Room', project:'Internal'           }],
-  '2026-06-29': [{ type:'Meeting',  title:'Team Meeting',            time:'10:00 AM', location:'Conference Room', project:'Internal'           },
-                 { type:'Audition', title:'Audition – TV Show',      time:'1:00 PM',  location:'Studio 2',        project:'Dastaan-e-Mohabbat' }],
-  '2026-06-30': [{ type:'Callback', title:'Callback – Feature Film', time:'11:00 AM', location:'Studio 2',        project:'Beyond Limits'      },
-                 { type:'Other',    title:'Client Call',              time:'4:00 PM',  location:'Phone',           project:'External'           }],
-};
+/* ── Events Type ── */
+type EventEntry = { type: string; title: string; time: string; location: string; project: string };
+// Events seeded from API — no hardcoded mock data
+const INITIAL_EVENTS: Record<string, EventEntry[]> = {};
 
 /* ── Nav ── */
 const NAV_ITEMS = [
@@ -108,7 +61,7 @@ const PROFILE_MENU = [
   { label: 'Documents',              href: '/agency/documents' },
   { label: 'Calendar',               href: '/agency/calendar' },
   { label: 'Settings',               href: '/agency/settings' },
-  { label: 'Support',                href: '/contact' },
+  { label: 'Support',                href: '/agency/support' },
   { label: 'Logout',                 href: '/login' },
 ];
 
@@ -122,12 +75,28 @@ function dateKey(y: number, m: number, d: number) {
 }
 
 /* ── Add Event Modal ── */
-function AddEventModal({ onClose, defaultDate }: { onClose: () => void; defaultDate: string }) {
+function AddEventModal({ onClose, onSave, defaultDate }: { onClose: () => void; onSave: (date: string, entry: { type: string; title: string; time: string; location: string; project: string }) => void; defaultDate: string }) {
   const [title, setTitle] = useState('');
   const [type,  setType]  = useState('Audition');
   const [date,  setDate]  = useState(defaultDate);
   const [time,  setTime]  = useState('10:00');
   const [loc,   setLoc]   = useState('');
+  const [err,   setErr]   = useState('');
+
+  // Format time to 12h AM/PM for display
+  function fmt12h(t: string) {
+    if (!t) return '';
+    const [h, m] = t.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${ampm}`;
+  }
+
+  function handleSave() {
+    if (!title.trim()) { setErr('Please enter an event title.'); return; }
+    if (!date)         { setErr('Please select a date.'); return; }
+    onSave(date, { type, title: title.trim(), time: fmt12h(time), location: loc.trim() || 'TBD', project: 'Internal' });
+    onClose();
+  }
 
   const inp = { width:'100%', background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, padding:'10px 12px', color:'#fff', fontSize:15, fontFamily:BARLOW, outline:'none', boxSizing:'border-box' as const };
 
@@ -169,9 +138,10 @@ function AddEventModal({ onClose, defaultDate }: { onClose: () => void; defaultD
             <input placeholder="Studio / venue name" value={loc} onChange={e => setLoc(e.target.value)} style={inp} />
           </div>
         </div>
+        {err && <div style={{ fontSize:13, color:RED, fontFamily:BARLOW, marginTop:8 }}>{err}</div>}
         <div style={{ display:'flex', gap:12, marginTop:22 }}>
           <button onClick={onClose} style={{ flex:1, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:12, fontSize:16, fontFamily:BARLOW, fontWeight:700, color:'#fff', cursor:'pointer' }}>Cancel</button>
-          <button onClick={onClose} style={{ flex:1, background:GOLD, border:'none', borderRadius:8, padding:12, fontSize:16, fontFamily:BARLOW, fontWeight:700, color:BG, cursor:'pointer' }}>Save Event</button>
+          <button onClick={handleSave} style={{ flex:1, background:GOLD, border:'none', borderRadius:8, padding:12, fontSize:16, fontFamily:BARLOW, fontWeight:700, color:BG, cursor:'pointer' }}>Save Event</button>
         </div>
       </div>
     </div>
@@ -182,18 +152,214 @@ function AddEventModal({ onClose, defaultDate }: { onClose: () => void; defaultD
 export default function AgencyCalendarPage() {
   const router = useRouter();
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [year,        setYear]        = useState(2026);
-  const [month,       setMonth]       = useState(5); // June = 5
-  const [view,        setView]        = useState<'month'|'week'|'list'>('month');
-  const [showAdd,     setShowAdd]     = useState(false);
-  const [selectedDay, setSelectedDay] = useState<string|null>(null);
-  const [showInvite,  setShowInvite]  = useState(false);
-  const [filters,     setFilters]     = useState({ Audition:true, Callback:true, 'Look Test':true, Meeting:true, Other:true });
+  const [sidebarOpen,   setSidebarOpen]   = useState(false);
+  const [profileOpen,   setProfileOpen]   = useState(false);
+  const [year,          setYear]          = useState(() => new Date().getFullYear());
+  const [month,         setMonth]         = useState(() => new Date().getMonth());
+  const [view,          setView]          = useState<'month'|'week'|'list'>('month');
+  const [showAdd,       setShowAdd]       = useState(false);
+  const [selectedDay,   setSelectedDay]   = useState<string|null>(null);
+  const [filters,       setFilters]       = useState({ Audition:true, Callback:true, 'Look Test':true, Meeting:true, Other:true });
+  const [events,        setEvents]        = useState<Record<string, { type: string; title: string; time: string; location: string; project: string }[]>>(INITIAL_EVENTS);
+  const [reminders,     setReminders]     = useState(false);
+  const [agencyName,    setAgencyName]    = useState('My Agency');
+  const [agencyInits,   setAgencyInits]   = useState('AG');
 
-  const SB_W = sidebarOpen ? 230 : 52;
-  const today = '2026-06-24';
+  const SB_W  = sidebarOpen ? 230 : 52;
+  const now   = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+
+  // Load agency name
+  useEffect(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
+      if (u.name) {
+        setAgencyName(u.name);
+        setAgencyInits(u.name.split(' ').map((w: string) => w[0]).join('').slice(0,2).toUpperCase());
+      }
+    } catch {}
+    try {
+      const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
+      const h = u.token ? { Authorization: `Bearer ${u.token}` } : {};
+      fetch('/api/profile/agency', { headers: h })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          const name = d?.data?.profile?.company_name;
+          if (name) {
+            setAgencyName(name);
+            setAgencyInits(name.split(' ').map((w: string) => w[0]).join('').slice(0,2).toUpperCase());
+          }
+        }).catch(() => {});
+
+      // Fetch real auditions and merge into calendar events
+      fetch('/api/auditions?limit=200', { headers: h })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          const list = d?.data?.auditions ?? d?.auditions ?? [];
+          if (!Array.isArray(list) || list.length === 0) return;
+          const auditionEvents: Record<string, { type: string; title: string; time: string; location: string; project: string }[]> = {};
+          list.forEach((a: any) => {
+            if (!a.scheduled_at) return;
+            const dt = new Date(a.scheduled_at);
+            const key = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+            const time = dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+            const candidateName = [a.aspirant_profiles?.first_name, a.aspirant_profiles?.last_name].filter(Boolean).join(' ') || 'Aspirant';
+            const project = a.casting_calls?.title ?? 'Audition';
+            const entry = {
+              type:     'Audition',
+              title:    `Audition – ${candidateName}`,
+              time,
+              location: a.venue_details ?? (a.mode === 'online' ? 'Video Call' : 'TBD'),
+              project,
+            };
+            auditionEvents[key] = [...(auditionEvents[key] ?? []), entry];
+          });
+          // Merge real auditions with existing INITIAL_EVENTS (manual entries take precedence)
+          setEvents(prev => {
+            const merged = { ...prev };
+            Object.entries(auditionEvents).forEach(([key, entries]) => {
+              const existing = merged[key] ?? [];
+              // Avoid duplicating entries that already exist
+              const newEntries = entries.filter(e => !existing.some(x => x.title === e.title && x.time === e.time));
+              if (newEntries.length > 0) merged[key] = [...existing, ...newEntries];
+            });
+            return merged;
+          });
+        }).catch(() => {});
+    } catch {}
+  }, []);
+
+  // Add event handler — merges new event into state
+  function handleSaveEvent(date: string, entry: { type: string; title: string; time: string; location: string; project: string }) {
+    setEvents(prev => ({
+      ...prev,
+      [date]: [...(prev[date] ?? []), entry],
+    }));
+  }
+
+  // Generate .ics file content from all events
+  function generateICS() {
+    const lines: string[] = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'CALSCALE:GREGORIAN',
+      'PRODID:-//SilverScreens//Agency Calendar//EN',
+    ];
+    Object.entries(events).forEach(([dateStr, evts]) => {
+      evts.forEach(ev => {
+        const d = dateStr.replace(/-/g, '');
+        const uid = `${d}-${Math.random().toString(36).slice(2)}@silverscreens.com`;
+        lines.push('BEGIN:VEVENT');
+        lines.push(`UID:${uid}`);
+        lines.push(`DTSTART;VALUE=DATE:${d}`);
+        lines.push(`DTEND;VALUE=DATE:${d}`);
+        lines.push(`SUMMARY:${ev.title}`);
+        lines.push(`LOCATION:${ev.location}`);
+        lines.push(`DESCRIPTION:${ev.type} - ${ev.project}`);
+        lines.push(`CATEGORIES:${ev.type}`);
+        lines.push('END:VEVENT');
+      });
+    });
+    lines.push('END:VCALENDAR');
+    return lines.join('\r\n');
+  }
+
+  // Download .ics file helper
+  function downloadICS(filename: string) {
+    const blob = new Blob([generateICS()], { type: 'text/calendar;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // Handle each calendar sync button
+  function handleCalendarSync(name: string) {
+    if (name === 'Google Calendar') {
+      // Google Calendar accepts a public .ics URL via the "cid" param.
+      // Since we have no hosted URL, we open Google Calendar so the user
+      // can manually import the .ics file we download for them.
+      downloadICS('silverscreens-events.ics');
+      // Then open Google Calendar import page in a new tab
+      window.open('https://calendar.google.com/calendar/r/settings/export', '_blank');
+    } else if (name === 'Apple Calendar') {
+      // Apple Calendar opens .ics files directly on macOS/iOS
+      downloadICS('silverscreens-events.ics');
+    } else if (name === 'Outlook Calendar') {
+      // Outlook accepts .ics import via File > Open & Export > Import/Export
+      downloadICS('silverscreens-events.ics');
+      window.open('https://outlook.live.com/calendar/0/importcalendar', '_blank');
+    }
+  }
+
+  // Download calendar as PDF using browser print
+  function handleDownload() {
+    // Collect all events for current month sorted by date
+    const monthKey = `${year}-${String(month+1).padStart(2,'0')}`;
+    const monthEvents = Object.entries(events)
+      .filter(([k]) => k.startsWith(monthKey))
+      .sort(([a],[b]) => a.localeCompare(b));
+
+    const MONTHS_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+    const typeColors: Record<string,string> = {
+      Audition: '#22C55E', Callback: '#D4A64A', 'Look Test': '#3B82F6',
+      Meeting: '#8B5CF6', Other: '#6B7280',
+    };
+
+    // Build HTML for print window
+    const rows = monthEvents.map(([dateStr, evts]) => {
+      const d   = new Date(dateStr + 'T00:00:00');
+      const day = d.toLocaleDateString('en-IN', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+      const evRows = evts.map(ev => `
+        <tr>
+          <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">
+            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${typeColors[ev.type]??'#6B7280'};margin-right:6px;vertical-align:middle;"></span>
+            <strong>${ev.type}</strong>
+          </td>
+          <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${ev.title}</td>
+          <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${ev.time}</td>
+          <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${ev.location}</td>
+          <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${ev.project}</td>
+        </tr>`).join('');
+      return `
+        <tr><td colspan="5" style="padding:10px;background:#f3f4f6;font-weight:700;color:#111;">${day}</td></tr>
+        ${evRows}`;
+    }).join('');
+
+    const totalCount = monthEvents.reduce((acc,[,evts]) => acc + evts.length, 0);
+
+    const html = `<!DOCTYPE html><html><head><title>SilverScreens Calendar — ${MONTHS_FULL[month]} ${year}</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 32px; color: #111; }
+      h1 { font-size: 24px; margin-bottom: 4px; }
+      .sub { color: #6b7280; font-size: 14px; margin-bottom: 24px; }
+      table { width: 100%; border-collapse: collapse; font-size: 14px; }
+      th { background: #111; color: #D4A64A; padding: 10px; text-align: left; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; }
+      tr:hover td { background: #f9fafb; }
+      .footer { margin-top: 24px; font-size: 12px; color: #9ca3af; text-align: center; }
+      @media print { body { padding: 16px; } }
+    </style></head><body>
+    <h1>📅 SilverScreens — Agency Calendar</h1>
+    <div class="sub">${MONTHS_FULL[month]} ${year} &nbsp;·&nbsp; ${totalCount} event${totalCount !== 1 ? 's' : ''}</div>
+    <table>
+      <thead><tr>
+        <th>Type</th><th>Title</th><th>Time</th><th>Location</th><th>Project</th>
+      </tr></thead>
+      <tbody>${rows || '<tr><td colspan="5" style="padding:16px;text-align:center;color:#9ca3af;">No events this month</td></tr>'}</tbody>
+    </table>
+    <div class="footer">Generated by SilverScreens · ${new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' })}</div>
+    <script>window.onload = function() { window.print(); }<\/script>
+    </body></html>`;
+
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+    }
+  }
 
   const toggleFilter = (key: string) => setFilters(f => ({ ...f, [key]: !f[key as keyof typeof f] }));
   const prevMonth = () => { if (month===0) { setMonth(11); setYear(y=>y-1); } else setMonth(m=>m-1); };
@@ -203,16 +369,16 @@ export default function AgencyCalendarPage() {
   const firstDay   = firstDayOfMonth(year, month);
   const totalCells = Math.ceil((firstDay + totalDays) / 7) * 7;
 
-  const visibleEvents = (key: string) => (EVENTS[key] || []).filter(e => filters[e.type as keyof typeof filters]);
+  const visibleEvents = (key: string) => (events[key] || []).filter(e => filters[e.type as keyof typeof filters]);
 
-  const listEvents = Object.entries(EVENTS)
+  const listEvents = Object.entries(events)
     .filter(([k]) => k.startsWith(`${year}-${String(month+1).padStart(2,'0')}`))
     .flatMap(([k,evts]) => evts.filter(e => filters[e.type as keyof typeof filters]).map(e => ({ ...e, dateKey:k, dayNum:parseInt(k.split('-')[2]) })))
     .sort((a,b) => a.dayNum - b.dayNum);
 
-  const todayEvents = (EVENTS[today] || []).filter(e => filters[e.type as keyof typeof filters]);
+  const todayEvents = (events[today] || []).filter(e => filters[e.type as keyof typeof filters]);
 
-  const upcoming = Object.entries(EVENTS)
+  const upcoming = Object.entries(events)
     .filter(([k]) => k > today)
     .sort(([a],[b]) => a.localeCompare(b))
     .slice(0, 3)
@@ -220,7 +386,7 @@ export default function AgencyCalendarPage() {
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100vh', background:BG, color:'#F5F5F5', fontFamily:BARLOW, overflow:'hidden' }}>
-      {showAdd && <AddEventModal onClose={() => setShowAdd(false)} defaultDate={selectedDay || today} />}
+      {showAdd && <AddEventModal onClose={() => setShowAdd(false)} onSave={handleSaveEvent} defaultDate={selectedDay || today} />}
 
       {/* ── TOPNAV ── */}
       <AgencyTopnav />
@@ -238,9 +404,9 @@ export default function AgencyCalendarPage() {
           </div>
           {sidebarOpen && (
             <div style={{ padding:'14px 16px', borderBottom:'1px solid rgba(255,255,255,0.06)', display:'flex', alignItems:'center', gap:12 }}>
-              <div style={{ width:38, height:38, borderRadius:9, background:'linear-gradient(135deg,#1a1410,#2a1e0e)', border:'1px solid rgba(212,166,74,0.25)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:800, color:GOLD, fontFamily:BEBAS, flexShrink:0 }}>DP</div>
+              <div style={{ width:38, height:38, borderRadius:9, background:'linear-gradient(135deg,#1a1410,#2a1e0e)', border:'1px solid rgba(212,166,74,0.25)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:800, color:GOLD, fontFamily:BEBAS, flexShrink:0 }}>{agencyInits}</div>
               <div style={{ minWidth:0 }}>
-                <div style={{ fontSize:14, fontWeight:700, color:'#F5F5F5', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>Dharma Productions</div>
+                <div style={{ fontSize:14, fontWeight:700, color:'#F5F5F5', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{agencyName}</div>
                 <div onClick={() => router.push('/agency-profile')} style={{ fontSize: 14, color:RED, fontWeight:600, cursor:'pointer' }}>View Company Profile</div>
               </div>
             </div>
@@ -261,13 +427,7 @@ export default function AgencyCalendarPage() {
               </div>
             ))}
           </nav>
-          {sidebarOpen && (
-            <div style={{ margin:'8px 10px 14px', borderRadius:12, background:'linear-gradient(135deg,#1a1205,#2a1e0a)', border:'1px solid rgba(212,166,74,0.25)', padding:'14px 12px', textAlign:'center', flexShrink:0 }}>
-              <div style={{ fontSize:18, marginBottom:4 }}>👑</div>
-              <div style={{ fontSize:15, fontWeight:700, color:GOLD, marginBottom:3 }}>Upgrade to Pro</div>
-              <button onClick={() => router.push('/pricing')} style={{ width:'100%', background:GOLD, color:'#000', border:'none', borderRadius:8, padding:'7px 0', fontSize: 14, fontWeight:700, fontFamily:BARLOW, cursor:'pointer' }}>Upgrade Now</button>
-            </div>
-          )}
+
         </aside>
 
         {/* ── MAIN CONTENT (scrollable, exact aspirant pattern) ── */}
@@ -287,10 +447,8 @@ export default function AgencyCalendarPage() {
                   <button onClick={() => { setSelectedDay(today); setShowAdd(true); }} style={{ display:'flex', alignItems:'center', gap:7, background:GOLD, border:'none', borderRadius:8, padding:'8px 18px', color:BG, fontSize:15, fontFamily:BARLOW, fontWeight:700, cursor:'pointer' }}>
                     <Plus size={15}/> Add Event
                   </button>
-                  <button onClick={() => setShowInvite(true)} style={{ display:'flex', alignItems:'center', gap:7, background:'none', border:'1px solid rgba(255,255,255,0.15)', borderRadius:8, padding:'8px 16px', color:'#F5F5F5', fontSize:15, fontFamily:BARLOW, fontWeight:600, cursor:'pointer' }}>
-                    <Users size={14}/> Invite Team
-                  </button>
-                  <button onClick={() => {}} style={{ display:'flex', alignItems:'center', gap:7, background:'none', border:'1px solid rgba(255,255,255,0.15)', borderRadius:8, padding:'8px 16px', color:'#F5F5F5', fontSize:15, fontFamily:BARLOW, fontWeight:600, cursor:'pointer' }}>
+
+                  <button onClick={handleDownload} style={{ display:'flex', alignItems:'center', gap:7, background:'none', border:'1px solid rgba(255,255,255,0.15)', borderRadius:8, padding:'8px 16px', color:'#F5F5F5', fontSize:15, fontFamily:BARLOW, fontWeight:600, cursor:'pointer' }}>
                     <Download size={14}/> Download
                   </button>
                 </div>
@@ -305,7 +463,7 @@ export default function AgencyCalendarPage() {
                     </button>
                   ))}
                 </div>
-                <button onClick={() => { setYear(2026); setMonth(5); }} style={{ padding:'8px 16px', background:BG2, border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, color:'rgba(255,255,255,0.7)', fontSize:15, fontFamily:BARLOW, cursor:'pointer' }}>Today</button>
+                <button onClick={() => { setYear(now.getFullYear()); setMonth(now.getMonth()); }} style={{ padding:'8px 16px', background:BG2, border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, color:'rgba(255,255,255,0.7)', fontSize:15, fontFamily:BARLOW, cursor:'pointer' }}>Today</button>
                 <button onClick={prevMonth} style={{ width:34, height:34, background:BG2, border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'rgba(255,255,255,0.6)' }}><ChevronLeft size={16}/></button>
                 <button onClick={nextMonth} style={{ width:34, height:34, background:BG2, border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'rgba(255,255,255,0.6)' }}><ChevronRight size={16}/></button>
                 <div style={{ fontFamily:BEBAS, fontSize:22, letterSpacing:2, color:'#fff', marginLeft:4 }}>{MONTHS[month]} {year}</div>
@@ -411,8 +569,8 @@ export default function AgencyCalendarPage() {
                     <div style={{ fontSize:14, color:'rgba(255,255,255,0.4)', fontFamily:BARLOW }}>Enable calendar reminders and get notified before your important events.</div>
                   </div>
                 </div>
-                <button style={{ display:'flex', alignItems:'center', gap:7, background:'none', border:`1px solid ${GOLD}`, borderRadius:8, padding:'9px 18px', color:GOLD, fontSize:15, fontFamily:BARLOW, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' as const }}>
-                  🔔 Enable Reminders
+                <button onClick={() => setReminders(r => !r)} style={{ display:'flex', alignItems:'center', gap:7, background: reminders ? GOLD : 'none', border:`1px solid ${GOLD}`, borderRadius:8, padding:'9px 18px', color: reminders ? BG : GOLD, fontSize:15, fontFamily:BARLOW, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' as const }}>
+                  🔔 {reminders ? 'Reminders On ✓' : 'Enable Reminders'}
                 </button>
               </div>
             </div>
@@ -423,7 +581,7 @@ export default function AgencyCalendarPage() {
               {/* Today's Schedule */}
               <div>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-                  <div style={{ fontSize:17, fontFamily:BARLOW, fontWeight:700, color:'#fff' }}>Today · 24 Jun</div>
+                  <div style={{ fontSize:17, fontFamily:BARLOW, fontWeight:700, color:'#fff' }}>Today · {now.getDate()} {MONTHS[now.getMonth()].slice(0,3)}</div>
                   <button onClick={() => setView('list')} style={{ background:'none', border:'none', color:GOLD, fontSize:14, fontFamily:BARLOW, fontWeight:700, cursor:'pointer' }}>View All</button>
                 </div>
                 <div style={{ display:'flex', flexDirection:'column' as const, gap:12 }}>
@@ -494,18 +652,25 @@ export default function AgencyCalendarPage() {
                 <div style={{ fontSize:16, fontFamily:BARLOW, fontWeight:700, color:'#fff', marginBottom:6 }}>Sync Calendar</div>
                 <div style={{ fontSize:14, color:'rgba(255,255,255,0.4)', fontFamily:BARLOW, lineHeight:1.6, marginBottom:12 }}>Connect your calendar to stay updated with all events.</div>
                 {[
-                  { name:'Google Calendar', color:'#EA4335' },
-                  { name:'Outlook Calendar', color:BLUE },
-                  { name:'Apple Calendar', color:'#F5F5F5' },
+                  { name:'Google Calendar',  color:'#EA4335', hint:'Downloads .ics · Opens Google Calendar import'  },
+                  { name:'Outlook Calendar', color:BLUE,      hint:'Downloads .ics · Opens Outlook import page'     },
+                  { name:'Apple Calendar',   color:'#555',    hint:'Downloads .ics · Open with Apple Calendar'      },
                 ].map(cal => (
-                  <button key={cal.name} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, marginBottom:8, cursor:'pointer', color:'#F5F5F5', fontFamily:BARLOW, fontSize:14, fontWeight:600 }}
-                    onMouseEnter={e => (e.currentTarget.style.borderColor=cal.color)}
-                    onMouseLeave={e => (e.currentTarget.style.borderColor='rgba(255,255,255,0.08)')}
+                  <button key={cal.name}
+                    onClick={() => handleCalendarSync(cal.name)}
+                    title={cal.hint}
+                    style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, marginBottom:8, cursor:'pointer', color:'#F5F5F5', fontFamily:BARLOW, fontSize:14, fontWeight:600 }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor=cal.color; e.currentTarget.style.background='rgba(255,255,255,0.08)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}
                   >
                     <div style={{ width:26, height:26, borderRadius:6, background:cal.color, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:BEBAS, fontSize:14, color:'#fff', flexShrink:0 }}>
                       {cal.name[0]}
                     </div>
-                    {cal.name}
+                    <div style={{ flex:1, textAlign:'left' as const }}>
+                      <div>{cal.name}</div>
+                      <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', fontWeight:400, marginTop:1 }}>{cal.hint}</div>
+                    </div>
+                    <span style={{ fontSize:12, color:'rgba(255,255,255,0.3)' }}>↗</span>
                   </button>
                 ))}
               </div>
@@ -514,31 +679,7 @@ export default function AgencyCalendarPage() {
         </div>
       </div>
 
-      {/* Invite Team Modal */}
-      {showInvite && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', zIndex:500, display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.1)', borderRadius:14, width:440, padding:28 }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-              <div style={{ fontFamily:BEBAS, fontSize:20, color:'#F5F5F5', letterSpacing:1 }}>INVITE TEAM TO CALENDAR</div>
-              <button onClick={() => setShowInvite(false)} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.5)', cursor:'pointer' }}><X size={18}/></button>
-            </div>
-            <div style={{ marginBottom:14 }}>
-              <label style={{ display:'block', fontFamily:BARLOW, fontSize: 14, color:'rgba(255,255,255,0.5)', marginBottom:5 }}>Email Addresses</label>
-              <input placeholder="Enter team member emails, comma-separated…" style={{ width:'100%', background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:6, padding:'10px 12px', color:'#F5F5F5', fontFamily:BARLOW, fontSize:14, outline:'none', boxSizing:'border-box' as const }} />
-            </div>
-            <div style={{ marginBottom:14 }}>
-              <label style={{ display:'block', fontFamily:BARLOW, fontSize: 14, color:'rgba(255,255,255,0.5)', marginBottom:5 }}>Permission</label>
-              <select style={{ width:'100%', background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:6, padding:'9px 12px', color:'#F5F5F5', fontFamily:BARLOW, fontSize:14, outline:'none' }}>
-                <option>View Only</option><option>Can Edit</option><option>Full Access</option>
-              </select>
-            </div>
-            <div style={{ display:'flex', gap:10 }}>
-              <button onClick={() => setShowInvite(false)} style={{ flex:1, padding:10, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:6, color:'rgba(255,255,255,0.6)', fontFamily:BARLOW, fontSize:14, cursor:'pointer' }}>Cancel</button>
-              <button onClick={() => setShowInvite(false)} style={{ flex:2, padding:10, background:GOLD, border:'none', borderRadius:6, color:BG, fontFamily:BEBAS, fontSize:17, letterSpacing:1, cursor:'pointer' }}>Send Invites</button>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }

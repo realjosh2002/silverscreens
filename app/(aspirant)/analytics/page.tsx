@@ -1,11 +1,9 @@
 'use client';
 
-import AspirantHeader from '@/components/layout/AspirantHeader'
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
-
   LayoutDashboard, FileText, MessageSquare, Mic2, Bookmark,
   Star, Bell, ChevronRight, ChevronLeft, Menu, ChevronDown,
   Eye, Search, Send, Award, Download, CalendarDays,
@@ -27,11 +25,11 @@ const GREEN  = '#22C55E';
 const SIDEBAR_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard',            href: '/dashboard' },
   { icon: FileText,        label: 'My Applications',      href: '/my-applications' },
-  { icon: MessageSquare,   label: 'Messages',             href: '/messages',         badge: 2 },
+  { icon: MessageSquare,   label: 'Messages',             href: '/messages' },
   { icon: Mic2,            label: 'Auditions',             href: '/auditions' },
   { icon: Bookmark,        label: 'Saved Castings',       href: '/saved-castings' },
   { icon: Star,            label: 'Recommended Castings', href: '/recommended' },
-  { icon: Bell,            label: 'Notifications',        href: '/notifications'},
+  { icon: Bell,            label: 'Notifications',        href: '/notifications' },
 ];
 
 const DROPDOWN_LINKS = [
@@ -44,14 +42,7 @@ const DROPDOWN_LINKS = [
   { label: 'Logout',         href: '/login' },
 ];
 
-/* ─── Data ─── */
-const STAT_CARDS = [
-  { icon: Eye,      label: 'Profile Views',      value: '2,543', change: '+18.6%', period: 'vs 24 Apr – 23 May', color: '#A78BFA' },
-  { icon: Search,   label: 'Profile Searches',   value: '1,078', change: '+14.2%', period: 'vs 24 Apr – 23 May', color: '#60A5FA' },
-  { icon: Send,     label: 'Applications Sent',  value: '18',    change: '+5.9%',  period: 'vs 24 Apr – 23 May', color: '#34D399' },
-  { icon: Star,     label: 'Shortlisted',        value: '7',     change: '+75%',   period: 'vs 24 Apr – 23 May', color: GOLD },
-  { icon: MessageSquare, label: 'Messages Received', value: '23', change: '+21.1%', period: 'vs 24 Apr – 23 May', color: '#F97316' },
-];
+/* ─── Stat data fetched from API — see useEffect ─── */
 
 // Chart data points
 const CHART_DATA = [
@@ -181,19 +172,59 @@ export default function AnalyticsPage() {
   const router = useRouter();
   const [sidebarOpen,  setSidebarOpen]  = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [userName,   setUserName]   = useState('My Account');
-  const [avatarUrl,  setAvatarUrl]  = useState('');
-
-  useEffect(() => {
-    try {
-      const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
-      if (u.name)         setUserName(u.name);
-      if (u.profilePhoto) setAvatarUrl(u.profilePhoto);
-    } catch {}
-  }, []);
   const [dateOpen,     setDateOpen]     = useState(false);
   const [dateRange,    setDateRange]    = useState('24 May 2026 – 24 Jun 2026');
   const [chartMetric,  setChartMetric]  = useState('Profile Views');
+  const [userName,     setUserName]     = useState('My Account');
+  const [avatarUrl,    setAvatarUrl]    = useState('');
+  const [profileId,    setProfileId]    = useState('');
+  const [notifCount,   setNotifCount]   = useState(0);
+  const [msgCount,     setMsgCount]     = useState(0);
+  const [apiStats,     setApiStats]     = useState<any>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [showSourceDetail,   setShowSourceDetail]   = useState(false);
+  const [showLocationDetail, setShowLocationDetail] = useState(false);
+  const [showDemoDetail,     setShowDemoDetail]     = useState(false);
+
+  useEffect(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
+      if (u.name)          setUserName(u.name)
+      if (u.profilePhoto)  setAvatarUrl(u.profilePhoto)
+      if (u.profileNumber) setProfileId(u.profileNumber)
+      const token = u.token
+      if (!token) return
+      const h = { Authorization: `Bearer ${token}` }
+      fetch('/api/notifications', { headers: h })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return
+          const count = data.data?.unread_count ?? data.unread_count
+          if (count != null) { setNotifCount(count); return }
+          const list = data.data?.notifications ?? data.notifications ?? []
+          if (Array.isArray(list)) setNotifCount(list.filter((n: any) => !n.is_read).length)
+        }).catch(() => {})
+      fetch('/api/messages/conversations', { headers: h })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return
+          const list = data.data?.conversations ?? data.conversations ?? []
+          if (Array.isArray(list)) setMsgCount(list.filter((c: any) => c.unreadCount > 0).length)
+        }).catch(() => {})
+      fetch('/api/aspirant/analytics', { headers: h })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data?.data) setApiStats(data.data) })
+        .catch(() => {})
+        .finally(() => setStatsLoading(false))
+    } catch {}
+  }, [])
+
+  // Live sidebar badge counts
+  const navItems = SIDEBAR_ITEMS.map((item: any) => {
+    if (item.label === 'Messages')      return { ...item, badge: msgCount   || undefined }
+    if (item.label === 'Notifications') return { ...item, badge: notifCount || undefined }
+    return item
+  })
 
   const SB_W = sidebarOpen ? 210 : 56;
 
@@ -205,7 +236,43 @@ export default function AnalyticsPage() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: BG, fontFamily: BARLOW, color: '#F5F5F5' }}>
 
       {/* ══ HEADER ══ */}
-      <AspirantHeader />
+      <header style={{ height: 60, flexShrink: 0, background: BG2, borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', padding: '0 24px', gap: 16, zIndex: 50 }}>
+        <SilverScreensLogo size="md" href="/" showTagline={false} />
+        <div style={{ flex: 1 }} />
+        <button onClick={() => router.push('/casting-calls')} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 8, padding: '0 18px', height: 36, fontSize: 15, fontWeight: 600, fontFamily: BARLOW, cursor: 'pointer', whiteSpace: 'nowrap' }}>+ Find Casting Calls</button>
+        <div onClick={() => router.push('/messages')} style={{ position: 'relative', cursor: 'pointer' }}>
+          <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><MessageSquare size={16} /></div>
+          {msgCount > 0 && <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 17, height: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>{msgCount}</div>}
+        </div>
+        <div onClick={() => router.push('/notifications')} style={{ position: 'relative', cursor: 'pointer' }}>
+          <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Bell size={16} /></div>
+          {notifCount > 0 && <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 17, height: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>{notifCount}</div>}
+        </div>
+        <div style={{ position: 'relative' }}>
+          <div onClick={() => setDropdownOpen(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+            <img src={avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=C8202A&color=fff`} alt={userName} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${GOLD}` }} />
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>{userName}</div>
+              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Aspirant</div>
+            </div>
+            <ChevronDown size={12} color="rgba(255,255,255,0.35)" />
+          </div>
+          {dropdownOpen && (
+            <>
+              <div onClick={() => setDropdownOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 150 }} />
+              <div style={{ position: 'absolute', top: 46, right: 0, width: 200, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', zIndex: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
+                {DROPDOWN_LINKS.map(({ label, href }) => (
+                  <div key={label} onClick={() => { router.push(href); setDropdownOpen(false); }}
+                    style={{ padding: '10px 16px', fontSize: 15, cursor: 'pointer', color: label === 'Logout' ? '#ff6b6b' : label === 'Analytics' ? GOLD : '#F5F5F5', fontWeight: label === 'Analytics' ? 700 : 400, borderTop: label === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  >{label}</div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </header>
 
       {/* ══ BODY ══ */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -225,12 +292,12 @@ export default function AnalyticsPage() {
               </div>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#F5F5F5', whiteSpace: 'nowrap' }}>{userName}</div>
-                <div style={{ fontSize: 14, color: GOLD, fontWeight: 600 }}>ASP03230158</div>
+                <div style={{ fontSize: 14, color: GOLD, fontWeight: 600 }}>{profileId}</div>
               </div>
             </div>
           )}
           <nav style={{ flex: 1, padding: '10px 0' }}>
-            {SIDEBAR_ITEMS.map(({ icon: Icon, label, href, badge }: any) => (
+            {navItems.map(({ icon: Icon, label, href, badge }: any) => (
               <div key={label} title={!sidebarOpen ? label : undefined} onClick={() => router.push(href)}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'space-between' : 'center', padding: sidebarOpen ? '9px 16px' : '10px 0', cursor: 'pointer', background: 'transparent', borderLeft: '3px solid transparent' }}
                 onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
@@ -297,7 +364,13 @@ export default function AnalyticsPage() {
 
             {/* Stat Cards */}
             <div style={{ display: 'flex', gap: 10 }}>
-              {STAT_CARDS.map(({ icon: Icon, label, value, change, period, color }) => (
+              {[
+                { icon: Eye,           label: 'Profile Views',      value: statsLoading ? '…' : (apiStats?.profile?.views ?? 0), color: '#A78BFA' },
+                { icon: Search,        label: 'Search Appearances', value: statsLoading ? '…' : (apiStats?.profile?.search_appearances ?? 0), color: '#60A5FA' },
+                { icon: Send,          label: 'Applications Sent',  value: statsLoading ? '…' : (apiStats?.applications?.total ?? 0), color: '#34D399' },
+                { icon: Star,          label: 'Shortlisted',        value: statsLoading ? '…' : (apiStats?.applications?.shortlisted ?? 0), color: GOLD },
+                { icon: MessageSquare, label: 'Messages Received',  value: statsLoading ? '…' : 0,                       color: '#F97316' },
+              ].map(({ icon: Icon, label, value, color }) => (
                 <div key={label} style={{ flex: 1, background: BG2, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '14px 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                     <div style={{ width: 32, height: 32, borderRadius: 8, background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -305,12 +378,7 @@ export default function AnalyticsPage() {
                     </div>
                     <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)' }}>{label}</span>
                   </div>
-                  <div style={{ fontFamily: BEBAS, fontSize: 28, color: '#fff', letterSpacing: 0.5, lineHeight: 1, marginBottom: 6 }}>{value}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <ArrowUpRight size={12} color={GREEN} />
-                    <span style={{ fontSize: 13, color: GREEN, fontWeight: 700 }}>{change}</span>
-                  </div>
-                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{period}</div>
+                  <div style={{ fontFamily: BEBAS, fontSize: 28, color: '#fff', letterSpacing: 0.5, lineHeight: 1 }}>{value}</div>
                 </div>
               ))}
             </div>
@@ -383,9 +451,28 @@ export default function AnalyticsPage() {
                     ))}
                   </div>
                 </div>
-                <button onClick={() => alert('Source details view coming soon.')} style={{ marginTop: 14, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: 'transparent', border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 8, padding: '9px 0', fontSize: 14, fontWeight: 600, fontFamily: BARLOW, cursor: 'pointer' }}>
-                  <BarChart2 size={13} /> View Source Details
+                <button onClick={() => setShowSourceDetail(v => !v)} style={{ marginTop: 14, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: showSourceDetail ? `${GOLD}18` : 'transparent', border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 8, padding: '9px 0', fontSize: 14, fontWeight: 600, fontFamily: BARLOW, cursor: 'pointer', transition: 'background 0.15s' }}>
+                  <BarChart2 size={13} /> {showSourceDetail ? 'Hide Details' : 'View Source Details'}
                 </button>
+                {showSourceDetail && (
+                  <div style={{ marginTop: 14, borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 14 }}>
+                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 12 }}>Full breakdown of where your profile views originate.</div>
+                    {SOURCE_DATA.map(({ label, pct, color }) => (
+                      <div key={label} style={{ marginBottom: 10 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
+                            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>{label}</span>
+                          </div>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{pct}%</span>
+                        </div>
+                        <div style={{ height: 7, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
+                          <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 4, transition: 'width 0.5s ease' }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Views by Location */}
@@ -404,9 +491,24 @@ export default function AnalyticsPage() {
                     </div>
                   ))}
                 </div>
-                <button onClick={() => alert('All locations view coming soon.')} style={{ marginTop: 14, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: 'transparent', border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 8, padding: '9px 0', fontSize: 14, fontWeight: 600, fontFamily: BARLOW, cursor: 'pointer' }}>
-                  <MapPin size={13} /> View All Locations
+                <button onClick={() => setShowLocationDetail(v => !v)} style={{ marginTop: 14, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: showLocationDetail ? `${GOLD}18` : 'transparent', border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 8, padding: '9px 0', fontSize: 14, fontWeight: 600, fontFamily: BARLOW, cursor: 'pointer', transition: 'background 0.15s' }}>
+                  <MapPin size={13} /> {showLocationDetail ? 'Hide Locations' : 'View All Locations'}
                 </button>
+                {showLocationDetail && (
+                  <div style={{ marginTop: 14, borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 14 }}>
+                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 12 }}>All cities where your profile is being viewed.</div>
+                    {LOCATION_DATA.map(({ city, pct }) => (
+                      <div key={city} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                        <MapPin size={11} color='rgba(255,255,255,0.3)' style={{ flexShrink: 0 }} />
+                        <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', flex: 1 }}>{city}</span>
+                        <div style={{ width: 90, height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.07)', flexShrink: 0 }}>
+                          <div style={{ width: `${pct}%`, height: '100%', borderRadius: 3, background: GOLD, transition: 'width 0.5s ease' }} />
+                        </div>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#fff', width: 32, textAlign: 'right', flexShrink: 0 }}>{pct}%</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Gender Breakdown */}
@@ -436,9 +538,34 @@ export default function AnalyticsPage() {
                     </div>
                   </div>
                 </div>
-                <button onClick={() => alert('Demographics view coming soon.')} style={{ marginTop: 14, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: 'transparent', border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 8, padding: '9px 0', fontSize: 14, fontWeight: 600, fontFamily: BARLOW, cursor: 'pointer' }}>
-                  <Users size={13} /> View Demographics
+                <button onClick={() => setShowDemoDetail(v => !v)} style={{ marginTop: 14, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: showDemoDetail ? `${GOLD}18` : 'transparent', border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 8, padding: '9px 0', fontSize: 14, fontWeight: 600, fontFamily: BARLOW, cursor: 'pointer', transition: 'background 0.15s' }}>
+                  <Users size={13} /> {showDemoDetail ? 'Hide Demographics' : 'View Demographics'}
                 </button>
+                {showDemoDetail && (
+                  <div style={{ marginTop: 14, borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 14 }}>
+                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 14 }}>Gender distribution of users who viewed your profile.</div>
+                    {[
+                      { label: 'Male',   pct: 62, color: '#60A5FA' },
+                      { label: 'Female', pct: 38, color: '#F472B6' },
+                    ].map(({ label, pct, color }) => (
+                      <div key={label} style={{ marginBottom: 12 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
+                            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>{label}</span>
+                          </div>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{pct}%</span>
+                        </div>
+                        <div style={{ height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
+                          <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 4, transition: 'width 0.5s ease' }} />
+                        </div>
+                      </div>
+                    ))}
+                    <div style={{ marginTop: 8, padding: '10px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 8, fontSize: 13, color: 'rgba(255,255,255,0.45)', lineHeight: 1.5 }}>
+                      More detailed demographic insights will be available as your profile gains more views.
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -465,7 +592,7 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
               ))}
-              <button onClick={() => alert('Full activity log coming soon.')} style={{ marginTop: 12, background: 'none', border: 'none', color: GOLD, fontSize: 15, fontWeight: 700, fontFamily: BARLOW, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button onClick={() => router.push('/notifications')} style={{ marginTop: 12, background: 'none', border: 'none', color: GOLD, fontSize: 15, fontWeight: 700, fontFamily: BARLOW, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                 View All Activity <ChevronRight size={14} />
               </button>
             </div>

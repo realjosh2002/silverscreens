@@ -1,7 +1,9 @@
-'use client'
+'use client';
+import AdminSidebar from '@/components/layout/AdminSidebar';
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import AdminTopnav from '@/components/layout/AdminTopnav'
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo'
 import {
   LayoutDashboard, Users, Building2, Megaphone, FileText,
@@ -31,34 +33,16 @@ const ORANGE   = '#F97316'
 const TEAL     = '#14B8A6'
 
 /* ─── Sidebar nav ────────────────────────────────────────────── */
-const NAV_ITEMS = [
-  { icon: LayoutDashboard, label: 'Dashboard',                href: '/admin/dashboard'           },
-  { icon: Users,           label: 'User Management',          href: '/admin/users'               },
-  { icon: UserCheck,       label: 'Talent Verification',      href: '/admin/talent-verification' },
-  { icon: Building2,       label: 'Agency Verification',      href: '/admin/agency-verification' },
-  { icon: FileText,        label: 'Applications Monitoring',  href: '/admin/applications'        },
-  { icon: Flag,            label: 'Reports & Complaints',     href: '/admin/reports'             },
-  { icon: ShieldCheck,     label: 'Fraud Detection',          href: '/admin/fraud'               },
-  { icon: CreditCard,      label: 'Subscription Management',  href: '/admin/subscriptions'       },
-  { icon: Megaphone,       label: 'Advertisement Management', href: '/admin/advertisements'      },
-  { icon: Database,        label: 'CMS Management',           href: '/admin/cms', active: true   },
-  { icon: BellRing,        label: 'Notifications Management', href: '/admin/notifications'       },
-  { icon: BarChart2,       label: 'Analytics & Reports',      href: '/admin/analytics'           },
-  { icon: Ticket,          label: 'Support Tickets',          href: '/admin/support'             },
-  { icon: ScrollText,      label: 'Audit Logs',               href: '/admin/audit'               },
-  { icon: KeyRound,        label: 'Roles & Permissions',      href: '/admin/roles'               },
-  { icon: Settings,        label: 'Settings',                 href: '/admin/settings'            },
-]
 
 const PROFILE_MENU = [
-  { label: 'My Profile',               href: '/admin/profile'       },
-  { label: 'Account Settings',         href: '/admin/settings'      },
-  { label: 'Security Settings',        href: '/admin/settings'      },
-  { label: 'Notification Preferences', href: '/admin/notifications' },
-  { label: 'Activity Logs',            href: '/admin/audit'         },
-  { label: 'Help & Support',           href: '/contact'             },
-  { label: 'Logout',                   href: '/login'               },
-]
+  { label: 'My Profile',               href: '/admin/profile'          },
+  { label: 'Account Settings',         href: '/admin/account-settings' },
+  { label: 'Security & Login',         href: '/admin/security-login'   },
+  { label: 'Notification Preferences', href: '/admin/notifications'    },
+  { label: 'Activity Log',             href: '/admin/activity-log'     },
+  { label: 'Help & Support',           href: '/admin/help-support'     },
+  { label: 'Logout',                   href: '/login'                  },
+];
 
 /* ─── CMS Data ───────────────────────────────────────────────── */
 const CMS_ITEMS = [
@@ -80,11 +64,11 @@ const CMS_ITEMS = [
 ]
 
 const QUICK_LINKS = [
-  { label: 'Manage Header & Footer', href: null,            icon: Layout    },
-  { label: 'Manage Menu',            href: null,            icon: AlignLeft },
-  { label: 'Social Media Links',     href: null,            icon: Link      },
-  { label: 'Site Settings',          href: '/admin/settings', icon: Settings  },
-  { label: 'Maintain SEO Settings',  href: null,            icon: Globe     },
+  { label: 'Site Settings',   href: '/admin/settings',         icon: Settings  },
+  { label: 'Audit Logs',      href: '/admin/audit',            icon: ScrollText},
+  { label: 'Notifications',   href: '/admin/notifications',    icon: Bell      },
+  { label: 'Email Templates', href: '/admin/email-templates',  icon: MessageSquare },
+  { label: 'SMS Templates',   href: '/admin/sms-templates',    icon: MessageSquare },
 ]
 
 const RECENT_ACTIVITY = [
@@ -105,19 +89,20 @@ const STATUS_COLORS: Record<string, string> = {
   Inactive:  RED,
 }
 
-const DONUT_DATA = [
-  { label: 'Pages',   value: 24, pct: 42, color: PURPLE },
-  { label: 'Banners', value: 16, pct: 28, color: BLUE   },
-  { label: 'FAQs',    value: 48, pct: 17, color: TEAL   },
-  { label: 'Others',  value: 9,  pct: 13, color: ORANGE },
+// DONUT_DATA is now computed dynamically inside ContentDonut component
+const DONUT_DATA_STATIC = [
+  { label: 'Pages',   value: 0, pct: 25, color: PURPLE },
+  { label: 'Banners', value: 0, pct: 25, color: BLUE   },
+  { label: 'FAQs',    value: 0, pct: 25, color: TEAL   },
+  { label: 'Others',  value: 0, pct: 25, color: ORANGE },
 ]
 
-function ContentDonut() {
+function ContentDonut({ data }: { data: { label: string; value: number; pct: number; color: string }[] }) {
   const cx = 70, cy = 70, R = 58, r = 36
   const toRad = (d: number) => (d * Math.PI) / 180
   const pt = (a: number, rad: number) => [cx + rad * Math.cos(toRad(a)), cy + rad * Math.sin(toRad(a))]
   let start = -90
-  const arcs = DONUT_DATA.map(seg => {
+  const arcs = data.map(seg => {
     const sweep = (seg.pct / 100) * 360
     const end = start + sweep
     const large = sweep > 180 ? 1 : 0
@@ -135,10 +120,180 @@ function ContentDonut() {
   )
 }
 
+function ContentEditorModal({
+  item, onClose, onSave,
+}: {
+  item: typeof CMS_ITEMS[0] | null;
+  onClose: () => void;
+  onSave: (updated: typeof CMS_ITEMS[0]) => void;
+}) {
+  const isNew = !item
+  const [title,   setTitle]   = useState(item?.title   || '')
+  const [slug,    setSlug]    = useState(item?.slug     || '')
+  const [type,    setType]    = useState(item?.type     || 'Page')
+  const [section, setSection] = useState(item?.section  || 'Company')
+  const [status,  setStatus]  = useState(item?.status   || 'Draft')
+  const [content, setContent] = useState('')
+
+  const inp: React.CSSProperties = {
+    width: '100%', background: '#1C2338', border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 7, padding: '9px 12px', color: '#F5F5F5',
+    fontFamily: "'Barlow Condensed', sans-serif", fontSize: 15, outline: 'none',
+    boxSizing: 'border-box' as const,
+  }
+  const lbl: React.CSSProperties = {
+    display: 'block', fontSize: 13, color: 'rgba(255,255,255,0.45)', marginBottom: 5,
+  }
+  const sel: React.CSSProperties = {
+    ...inp, cursor: 'pointer', appearance: 'none' as const,
+  }
+
+  const handleSave = () => {
+    if (!title.trim() || !slug.trim()) return
+    const now = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+    const saved = {
+      id:      item?.id || Date.now(),
+      icon:    item?.icon || '📄',
+      title:   title.trim(),
+      slug:    slug.trim().startsWith('/') ? slug.trim() : `/${slug.trim()}`,
+      type, section, status,
+      updated: now,
+      by:      'Super Admin',
+      href:    item?.href || null,
+    }
+    onSave(saved as typeof CMS_ITEMS[0])
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 600,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div style={{ background: '#131720', border: '1px solid rgba(212,166,74,0.2)',
+        borderRadius: 14, width: '100%', maxWidth: 680, maxHeight: '90vh',
+        overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.8)' }}>
+
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          padding: '18px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)',
+          position: 'sticky', top: 0, background: '#131720', zIndex: 1 }}>
+          <div>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, letterSpacing: 1 }}>
+              {isNew ? 'ADD NEW CONTENT' : 'EDIT CONTENT'}
+            </div>
+            {!isNew && <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{item?.slug}</div>}
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: 4 }}>
+            <span style={{ fontSize: 20 }}>✕</span>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Title */}
+          <div>
+            <label style={lbl}>Title <span style={{ color: '#EF4444' }}>*</span></label>
+            <input value={title} onChange={e => setTitle(e.target.value)} style={inp} placeholder="e.g. About SilverScreens" />
+          </div>
+
+          {/* Slug */}
+          <div>
+            <label style={lbl}>URL Slug <span style={{ color: '#EF4444' }}>*</span></label>
+            <input value={slug} onChange={e => setSlug(e.target.value)} style={inp} placeholder="e.g. /about-silverscreens" />
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 4 }}>
+              Must start with /. This is the URL path for the page.
+            </div>
+          </div>
+
+          {/* Type + Section row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div>
+              <label style={lbl}>Content Type</label>
+              <select value={type} onChange={e => setType(e.target.value)} style={sel}>
+                {['Page', 'Banner', 'FAQ'].map(o => <option key={o} style={{ background: '#181E2A' }}>{o}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={lbl}>Section</label>
+              <select value={section} onChange={e => setSection(e.target.value)} style={sel}>
+                {['Company','Legal','Home','Aspirant','Agency','Landing Pages','Help & Support','Pricing'].map(o =>
+                  <option key={o} style={{ background: '#181E2A' }}>{o}</option>
+                )}
+              </select>
+            </div>
+          </div>
+
+          {/* Status */}
+          <div>
+            <label style={lbl}>Status</label>
+            <div style={{ display: 'flex', gap: 10 }}>
+              {['Published', 'Draft', 'Inactive'].map(s => (
+                <button key={s} onClick={() => setStatus(s)}
+                  style={{ padding: '7px 18px', borderRadius: 7, fontFamily: "'Barlow Condensed', sans-serif",
+                    fontSize: 14, fontWeight: 700, cursor: 'pointer', border: 'none',
+                    background: status === s
+                      ? s === 'Published' ? '#22C55E' : s === 'Draft' ? '#F97316' : '#EF4444'
+                      : 'rgba(255,255,255,0.07)',
+                    color: status === s ? '#fff' : 'rgba(255,255,255,0.5)',
+                  }}>
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Content editor */}
+          <div>
+            <label style={lbl}>Content / Notes</label>
+            <textarea value={content} onChange={e => setContent(e.target.value)}
+              placeholder="Add page content, banner notes, or FAQ answers here..."
+              rows={6}
+              style={{ ...inp, resize: 'vertical' as const, lineHeight: 1.6 }} />
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 4 }}>
+              A full rich-text editor (WYSIWYG) will be integrated in a future release.
+            </div>
+          </div>
+
+        </div>
+
+        {/* Footer */}
+        <div style={{ display: 'flex', gap: 10, padding: '14px 24px',
+          borderTop: '1px solid rgba(255,255,255,0.08)',
+          position: 'sticky', bottom: 0, background: '#131720' }}>
+          <button onClick={onClose}
+            style={{ flex: 1, padding: 10, background: '#181E2A', border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 7, color: 'rgba(255,255,255,0.6)', fontFamily: "'Barlow Condensed', sans-serif",
+              fontSize: 15, cursor: 'pointer' }}>
+            Cancel
+          </button>
+          <button onClick={handleSave} disabled={!title.trim() || !slug.trim()}
+            style={{ flex: 2, padding: 10, background: !title.trim()||!slug.trim() ? 'rgba(139,92,246,0.3)' : '#8B5CF6',
+              border: 'none', borderRadius: 7, color: '#fff',
+              fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1,
+              cursor: !title.trim()||!slug.trim() ? 'not-allowed' : 'pointer' }}>
+            {isNew ? 'Add Content' : 'Save Changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
+function CMSToast({ msg, type }: { msg: string; type: 'success'|'info' }) {
+  return (
+    <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 999, padding: '12px 20px', borderRadius: 10,
+      background: type === 'success' ? 'rgba(34,197,94,0.15)' : 'rgba(139,92,246,0.15)',
+      border: `1px solid ${type === 'success' ? GREEN : PURPLE}`,
+      color: type === 'success' ? GREEN : PURPLE,
+      fontFamily: BARLOW, fontSize: 15, fontWeight: 600, boxShadow: '0 4px 24px rgba(0,0,0,0.4)' }}>
+      {type === 'success' ? '✓' : 'ℹ'} {msg}
+    </div>
+  )
+}
+
 export default function CMSManagementPage() {
   const router = useRouter()
   const [sidebarOpen,  setSidebarOpen]  = useState(false)
-  const [profileOpen,  setProfileOpen]  = useState(false)
   const [search,       setSearch]       = useState('')
   const [typeFilter,   setTypeFilter]   = useState('All Types')
   const [statusFilter, setStatusFilter] = useState('All Status')
@@ -146,10 +301,51 @@ export default function CMSManagementPage() {
   const [perPage,      setPerPage]      = useState(10)
   const [page,         setPage]         = useState(1)
   const [actionMenu,   setActionMenu]   = useState<number | null>(null)
+  const [items,        setItems]        = useState(CMS_ITEMS)
+  const [flashId,      setFlashId]      = useState<number | null>(null)
+  const [toast,        setToast]        = useState<{ msg: string; type: 'success'|'info' } | null>(null)
+  const [editItem,     setEditItem]     = useState<typeof CMS_ITEMS[0] | null>(null)
+  const [addNew,       setAddNew]       = useState(false)
 
-  const SB_W = sidebarOpen ? 220 : 52
+  const showToast = (msg: string, type: 'success'|'info' = 'info') => {
+    setToast({ msg, type })
+    setTimeout(() => setToast(null), 3000)
+  }
 
-  const filtered = CMS_ITEMS.filter(item => {
+  // Load persisted CMS items from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('ss_cms_config')
+      if (raw) setItems(JSON.parse(raw))
+    } catch {}
+  }, [])
+
+  // Persist items to localStorage and flash the changed row
+  const persistItems = (next: typeof CMS_ITEMS) => {
+    setItems(next)
+    localStorage.setItem('ss_cms_config', JSON.stringify(next))
+  }
+
+  const updateStatus = (id: number, status: string) => {
+    persistItems(items.map(i => i.id === id ? { ...i, status, updated: new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }), by: 'Super Admin' } : i))
+    setFlashId(id)
+    setTimeout(() => setFlashId(null), 1500)
+  }
+
+  const deleteItem = (id: number) => {
+    if (!confirm('Delete this content item? This cannot be undone.')) return
+    persistItems(items.filter(i => i.id !== id))
+  }
+
+  const duplicateItem = (item: typeof CMS_ITEMS[0]) => {
+    const newId = Math.max(...items.map(i => i.id)) + 1
+    const copy = { ...item, id: newId, title: `${item.title} (Copy)`, slug: `${item.slug}-copy`, status: 'Draft', updated: new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }), by: 'Super Admin' }
+    persistItems([...items, copy])
+    setFlashId(newId)
+    setTimeout(() => setFlashId(null), 1500)
+  }
+
+  const filtered = items.filter(item => {
     const matchSearch  = item.title.toLowerCase().includes(search.toLowerCase()) || item.slug.toLowerCase().includes(search.toLowerCase())
     const matchType    = typeFilter   === 'All Types'    || item.type    === typeFilter
     const matchStatus  = statusFilter === 'All Status'   || item.status  === statusFilter
@@ -159,6 +355,30 @@ export default function CMSManagementPage() {
 
   const totalPages = Math.ceil(filtered.length / perPage)
   const paginated  = filtered.slice((page - 1) * perPage, page * perPage)
+
+  // Compute donut chart data from actual items
+  const pages   = items.filter(i => i.type === 'Page').length
+  const banners = items.filter(i => i.type === 'Banner').length
+  const faqs    = items.filter(i => i.type === 'FAQ').length
+  const others  = items.filter(i => !['Page','Banner','FAQ'].includes(i.type)).length
+  const totalItems = pages + banners + faqs + others || 1
+  const donutData = [
+    { label: 'Pages',   value: pages,   pct: Math.round(pages   / totalItems * 100), color: PURPLE },
+    { label: 'Banners', value: banners, pct: Math.round(banners / totalItems * 100), color: BLUE   },
+    { label: 'FAQs',    value: faqs,    pct: Math.round(faqs    / totalItems * 100), color: TEAL   },
+    { label: 'Others',  value: others,  pct: Math.round(others  / totalItems * 100), color: ORANGE },
+  ]
+
+  // Compute recent activity from last 4 changed items
+  const recentActivity = [...items]
+    .sort((a, b) => { try { return new Date(b.updated).getTime() - new Date(a.updated).getTime() } catch { return 0 } })
+    .slice(0, 4)
+    .map(i => ({
+      color: STATUS_COLORS[i.status] || PURPLE,
+      text: `${i.title} — ${i.status}`,
+      time: i.updated,
+    }))
+
 
   const handleView = (item: typeof CMS_ITEMS[0]) => {
     if (item.href) {
@@ -170,7 +390,7 @@ export default function CMSManagementPage() {
         router.push(item.href)
       }
     } else {
-      alert(`"${item.title}" page is pending development.`)
+      showToast(`"${item.title}" page is not yet built.`, 'info')
     }
   }
 
@@ -190,93 +410,13 @@ export default function CMSManagementPage() {
     <div style={{ display: 'flex', flexDirection: 'column' as const, height: '100vh', overflow: 'hidden', background: BG, fontFamily: BARLOW, color: '#F5F5F5' }}>
 
       {/* ══ TOPNAV ══ */}
-      <header style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, padding: '0 24px', height: 60, background: BG2, borderBottom: '1px solid rgba(255,255,255,0.06)', zIndex: 100 }}>
-        <SilverScreensLogo size="md" href="/" showTagline={false} />
-        <div style={{ padding: '3px 10px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 5 }}>
-          <span style={{ fontFamily: BARLOW, fontSize: 14, fontWeight: 700, color: RED, letterSpacing: 1 }}>ADMIN</span>
-        </div>
-
-        <div style={{ flex: 1 }} />
-
-
-        <div onClick={() => router.push('/admin/support')} style={{ position: 'relative' as const, cursor: 'pointer' }}>
-          <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><MessageSquare size={15} color="rgba(255,255,255,0.7)" /></div>
-          <div style={{ position: 'absolute' as const, top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff' }}>8</div>
-        </div>
-        <div onClick={() => router.push('/admin/notifications')} style={{ position: 'relative' as const, cursor: 'pointer' }}>
-          <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Bell size={15} color="rgba(255,255,255,0.7)" /></div>
-          <div style={{ position: 'absolute' as const, top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff' }}>12</div>
-        </div>
-
-        {/* Admin avatar */}
-        <div style={{ position: 'relative' as const }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer' }} onClick={() => setProfileOpen(v => !v)}>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(212,166,74,0.38)', flexShrink: 0 }}>
-              <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face" alt="Admin" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            </div>
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>Super Admin</div>
-              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Administrator</div>
-            </div>
-            <ChevronDown size={12} color="rgba(255,255,255,0.4)" />
-          </div>
-          {profileOpen && (
-            <>
-              <div onClick={() => setProfileOpen(false)} style={{ position: 'fixed' as const, inset: 0, zIndex: 150 }} />
-              <div style={{ position: 'absolute' as const, top: 46, right: 0, width: 210, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', zIndex: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
-                <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Admin ID</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: RED }}>ADM000001</span>
-                </div>
-                {PROFILE_MENU.map(({ label, href }) => (
-                  <div key={label} onClick={() => { router.push(href); setProfileOpen(false) }}
-                    style={{ padding: '10px 16px', fontSize: 15, cursor: 'pointer', color: label === 'Logout' ? '#ff6b6b' : '#F5F5F5', borderTop: label === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >{label}</div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </header>
+      <AdminTopnav />
 
       {/* ══ BODY ══ */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
         {/* ── COLLAPSIBLE SIDEBAR ── */}
-        <aside style={{ width: SB_W, flexShrink: 0, background: BG2, borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column' as const, overflowY: 'auto' as const, overflowX: 'hidden', transition: 'width 0.2s ease', scrollbarWidth: 'none' as const }}>
-          <div style={{ height: 52, display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'flex-end' : 'center', padding: sidebarOpen ? '0 12px' : 0, borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
-            <button onClick={() => setSidebarOpen(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', width: 30, height: 30, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.07)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-            >{sidebarOpen ? <ChevronLeft size={16} /> : <Menu size={16} />}</button>
-          </div>
-          {sidebarOpen && (
-            <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 38, height: 38, borderRadius: 9, overflow: 'hidden', border: '1px solid rgba(212,166,74,0.25)', flexShrink: 0 }}>
-                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#F5F5F5', whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' }}>Super Admin</div>
-                <div style={{ fontSize: 14, color: RED, fontWeight: 600 }}>ADM000001</div>
-              </div>
-            </div>
-          )}
-          <nav style={{ flex: 1, padding: sidebarOpen ? '8px 6px' : '8px 4px', overflowY: 'auto' as const, scrollbarWidth: 'none' as const }}>
-            {NAV_ITEMS.map(({ icon: Icon, label, href, active }) => (
-              <div key={label} onClick={() => router.push(href)} title={!sidebarOpen ? label : undefined}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'flex-start' : 'center', padding: sidebarOpen ? '8px 10px' : '10px 0', marginBottom: 2, borderRadius: 6, cursor: 'pointer', background: active ? GOLD_DIM : 'transparent', border: active && sidebarOpen ? `1px solid ${GOLD_BDR}` : '1px solid transparent', borderLeft: sidebarOpen && active ? `3px solid ${GOLD}` : sidebarOpen ? '3px solid transparent' : 'none', gap: sidebarOpen ? 9 : 0 }}
-                onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
-                onMouseLeave={e => { if (!active) e.currentTarget.style.background = active ? GOLD_DIM : 'transparent' }}
-              >
-                <Icon size={15} color={active ? GOLD : 'rgba(255,255,255,0.42)'} strokeWidth={active ? 2.5 : 1.8} />
-                {sidebarOpen && <span style={{ fontSize: 14, color: active ? GOLD : 'rgba(255,255,255,0.6)', fontWeight: active ? 700 : 400, whiteSpace: 'nowrap' as const, flex: 1 }}>{label}</span>}
-                {sidebarOpen && active && <ChevronRight size={12} color={GOLD} opacity={0.6} />}
-              </div>
-            ))}
-          </nav>
-        </aside>
+        <AdminSidebar />
 
         {/* ── MAIN CONTENT ── */}
         <div style={{ flex: 1, overflowY: 'auto' as const, padding: '18px 20px 32px', display: 'flex', flexDirection: 'column' as const, gap: 14 }} onClick={() => actionMenu !== null && setActionMenu(null)}>
@@ -300,40 +440,54 @@ export default function CMSManagementPage() {
               <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.4)', margin: '3px 0 0' }}>Manage static pages, banners, FAQs and other CMS content across the platform.</p>
             </div>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <button onClick={() => alert('Categories manager coming soon.')} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 16px', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 7, color: '#F5F5F5', fontFamily: BARLOW, fontSize: 15, cursor: 'pointer' }}>
+              <button onClick={() => showToast('Categories manager coming soon.', 'info')} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 16px', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 7, color: '#F5F5F5', fontFamily: BARLOW, fontSize: 15, cursor: 'pointer' }}>
                 <Layers size={14} /> Categories
               </button>
               <button onClick={() => window.open('/', '_blank')} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 16px', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 7, color: '#F5F5F5', fontFamily: BARLOW, fontSize: 15, cursor: 'pointer' }}>
                 <Eye size={14} /> Preview Site
               </button>
-              <button onClick={() => alert('Content Editor coming soon. This will open a rich text editor for creating new pages, banners and FAQs.')} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', background: PURPLE, border: 'none', borderRadius: 7, color: '#fff', fontFamily: BARLOW, fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 14px rgba(139,92,246,0.3)' }}>
+              <button onClick={() => setAddNew(true)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', background: PURPLE, border: 'none', borderRadius: 7, color: '#fff', fontFamily: BARLOW, fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 14px rgba(139,92,246,0.3)' }}>
                 <Plus size={15} /> Add New Content
               </button>
             </div>
           </div>
 
-          {/* Stat cards */}
-          <div style={{ display: 'flex', gap: 10 }}>
-            {[
-              { icon: '📄', label: 'Total Pages',    value: 24, sub: 'Published: 20  Draft: 4',    color: PURPLE },
-              { icon: '🖼️', label: 'Banners',        value: 16, sub: 'Active: 12  Inactive: 4',    color: BLUE   },
-              { icon: '❓', label: 'FAQs',            value: 48, sub: 'Active: 46  Inactive: 2',    color: TEAL   },
-              { icon: '🌐', label: 'Site Sections',   value: 9,  sub: 'Active: 9',                  color: ORANGE },
-              { icon: '🕐', label: 'Last Updated',    value: null, sub: 'May 21, 2025\n11:32 AM',   color: GOLD   },
-            ].map((s, i) => (
-              <div key={i} style={{ flex: 1, background: BG3, border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 10, background: `${s.color}22`, border: `1px solid ${s.color}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{s.icon}</div>
-                <div>
-                  <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', marginBottom: 3 }}>{s.label}</div>
-                  {s.value !== null
-                    ? <div style={{ fontFamily: BEBAS, fontSize: 28, color: '#F5F5F5', lineHeight: 1, letterSpacing: 0.5 }}>{s.value}</div>
-                    : <div style={{ fontFamily: BEBAS, fontSize: 18, color: '#F5F5F5', lineHeight: 1.2 }}>May 21, 2025<br /><span style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>11:32 AM</span></div>
-                  }
-                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginTop: 3 }}>{s.sub}</div>
-                </div>
+          {/* Stat cards — computed from actual items */}
+          {(() => {
+            const pages   = items.filter(i => i.type === 'Page')
+            const banners = items.filter(i => i.type === 'Banner')
+            const faqs    = items.filter(i => i.type === 'FAQ')
+            const sections = [...new Set(items.map(i => i.section))].length
+            const lastUpdated = items.reduce((latest, i) => {
+              try { return new Date(i.updated) > new Date(latest) ? i.updated : latest } catch { return latest }
+            }, items[0]?.updated || '')
+            const lastDate = lastUpdated ? new Date(lastUpdated).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '—'
+            const lastTime = lastUpdated ? new Date(lastUpdated).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' }) : ''
+            const statCards = [
+              { icon: '📄', label: 'Total Pages',  value: pages.length,   sub: `Published: ${pages.filter(i=>i.status==='Published').length}  Draft: ${pages.filter(i=>i.status==='Draft').length}`, color: PURPLE },
+              { icon: '🖼️', label: 'Banners',      value: banners.length, sub: `Active: ${banners.filter(i=>i.status==='Published').length}  Draft: ${banners.filter(i=>i.status==='Draft').length}`, color: BLUE   },
+              { icon: '❓', label: 'FAQs',          value: faqs.length,    sub: `Published: ${faqs.filter(i=>i.status==='Published').length}  Draft: ${faqs.filter(i=>i.status==='Draft').length}`, color: TEAL   },
+              { icon: '🌐', label: 'Site Sections', value: sections,       sub: `Across ${items.length} items`, color: ORANGE },
+              { icon: '🕐', label: 'Last Updated',  value: null,           sub: lastTime, color: GOLD, dateStr: lastDate },
+            ]
+            return (
+              <div style={{ display: 'flex', gap: 10 }}>
+                {statCards.map((s, i) => (
+                  <div key={i} style={{ flex: 1, background: BG3, border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 10, background: `${s.color}22`, border: `1px solid ${s.color}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{s.icon}</div>
+                    <div>
+                      <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', marginBottom: 3 }}>{s.label}</div>
+                      {s.value !== null
+                        ? <div style={{ fontFamily: BEBAS, fontSize: 28, color: '#F5F5F5', lineHeight: 1, letterSpacing: 0.5 }}>{s.value}</div>
+                        : <div style={{ fontFamily: BEBAS, fontSize: 18, color: '#F5F5F5', lineHeight: 1.2 }}>{(s as any).dateStr}<br /><span style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>{s.sub}</span></div>
+                      }
+                      {s.value !== null && <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginTop: 3 }}>{s.sub}</div>}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            )
+          })()}
 
           {/* Main area: table + right panel */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 14 }}>
@@ -383,7 +537,7 @@ export default function CMSManagementPage() {
 
               {/* Table rows */}
               {paginated.map((item, i) => (
-                <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '2.5fr 0.8fr 1fr 0.8fr 1.4fr 1fr 1fr', gap: 0, padding: '11px 16px', borderBottom: i < paginated.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none', alignItems: 'center', transition: 'background 0.15s' }}
+                <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '2.5fr 0.8fr 1fr 0.8fr 1.4fr 1fr 1fr', gap: 0, padding: '11px 16px', borderBottom: i < paginated.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none', alignItems: 'center', transition: 'background 0.3s, border 0.3s', background: flashId === item.id ? 'rgba(34,197,94,0.07)' : 'transparent' }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
@@ -426,11 +580,11 @@ export default function CMSManagementPage() {
                       onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                     ><Eye size={14} /></button>
-                    <button onClick={() => alert(`Edit "${item.title}" — Content Editor coming soon.`)} title="Edit" style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', borderRadius: 5, color: 'rgba(255,255,255,0.5)' }}
+                    <button onClick={() => setEditItem(item)} title="Edit" style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', borderRadius: 5, color: 'rgba(255,255,255,0.5)' }}
                       onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                     ><Edit size={14} /></button>
-                    <button onClick={() => alert(`Duplicated: "${item.title}"`)} title="Duplicate" style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', borderRadius: 5, color: 'rgba(255,255,255,0.5)' }}
+                    <button onClick={() => duplicateItem(item)} title="Duplicate" style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', borderRadius: 5, color: 'rgba(255,255,255,0.5)' }}
                       onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                     ><Copy size={14} /></button>
@@ -443,10 +597,11 @@ export default function CMSManagementPage() {
                       {actionMenu === item.id && (
                         <div style={{ position: 'absolute' as const, right: 0, top: 32, width: 160, background: BG4, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, overflow: 'hidden', zIndex: 50, boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
                           {[
-                            { label: item.status === 'Published' ? 'Unpublish' : 'Publish', action: () => { setActionMenu(null); alert(`${item.status === 'Published' ? 'Unpublished' : 'Published'}: ${item.title}`) } },
-                            { label: 'Move to Draft',  action: () => { setActionMenu(null); alert(`Moved to Draft: ${item.title}`) } },
+                            { label: item.status === 'Published' ? 'Unpublish' : 'Publish', action: () => { setActionMenu(null); updateStatus(item.id, item.status === 'Published' ? 'Inactive' : 'Published') } },
+                            { label: 'Move to Draft',  action: () => { setActionMenu(null); updateStatus(item.id, 'Draft') } },
+                            { label: 'Duplicate',      action: () => { setActionMenu(null); duplicateItem(item) } },
                             { label: 'View History',   action: () => { setActionMenu(null); router.push('/admin/audit') } },
-                            { label: 'Delete',          action: () => { setActionMenu(null); confirm(`Delete "${item.title}"?`) }, danger: true },
+                            { label: 'Delete',         action: () => { setActionMenu(null); deleteItem(item.id) }, danger: true },
                           ].map(m => (
                             <div key={m.label} onClick={m.action} style={{ padding: '9px 14px', fontSize: 14, cursor: 'pointer', color: (m as any).danger ? RED : '#F5F5F5' }}
                               onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
@@ -489,9 +644,9 @@ export default function CMSManagementPage() {
               <div style={{ background: BG3, border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 16 }}>
                 <div style={{ fontFamily: BEBAS, fontSize: 17, letterSpacing: 0.5, color: '#F5F5F5', marginBottom: 14 }}>Content Overview</div>
                 <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                  <ContentDonut />
+                  <ContentDonut data={donutData} />
                   <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8, flex: 1 }}>
-                    {DONUT_DATA.map(d => (
+                    {donutData.map(d => (
                       <div key={d.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <div style={{ width: 10, height: 10, borderRadius: '50%', background: d.color, flexShrink: 0 }} />
@@ -508,7 +663,7 @@ export default function CMSManagementPage() {
               <div style={{ background: BG3, border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 16 }}>
                 <div style={{ fontFamily: BEBAS, fontSize: 17, letterSpacing: 0.5, color: '#F5F5F5', marginBottom: 12 }}>Quick Links</div>
                 {QUICK_LINKS.map(l => (
-                  <div key={l.label} onClick={() => l.href ? router.push(l.href) : alert(`"${l.label}" is pending development.`)}
+                  <div key={l.label} onClick={() => l.href ? router.push(l.href) : showToast(`"${l.label}" is coming soon.`, 'info')}
                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }}
                     onMouseEnter={e => (e.currentTarget.style.color = '#fff')}
                     onMouseLeave={e => (e.currentTarget.style.color = '')}
@@ -525,7 +680,7 @@ export default function CMSManagementPage() {
               {/* Recent Activity */}
               <div style={{ background: BG3, border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 16 }}>
                 <div style={{ fontFamily: BEBAS, fontSize: 17, letterSpacing: 0.5, color: '#F5F5F5', marginBottom: 12 }}>Recent Activity</div>
-                {RECENT_ACTIVITY.map((a, i) => (
+                {recentActivity.map((a, i) => (
                   <div key={i} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: i < RECENT_ACTIVITY.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: a.color, flexShrink: 0, marginTop: 5 }} />
                     <div>
@@ -539,6 +694,29 @@ export default function CMSManagementPage() {
           </div>
         </div>
       </div>
+      {/* Content Editor Modal */}
+      {(editItem || addNew) && (
+        <ContentEditorModal
+          item={editItem}
+          onClose={() => { setEditItem(null); setAddNew(false) }}
+          onSave={(updated) => {
+            if (addNew) {
+              persistItems([...items, updated as typeof CMS_ITEMS[0]])
+              setFlashId(updated.id)
+              setTimeout(() => setFlashId(null), 1500)
+              showToast('New content added successfully', 'success')
+            } else {
+              persistItems(items.map(i => i.id === updated.id ? updated as typeof CMS_ITEMS[0] : i))
+              setFlashId(updated.id)
+              setTimeout(() => setFlashId(null), 1500)
+              showToast('Content updated successfully', 'success')
+            }
+            setEditItem(null)
+            setAddNew(false)
+          }}
+        />
+      )}
+      {toast && <CMSToast msg={toast.msg} type={toast.type} />}
     </div>
   )
 }

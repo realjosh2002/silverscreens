@@ -100,7 +100,7 @@ export default function LoginPage() {
         subscribed:    user.subscribed    ?? false,
         plan:          user.plan          ?? null,
         country:       user.country       ?? '',
-        profileStatus: user.profileStatus ?? 'incomplete',
+        profileStatus: user.aspirant_profile?.verification_status ?? user.agency_profile?.verification_status ?? user.profileStatus ?? 'incomplete',
         profileNumber: user.profile_number ?? user.profileNumber ?? null,
         profilePhoto:  '',   // will be filled below
         loginAt:       new Date().toISOString(),
@@ -123,6 +123,26 @@ export default function LoginPage() {
 
       localStorage.setItem('ss_user', JSON.stringify(ssUser))
       localStorage.removeItem('ss_profile_draft') // clear any stale draft from previous user
+
+      // Track device type for analytics — direct Supabase insert from browser
+      try {
+        const ua = navigator.userAgent
+        const deviceType = /tablet|ipad|playbook|silk/i.test(ua)
+          ? 'Tablet'
+          : /mobile|iphone|ipod|android|blackberry|mini|windows\sce|palm/i.test(ua)
+            ? 'Mobile'
+            : 'Desktop'
+        fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/device_sessions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'apikey':        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            'Authorization': `Bearer ${token}`,
+            'Prefer':        'return=minimal',
+          },
+          body: JSON.stringify({ user_id: user.id, device_type: deviceType, user_agent: ua.substring(0, 500) }),
+        }).catch(() => {})
+      } catch {}
 
       // Optionally persist email for "remember me"
       if (remember) {

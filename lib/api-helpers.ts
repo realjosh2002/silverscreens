@@ -14,15 +14,15 @@ export function errorResponse(message: string, status = 400, details?: unknown) 
 }
 
 // Generate unique profile number
-// Aspirants: A10001, A10002 ...
-// Agencies:  C20001, C20002 ...
+// Aspirants: ASP + MMYY + XXXXX  e.g. ASP072610234
+// Agencies:  AG  + MMYY + XXXXX  e.g. AG072610234
 export function generateProfileNumber(role: 'aspirant' | 'agency'): string {
-  const prefix = role === 'aspirant' ? 'ASP' : 'AGE'
+  const prefix = role === 'aspirant' ? 'ASP' : 'AG'
   const now    = new Date()
   const mm     = String(now.getMonth() + 1).padStart(2, '0')
   const yy     = String(now.getFullYear()).slice(-2)
-  const xxxx   = String(Math.floor(Math.random() * 9000) + 1000)
-  return `${prefix}${mm}${yy}${xxxx}`
+  const xxxxx  = String(Math.floor(Math.random() * 90000) + 10000)
+  return `${prefix}${mm}${yy}${xxxxx}`
 }
 
 // Generate OTP (6 digits)

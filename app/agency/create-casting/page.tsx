@@ -1,9 +1,10 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
+
   ChevronLeft, ChevronRight, ChevronDown, Check, X,
   Bell, MessageSquare, FileText, Clapperboard, Building2,
   Camera, Tv, Mail, Music2, MoreHorizontal,
@@ -11,6 +12,7 @@ import {
   HelpCircle, ExternalLink, Save, Eye, Edit2, Info,
   Calendar as CalendarIcon, MapPin,
 } from 'lucide-react';
+import AgencyVerificationBanner from '@/components/layout/AgencyVerificationBanner';
 
 /* ─── Design tokens ─────────────────────────────────────────── */
 const RED    = '#C8202A';
@@ -36,49 +38,68 @@ const PROJECT_TYPES = [
   { key: 'Other',       icon: MoreHorizontal },
 ];
 
-const ROLE_TYPES = ['Lead', 'Supporting', 'Background / Extra', 'Cameo', 'Voice Over', 'Host / Anchor', 'Other'];
+const ROLE_TYPES = [
+  'Lead', 'Supporting', 'Character', 'Parallel Lead',
+  'Antagonist', 'Protagonist', 'Cameo', 'Guest Appearance',
+  'Special Appearance', 'Background / Junior Artist', 'Model',
+  'Anchor / Host', 'Voice Artist', 'Dancer', 'Stunt / Action Artist',
+  'Child Artist', 'Featured Artist', 'Other',
+];
 const EXPERIENCE_OPTIONS = ['No Experience', 'Less than 1 Year', '1 - 2 Years', '2 - 5 Years', '5 - 10 Years', '10+ Years'];
-const SKILLS = ['Acting', 'Dance', 'Singing', 'Dialogue Delivery', 'Modeling', 'Stunts', 'Voice Over', 'Comedy', 'Other'];
+const SKILLS = [
+  'Acting', 'Dialogue Delivery', 'Dancing', 'Action', 'Singing',
+  'Modelling', 'Yoga', 'Fighting', 'Mimicry', 'Horse Riding',
+  'Direction', 'Photography', 'Videography', 'Editing', 'Choreography',
+  'Make Up', 'Hair Styling', 'Costume Design', 'Script Writing', 'Voice Over',
+  'Anchoring', 'News Reading', 'Animation', 'VFX', 'Sound Design',
+  'Music Composition', 'Stunt', 'Production Management', 'Casting', 'Art Direction',
+  'Set Design', 'Cinematography', 'Dubbing', 'Influencing', 'Fashion Modelling',
+];
 
 const DEPT_SKILLS: Record<string, string[]> = {
-  'Acting':           ['Dialogue Delivery', 'Improvisation', 'Method Acting', 'Stage Acting', 'Screen Acting', 'Action Sequences', 'Comedy Timing', 'Emotional Range', 'Accent / Dialect', 'Dancing', 'Singing', 'Stunts'],
+  'Acting':           ['Acting', 'Dialogue Delivery', 'Dancing', 'Action', 'Singing', 'Mimicry', 'Fighting', 'Yoga', 'Horse Riding', 'Stunt', 'Voice Over', 'Dubbing'],
   'Direction':        ['Script Analysis', 'Shot Composition', 'Blocking', 'Actor Direction', 'Storyboarding', 'On-Set Leadership', 'Post Supervision'],
   'Production Office':['Scheduling', 'Budgeting', 'Crew Management', 'Location Coordination', 'Production Planning', 'Call Sheet Preparation', 'Vendor Management'],
   'Accounting':       ['Film Budgeting', 'Cost Reporting', 'Petty Cash Management', 'Payroll', 'Tally / Accounting Software'],
   'Locations':        ['Location Scouting', 'Permits & Permissions', 'Negotiation', 'Site Management', 'Logistics'],
   'Continuity':       ['Script Supervision', 'Detail Orientation', 'Photography', 'Continuity Reports', 'Scene Logging'],
-  'Casting':          ['Talent Sourcing', 'Audition Coordination', 'Character Analysis', 'Negotiation', 'Database Management'],
+  'Casting':          ['Casting', 'Production Management'],
   'Camera & Lighting':['Camera Operation', 'Lighting Design', 'Lens Selection', 'Color Theory', 'DIT', 'Crane / Jib Operation', 'Steadicam', 'Drone Operation'],
   'Grip':             ['Rigging', 'Dolly Operation', 'Crane Operation', 'Safety Compliance', 'Equipment Maintenance'],
   'Sound':            ['Boom Operation', 'Location Sound Recording', 'Sound Mixing', 'Noise Isolation', 'Wireless Mic Setup'],
-  'Art':              ['Set Design', 'Art Direction', 'Illustration', 'Graphic Design', 'Scale Modelling', 'AutoCAD / SketchUp'],
+  'Art':              ['Art Direction', 'Set Design'],
   'Sets':             ['Set Dressing', 'Prop Placement', 'Set Construction Coordination', 'Inventory Management'],
   'Construction':     ['Carpentry', 'Welding', 'Prop Making', 'Set Building', 'Safety Compliance'],
   'Scenic':           ['Scenic Painting', 'Texture Creation', 'Plastering', 'Mural Art'],
   'Property':         ['Prop Sourcing', 'Prop Management', 'Weapons Handling', 'Set Safety'],
-  'Costume':          ['Costume Design', 'Tailoring / Stitching', 'Period Styling', 'Wardrobe Management', 'Fabric Knowledge', 'Costume Breakdown'],
-  'Hair & Make Up':   ['Bridal Make Up', 'SFX Make Up', 'Prosthetics', 'Hair Styling', 'Colour & Highlights', 'Period Styling', 'Make Up for Camera', 'Airbrush'],
+  'Costume':          ['Costume Design'],
+  'Hair & Make Up':   ['Make Up', 'Hair Styling'],
   'Special Effects':  ['Pyrotechnics', 'Mechanical Effects', 'Atmospheric Effects', 'Safety Compliance', 'Rig Design'],
-  'Stunt':            ['Martial Arts', 'Wire Work', 'Vehicle Stunts', 'High Falls', 'Fight Choreography', 'Stunt Safety', 'Gymnastics'],
-  'Post Production':  ['Production Supervision', 'Deliverables Management', 'Vendor Coordination', 'Quality Control'],
-  'Editorial':        ['Video Editing', 'Avid', 'Premiere Pro', 'DaVinci Resolve', 'Color Grading', 'Offline / Online Editing', 'Negative Cutting'],
-  'Visual Effects':   ['Compositing', 'Rotoscoping', 'Motion Graphics', 'Matte Painting', 'CGI', 'Nuke', 'After Effects', 'Houdini'],
-  'Sound & Music':    ['Music Composition', 'Orchestration', 'Sound Design', 'Foley', 'ADR / Dubbing', 'DAW (Pro Tools / Logic)', 'Re-Recording Mixing', 'Sound Editing'],
-  'Animation':        ['2D Animation', '3D Animation', 'Character Rigging', 'Maya / Blender', 'Storyboarding'],
+  'Stunt':            ['Stunt', 'Action', 'Fighting', 'Horse Riding'],
+  'Post Production':  ['Production Management', 'Editing', 'VFX'],
+  'Editorial':        ['Editing', 'Cinematography', 'VFX'],
+  'Visual Effects':   ['VFX', 'Animation'],
+  'Sound & Music':    ['Sound Design', 'Music Composition', 'Dubbing'],
+  'Animation':        ['Animation', 'VFX'],
   'Electrical':       ['Electrical Rigging', 'Generator Operation', 'DIT / Digital Intermediate', 'Safety Compliance'],
-  'Singing':          ['Classical Singing', 'Playback Singing', 'Western Vocals', 'Folk Singing', 'Harmonium', 'Tabla', 'Sight Reading', 'Recording Studio Experience'],
-  'Dancing':          ['Bollywood', 'Classical (Bharatanatyam / Kathak)', 'Contemporary', 'Hip Hop', 'Ballet', 'Folk', 'Choreography', 'Stamina'],
-  'Dubbing':          ['Voice Modulation', 'Lip Sync', 'Language Fluency', 'Accent Adaptation', 'Recording Studio Experience'],
-  'Story':            ['Screenplay Writing', 'Dialogue Writing', 'Story Development', 'Character Building', 'Research'],
-  'Television':       ['Anchoring', 'Teleprompter Reading', 'Live Broadcasting', 'Stage Presence', 'Public Speaking', 'Interview Skills'],
-  'Modelling':        ['Ramp Walk', 'Portfolio Shoots', 'Brand Endorsement', 'Posing Techniques', 'Fitness', 'Commercial Modelling'],
-  'Advertisement':    ['Commercial Acting', 'Brand Awareness', 'Product Demonstration', 'Modelling'],
+  'Singing':          ['Singing', 'Music Composition', 'Sound Design'],
+  'Dancing':          ['Dancing', 'Choreography'],
+  'Dubbing':          ['Dubbing', 'Voice Over', 'Mimicry'],
+  'Story':            ['Script Writing'],
+  'Television':       ['Anchoring', 'News Reading'],
+  'Modeling':         ['Modelling', 'Fashion Modelling', 'Influencing'],
+  'Advertisement':    ['Modelling', 'Fashion Modelling', 'Influencing', 'Acting'],
   'Food':             ['Catering', 'Menu Planning', 'On-Set Food Safety', 'Large Volume Cooking'],
   'Transport':        ['Vehicle Driving (Light / Heavy)', 'Route Planning', 'Caravan Management', 'Logistics'],
   'Travels':          ['Travel Booking', 'Visa Processing', 'Hotel Coordination', 'Group Travel Management'],
   'Distributor':      ['Film Distribution', 'Territory Management', 'Theatre Booking', 'Revenue Tracking'],
 };
-const LANGUAGE_OPTIONS = ['Hindi', 'English', 'Tamil', 'Telugu', 'Kannada', 'Malayalam', 'Bengali', 'Marathi', 'Punjabi', 'Other'];
+const LANGUAGE_OPTIONS = [
+  'Hindi', 'English', 'Tamil', 'Telugu', 'Kannada',
+  'Malayalam', 'Bengali', 'Marathi', 'Gujarati', 'Punjabi',
+  'Odia', 'Assamese', 'Bhojpuri', 'Rajasthani', 'Urdu',
+  'Tulu', 'Konkani', 'Maithili', 'Chhattisgarhi', 'Haryanvi', 'Other',
+];
 const PROJECT_STATUS_OPTIONS = ['Pre-production', 'In Production', 'Post-production', 'Announced'];
 const AUDITION_FORMATS = [
   { key: 'In-Person',   icon: UsersRound },
@@ -89,17 +110,17 @@ const AUDITION_FORMATS = [
 const COMPENSATION_TYPES = ['Paid', 'Unpaid', 'Reimbursement', 'Others'];
 const COMPENSATION_DETAIL_OPTIONS = ['Fixed', 'Negotiable', 'Per Day Rate', 'Per Project Rate', 'Revenue Share'];
 
-// Countries that use INR — all others default to USD
-const INR_COUNTRIES = ['india', 'in']
+// Default currency is always INR — only override if location explicitly indicates foreign country
+const NON_INR_COUNTRIES = ['usa', 'united states', 'uk', 'united kingdom', 'australia', 'canada', 'uae', 'dubai', 'singapore']
 const getCurrency = (location: string) =>
-  INR_COUNTRIES.some(c => location.toLowerCase().includes(c)) ? 'INR' : location ? 'USD' : 'INR'
+  NON_INR_COUNTRIES.some(c => location.toLowerCase().includes(c)) ? 'USD' : 'INR'
 const CURRENCY_SYMBOLS: Record<string, string> = {
   INR: '₹', USD: '$', GBP: '£', AED: 'د.إ', AUD: 'A$', CAD: 'C$',
 }
 const CURRENCIES = ['INR', 'USD', 'GBP', 'AED', 'AUD', 'CAD']
 // Departments that require auditions (on-screen talent)
 const AUDITION_DEPARTMENTS = new Set([
-  'Acting', 'Dancing', 'Singing', 'Modelling', 'Television',
+  'Acting', 'Dancing', 'Singing', 'Modeling', 'Television',
   'Dubbing', 'Advertisement', 'Stunt',
 ]);
 
@@ -143,12 +164,12 @@ const DEPARTMENTS_AND_ROLES = [
   { department: 'Sound & Music',    roles: ['Sound Designer', 'Dialogue Editor', 'Sound Editor', 'Re-Recording Mixer', 'Music Supervisor', 'Music Composer / Director', 'Foley Artist', 'Conductor / Orchestrator', 'Sound Recorder / Mixer', 'Music Preparation', 'Music Editor'] },
   { department: 'Animation',        roles: ['Animation Artist'] },
   { department: 'Electrical',       roles: ['Electrician', 'Digital Intermediate Technician'] },
+  { department: 'Story',            roles: ['Story Writer'] },
   { department: 'Singing',          roles: ['Singer'] },
   { department: 'Dancing',          roles: ['Dancer'] },
   { department: 'Dubbing',          roles: ['Dubbing Artist'] },
-  { department: 'Story',            roles: ['Story Writer'] },
-  { department: 'Television',       roles: ['Anchoring', 'Newsreader', 'Talk Show', 'Stage Show', 'Drama', 'Production Crew'] },
-  { department: 'Modelling',        roles: ['Model', 'Advertisement'] },
+  { department: 'Television',       roles: ['Anchoring', 'Newsreader', 'Talkshow', 'Stageshow', 'Drama', 'Production Crew'] },
+  { department: 'Modeling',         roles: ['Model', 'Advertisement'] },
   { department: 'Advertisement',    roles: ['Advertisement'] },
   { department: 'Food',             roles: ['Food Supplier / Caterer'] },
   { department: 'Transport',        roles: ['Cab Service Provider', 'Caravan Service Provider'] },
@@ -304,7 +325,10 @@ function TimeInput({ value, onChange }: { value: string; onChange: (v: string) =
 
 function MultiTagSelect({ value, onChange, options, placeholder }: { value: string[]; onChange: (v: string[]) => void; options: string[]; placeholder: string }) {
   const [open, setOpen] = useState(false);
-  const toggle = (opt: string) => onChange(value.includes(opt) ? value.filter(v => v !== opt) : [...value, opt]);
+  const toggle = (opt: string) => {
+    onChange(value.includes(opt) ? value.filter(v => v !== opt) : [...value, opt]);
+    setOpen(false); // close after each selection
+  };
   return (
     <div style={{ position: 'relative' }}>
       <div onClick={() => setOpen(v => !v)} style={{ width: '100%', minHeight: 44, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '7px 14px', display: 'flex', alignItems: 'center', flexWrap: 'wrap' as const, gap: 6, cursor: 'pointer', boxSizing: 'border-box' as const }}>
@@ -400,6 +424,11 @@ function CreateCastingCallInner() {
 
   /* ── Load agency identity from ss_user instantly ── */
   useEffect(() => {
+    // Block unapproved agencies from accessing create-casting
+    if (!getIsApproved()) {
+      router.replace('/agency/dashboard');
+      return;
+    }
     try {
       const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
       if (u.name) {
@@ -408,6 +437,22 @@ function CreateCastingCallInner() {
       }
       if (u.profileNumber) setAgencyId(u.profileNumber);
     } catch {}
+    // Fetch real agency type from API
+    const h = getAuthHeaders();
+    fetch('/api/profile/agency', { headers: h })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        const p = data.data?.profile ?? data.profile ?? data;
+        const name = p.company_name ?? p.name;
+        if (name) {
+          setAgencyName(name);
+          setAgencyInitials(name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase());
+        }
+        const agNum = p.profile_number ?? p.profiles?.profile_number;
+        if (agNum) setAgencyId(agNum);
+        if (p.company_type ?? p.companyType) setAgencyType(p.company_type ?? p.companyType);
+      }).catch(() => {});
   }, []);
 
   /* ── Fetch live badge counts ── */
@@ -450,46 +495,49 @@ function CreateCastingCallInner() {
         .then(r => r.ok ? r.json() : null)
         .then(data => {
           if (!data) { setEditNotFound(true); return; }
-          const c = data.castingCall ?? data;
+          const c = data.data?.casting_call ?? data.castingCall ?? data.data ?? data;
           // Map API fields → CastingDraft fields
+          const modeReverseMap: Record<string, string> = {
+            'offline': 'In-Person', 'online': 'Virtual', 'both': 'Self-Tape',
+          };
           setDraft(prev => ({
             ...prev,
-            title:              c.title         ?? '',
-            projectTitle:       c.projectTitle   ?? c.projectName ?? '',
-            projectType:        c.projectType    ?? 'Film',
-            department:         c.department     ?? '',
-            role:               c.role           ?? '',
-            roleType:           c.roleType       ?? '',
-            shortDescription:   c.shortDescription ?? '',
-            gender:             c.gender         ?? 'Male',
-            ageFrom:            c.ageFrom        ?? '',
-            ageTo:              c.ageTo          ?? '',
-            experience:         c.experience     ?? c.experienceLevel ?? '',
-            roleDescription:    c.roleDescription ?? c.description ?? '',
-            skills:             Array.isArray(c.skills) ? c.skills : [],
-            languages:          Array.isArray(c.languages) ? c.languages : [],
-            projectStatus:      c.projectStatus  ?? '',
-            shootStart:         c.shootStart     ?? '',
-            shootEnd:           c.shootEnd       ?? '',
-            shootLocation:      c.shootLocation  ?? c.location ?? '',
-            hasSponsor:         c.hasSponsor     ?? 'No',
-            auditionFormat:     c.auditionFormat ?? 'In-Person',
-            auditionTimeFrom:   c.auditionTimeFrom ?? '',
-            auditionTimeTo:     c.auditionTimeTo ?? '',
-            auditionStart:      c.auditionStart  ?? '',
-            auditionEnd:        c.auditionEnd    ?? '',
-            auditionLocationType: c.auditionLocationType ?? 'Single Location',
-            auditionAddress:    c.auditionAddress ?? '',
+            title:              c.title              ?? '',
+            projectTitle:       c.title              ?? '',
+            projectType:        c.project_type       ?? 'Film',
+            department:         c.category           ?? '',
+            role:               c.role_name          ?? '',
+            roleType:           c.roleType           ?? '',
+            shortDescription:   c.eligibility_criteria ?? '',
+            gender:             c.gender_preference  ?? 'Male',
+            ageFrom:            c.age_min != null ? String(c.age_min) : '',
+            ageTo:              c.age_max != null ? String(c.age_max) : '',
+            experience:         c.experience_level   ?? '',
+            roleDescription:    c.role_description   ?? '',
+            skills:             Array.isArray(c.skills_required) ? c.skills_required : [],
+            languages:          Array.isArray(c.languages_required) ? c.languages_required : [],
+            projectStatus:      c.project_status     ?? '',
+            shootStart:         c.shoot_start ? new Date(c.shoot_start).toISOString().split('T')[0] : '',
+            shootEnd:           c.shoot_end   ? new Date(c.shoot_end).toISOString().split('T')[0]   : '',
+            shootLocation:      c.location           ?? '',
+            hasSponsor:         c.has_sponsor        ?? 'No',
+            auditionFormat:     modeReverseMap[c.audition_mode] ?? 'In-Person',
+            auditionTimeFrom:   c.audition_time_from ?? '',
+            auditionTimeTo:     c.audition_time_to   ?? '',
+            auditionStart:      c.audition_start ? new Date(c.audition_start).toISOString().split('T')[0] : '',
+            auditionEnd:        c.audition_end   ? new Date(c.audition_end).toISOString().split('T')[0]   : '',
+            auditionLocationType: c.audition_location_type ?? 'Single Location',
+            auditionAddress:    c.audition_details   ?? '',
             auditionInstructions: c.auditionInstructions ?? '',
-            contactName:        c.contactName    ?? '',
-            contactEmail:       c.contactEmail   ?? '',
-            contactMobile:      c.contactMobile  ?? '',
-            howToApply:         Array.isArray(c.howToApply) ? c.howToApply : [],
-            compensationType:   c.compensationType ?? 'Paid',
-            compensationDetail: c.compensationDetail ?? '',
-            amount:             c.amount         ?? '',
-            currency:           c.currency       ?? 'INR',
-            paymentTerms:       c.paymentTerms   ?? '',
+            contactName:        c.contact_name       ?? '',
+            contactEmail:       c.contact_email      ?? '',
+            contactMobile:      c.contact_mobile     ?? '',
+            howToApply:         Array.isArray(c.how_to_apply) ? c.how_to_apply : [],
+            compensationType:   c.compensationType   ?? 'Paid',
+            compensationDetail: c.compensation_details ?? '',
+            amount:             c.budget_min != null ? String(c.budget_min) : '',
+            currency:           c.currency           ?? 'INR',
+            paymentTerms:       c.payment_terms      ?? '',
             additionalRequirements: c.additionalRequirements ?? '',
           }));
         })
@@ -545,6 +593,23 @@ function CreateCastingCallInner() {
   compensation_details:  draft.compensationDetail,
   budget_min:            draft.amount ? Number(draft.amount) : null,
   budget_max:            draft.amount ? Number(draft.amount) : null,
+  project_status:        draft.projectStatus,
+  shoot_start:           draft.shootStart || null,
+  shoot_end:             draft.shootEnd || null,
+  location:              draft.shootLocation,
+  has_sponsor:           draft.hasSponsor,
+  age_min:               draft.ageFrom ? Number(draft.ageFrom) : null,
+  age_max:               draft.ageTo   ? Number(draft.ageTo)   : null,
+  audition_time_from:    draft.auditionTimeFrom || null,
+  audition_time_to:      draft.auditionTimeTo || null,
+  audition_start:        draft.auditionStart || null,
+  audition_end:          draft.auditionEnd || null,
+  audition_location_type: draft.auditionLocationType || null,
+  contact_name:          draft.contactName || null,
+  contact_email:         draft.contactEmail || null,
+  contact_mobile:        draft.contactMobile || null,
+  how_to_apply:          draft.howToApply,
+  payment_terms:         draft.paymentTerms || null,
 };
       if (editId) {
         await fetch(`/api/casting-calls/${editId}`, {
@@ -563,13 +628,6 @@ function CreateCastingCallInner() {
   };
 
   const scrollToTop = () => { scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' }) }
-  // Auto-switch currency based on shoot location
-  useEffect(() => {
-    if (draft.shootLocation) {
-      const detected = getCurrency(draft.shootLocation)
-      if (detected !== draft.currency) update('currency', detected)
-    }
-  }, [draft.shootLocation])
 
   const goToStep = (n: number) => { setStep(n); setEditFromReview(false); scrollToTop(); };
 
@@ -595,6 +653,23 @@ function CreateCastingCallInner() {
   compensation_details: draft.compensationDetail,
   budget_min:           draft.amount ? Number(draft.amount) : null,
   budget_max:           draft.amount ? Number(draft.amount) : null,
+  project_status:        draft.projectStatus,
+  shoot_start:           draft.shootStart || null,
+  shoot_end:             draft.shootEnd || null,
+  location:              draft.shootLocation,
+  has_sponsor:           draft.hasSponsor,
+  age_min:               draft.ageFrom ? Number(draft.ageFrom) : null,
+  age_max:               draft.ageTo   ? Number(draft.ageTo)   : null,
+  audition_time_from:    draft.auditionTimeFrom || null,
+  audition_time_to:      draft.auditionTimeTo || null,
+  audition_start:        draft.auditionStart || null,
+  audition_end:          draft.auditionEnd || null,
+  audition_location_type: draft.auditionLocationType || null,
+  contact_name:          draft.contactName || null,
+  contact_email:         draft.contactEmail || null,
+  contact_mobile:        draft.contactMobile || null,
+  how_to_apply:          draft.howToApply,
+  payment_terms:         draft.paymentTerms || null,
 };
 
     try {
@@ -700,7 +775,7 @@ function CreateCastingCallInner() {
 
       {/* ── TOPNAV ── */}
       <header style={{ height: 60, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 14, padding: '0 24px', background: BG2, borderBottom: '1px solid rgba(255,255,255,0.06)', zIndex: 100 }}>
-        <SilverScreensLogo size="md" href="/" showTagline={false} />
+        <SilverScreensLogo size="md" href="/agency/dashboard" showTagline={false} />
         <div style={{ flex: 1 }} />
         <button onClick={() => router.push('/agency/casting-calls')} style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'transparent', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '0 16px', height: 36, fontSize: 15, fontWeight: 600, fontFamily: BARLOW, cursor: 'pointer' }}>
           ← Back to Casting Calls
@@ -734,22 +809,15 @@ function CreateCastingCallInner() {
                   <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Agency ID</span>
                   <span style={{ fontSize: 14, fontWeight: 700, color: GOLD }}>{agencyId}</span>
                 </div>
-                {[
-                  { label: 'Reports & Analytics',    href: '/agency/reports' },
-                  { label: 'Subscription & Billing', href: '/agency/subscription' },
-                  { label: 'Company Profile',         href: '/agency-profile' },
-                  { label: 'Documents',               href: '/agency/documents' },
-                  { label: 'Calendar',                href: '/agency/calendar' },
-                  { label: 'Settings',                href: '/agency/settings' },
-                  { label: 'Support',                 href: '/contact' },
-                  { label: 'Logout',                  href: '/login' },
-                ].map(({ label, href }) => (
-                  <div key={label} onClick={() => { if (label === 'Logout') { localStorage.removeItem('ss_user'); window.location.replace('/login'); } else { router.push(href); setProfileOpen(false); } }}
-                    style={{ padding: '10px 16px', fontSize: 15, cursor: 'pointer', color: label === 'Logout' ? '#ff6b6b' : '#F5F5F5', borderTop: label === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >{label}</div>
-                ))}
+                {(()=>{
+                  const isApproved=(()=>{try{const u=JSON.parse(localStorage.getItem('ss_user')||'{}');const ps=u?.profileStatus??'pending';return ps==='approved'||ps==='active';}catch{return true;}})();
+                  const menuItems=isApproved
+                    ?[{label:'Reports & Analytics',href:'/agency/reports'},{label:'Subscription & Billing',href:'/agency/subscription'},{label:'Company Profile',href:'/agency-profile'},{label:'Documents',href:'/agency/documents'},{label:'Calendar',href:'/agency/calendar'},{label:'Settings',href:'/agency/settings'},{label:'Support',href:'/agency/support'},{label:'Logout',href:'/login'}]
+                    :[{label:'Company Profile',href:'/create-company-profile'},{label:'Logout',href:'/login'}];
+                  return menuItems.map(({label,href})=>(
+                    <div key={label} onClick={()=>{if(label==='Logout'){localStorage.removeItem('ss_user');window.location.replace('/login');}else{router.push(href);setProfileOpen(false);}}} style={{padding:'10px 16px',fontSize:15,cursor:'pointer',color:label==='Logout'?'#ff6b6b':'#F5F5F5',borderTop:label==='Logout'?'1px solid rgba(255,255,255,0.07)':'none'}} onMouseEnter={e=>(e.currentTarget.style.background='rgba(255,255,255,0.05)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>{label}</div>
+                  ));
+                })()}
               </div>
             </>
           )}
@@ -801,6 +869,8 @@ function CreateCastingCallInner() {
 
         {/* ── MAIN CONTENT ── */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' as const, overflow: 'hidden' }}>
+          <AgencyVerificationBanner />
+
           <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto' as const, padding: '24px 32px' }}>
 
             <h1 style={{ fontFamily: BEBAS, fontSize: 32, letterSpacing: 1.5, color: '#fff', margin: '0 0 6px' }}>{editId ? 'Edit Casting Call' : 'Create Casting Call'}</h1>
@@ -1271,6 +1341,7 @@ function CreateCastingCallInner() {
                   </ReviewGrid>
                   <div style={{ marginBottom: 4 }}>
                     <ReviewField label="Payment Terms" value={draft.paymentTerms} optional wide />
+                    <ReviewField label="Additional Requirements" value={draft.additionalRequirements} optional wide />
                   </div>
 
                 </div>
@@ -1336,6 +1407,15 @@ function CreateCastingCallInner() {
 }
 
 /* ─── Suspense wrapper (required for useSearchParams in Next.js App Router) ── */
+function getIsApproved(): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
+    const ps = u?.profileStatus ?? 'pending';
+    return ps === 'approved' || ps === 'active';
+  } catch { return true; }
+}
+
 export default function CreateCastingCallPage() {
   return (
     <Suspense fallback={<div style={{ background: '#050505', minHeight: '100vh' }} />}>

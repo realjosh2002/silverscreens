@@ -72,7 +72,39 @@ function PaymentInner() {
       if (!sdkLoaded) { setError('Failed to load payment gateway. Please check your internet connection.'); setLoading(false); return }
 
       let token = ''
-      try { const ssUser = JSON.parse(localStorage.getItem('ss_user') || '{}'); token = ssUser.token || '' } catch {}
+      try {
+        const ssUser = JSON.parse(localStorage.getItem('ss_user') || '{}')
+        token = ssUser.token || ''
+
+        // Refresh token if expired or about to expire (within 5 mins)
+        if (token) {
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]))
+            const expiresAt = payload.exp * 1000
+            const fiveMinutes = 5 * 60 * 1000
+            if (Date.now() > expiresAt - fiveMinutes) {
+              const refreshRes = await fetch('/api/auth/refresh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refresh_token: ssUser.refreshToken }),
+              })
+              if (refreshRes.ok) {
+                const refreshData = await refreshRes.json()
+                const newToken = refreshData.data?.access_token ?? refreshData.access_token
+                const newRefresh = refreshData.data?.refresh_token ?? refreshData.refresh_token
+                if (newToken) {
+                  token = newToken
+                  localStorage.setItem('ss_user', JSON.stringify({
+                    ...ssUser,
+                    token: newToken,
+                    refreshToken: newRefresh || ssUser.refreshToken,
+                  }))
+                }
+              }
+            }
+          } catch {}
+        }
+      } catch {}
 
       const orderRes = await fetch('/api/payment/create-order', {
         method: 'POST',
@@ -146,67 +178,27 @@ function PaymentInner() {
         </div>
 
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 40px', display: 'grid', gridTemplateColumns: '1fr 400px', gap: 32 }}>
-          <div>
-            <div style={{ marginBottom: 28 }}>
-              <div style={{ fontFamily: B, fontSize: 20, letterSpacing: 2, color: '#F5F5F5', marginBottom: 14 }}>PAYMENT METHOD</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
-                {([{ id: 'card', label: 'Card', icon: '💳' }, { id: 'upi', label: 'UPI', icon: '📱' }, { id: 'netbanking', label: 'Net Banking', icon: '🏦' }, { id: 'wallet', label: 'Wallet', icon: '👛' }] as const).map(m => (
-                  <button key={m.id} onClick={() => setMethod(m.id)} style={{ padding: '14px 10px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${method === m.id ? GOLD : 'rgba(255,255,255,0.08)'}`, background: method === m.id ? 'rgba(212,166,74,0.08)' : 'rgba(255,255,255,0.02)', color: method === m.id ? GOLD : '#A8B0BD', fontFamily: M, fontSize: 14, fontWeight: 600, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 6, transition: 'all 0.2s' }}>
-                    <span style={{ fontSize: 22 }}>{m.icon}</span>{m.label}
-                  </button>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 16 }}>
+            <div style={{ background: '#0B0F14', border: '1px solid rgba(212,166,74,0.12)', borderRadius: 12, padding: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 20, minHeight: 300 }}>
+              <div style={{ fontSize: 48 }}>🔒</div>
+              <div style={{ fontFamily: B, fontSize: 22, letterSpacing: 2, color: '#F5F5F5' }}>SECURE PAYMENT</div>
+              <div style={{ fontFamily: M, fontSize: 15, color: '#A8B0BD', lineHeight: 1.7, maxWidth: 380 }}>
+                Click the <strong style={{ color: GOLD }}>Pay Now</strong> button to complete your payment securely via Razorpay.<br /><br />
+                You can pay using <strong style={{ color: '#F5F5F5' }}>Credit/Debit Card, UPI, Net Banking, or Wallet</strong> — all options are available on the payment screen.
+              </div>
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' as const, justifyContent: 'center' }}>
+                {['💳 Cards', '📱 UPI', '🏦 Net Banking', '👛 Wallets'].map(m => (
+                  <span key={m} style={{ padding: '8px 16px', borderRadius: 20, background: 'rgba(212,166,74,0.06)', border: '1px solid rgba(212,166,74,0.15)', color: GOLD, fontFamily: M, fontSize: 14 }}>{m}</span>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 20, marginTop: 8 }}>
+                {['🛡️ 256-bit SSL', '✅ RBI Compliant', '🔄 Instant Confirmation'].map(b => (
+                  <span key={b} style={{ fontFamily: M, fontSize: 13, color: '#6A7080' }}>{b}</span>
                 ))}
               </div>
             </div>
 
-            {method === 'card' && (
-              <div style={{ background: '#0B0F14', border: '1px solid rgba(212,166,74,0.12)', borderRadius: 12, padding: 28 }}>
-                <div style={{ fontFamily: B, fontSize: 18, letterSpacing: 1.5, color: '#F5F5F5', marginBottom: 20 }}>CARD DETAILS</div>
-                <div style={{ display: 'flex', gap: 10, marginBottom: 22 }}>
-                  {CARDS.map(c => (<button key={c.id} onClick={() => setCardType(c.id)} style={{ padding: '8px 18px', borderRadius: 6, cursor: 'pointer', border: `1px solid ${cardType === c.id ? GOLD : 'rgba(255,255,255,0.08)'}`, background: cardType === c.id ? 'rgba(212,166,74,0.1)' : 'transparent', color: cardType === c.id ? GOLD : '#6A7080', fontFamily: M, fontSize: 14, fontWeight: 600, transition: 'all 0.2s' }}>{c.label}</button>))}
-                </div>
-                <div style={{ display: 'grid', gap: 16 }}>
-                  <div><label style={lbl}>Card Number</label><input value={form.cardNumber} onChange={e => setForm(f => ({ ...f, cardNumber: formatCard(e.target.value) }))} placeholder="0000 0000 0000 0000" style={inp} /></div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                    <div><label style={lbl}>Expiry Date</label><input value={form.expiry} onChange={e => setForm(f => ({ ...f, expiry: formatExpiry(e.target.value) }))} placeholder="MM/YY" style={inp} /></div>
-                    <div><label style={lbl}>CVV</label><input value={form.cvv} onChange={e => setForm(f => ({ ...f, cvv: e.target.value.replace(/\D/g,'').slice(0,4) }))} placeholder="•••" type="password" style={inp} /></div>
-                  </div>
-                  <div><label style={lbl}>Cardholder Name</label><input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Name as on card" style={inp} /></div>
-                </div>
-              </div>
-            )}
-
-            {method === 'upi' && (
-              <div style={{ background: '#0B0F14', border: '1px solid rgba(212,166,74,0.12)', borderRadius: 12, padding: 28 }}>
-                <div style={{ fontFamily: B, fontSize: 18, letterSpacing: 1.5, color: '#F5F5F5', marginBottom: 20 }}>UPI PAYMENT</div>
-                <label style={lbl}>UPI ID</label>
-                <input value={form.upiId} onChange={e => setForm(f => ({ ...f, upiId: e.target.value }))} placeholder="yourname@upi" style={inp} />
-                <div style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap' as const }}>
-                  {['GPay', 'PhonePe', 'Paytm', 'BHIM'].map(app => (<button key={app} style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid rgba(212,166,74,0.2)', background: 'transparent', color: GOLD, fontFamily: M, fontSize: 14, cursor: 'pointer' }}>{app}</button>))}
-                </div>
-              </div>
-            )}
-
-            {method === 'netbanking' && (
-              <div style={{ background: '#0B0F14', border: '1px solid rgba(212,166,74,0.12)', borderRadius: 12, padding: 28 }}>
-                <div style={{ fontFamily: B, fontSize: 18, letterSpacing: 1.5, color: '#F5F5F5', marginBottom: 20 }}>NET BANKING</div>
-                <label style={lbl}>Select Your Bank</label>
-                <select value={form.bank} onChange={e => setForm(f => ({ ...f, bank: e.target.value }))} style={{ ...inp, cursor: 'pointer', colorScheme: 'dark' }}>
-                  <option value="">-- Select Bank --</option>
-                  {['SBI','HDFC Bank','ICICI Bank','Axis Bank','Kotak Mahindra','Yes Bank','PNB','Bank of Baroda','Canara Bank'].map(b => (<option key={b} value={b}>{b}</option>))}
-                </select>
-              </div>
-            )}
-
-            {method === 'wallet' && (
-              <div style={{ background: '#0B0F14', border: '1px solid rgba(212,166,74,0.12)', borderRadius: 12, padding: 28 }}>
-                <div style={{ fontFamily: B, fontSize: 18, letterSpacing: 1.5, color: '#F5F5F5', marginBottom: 20 }}>SELECT WALLET</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-                  {['Paytm','PhonePe','Amazon Pay','MobiKwik','Freecharge','Airtel Money'].map(w => (<button key={w} onClick={() => setForm(f => ({ ...f, wallet: w }))} style={{ padding: '14px 10px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${form.wallet === w ? GOLD : 'rgba(255,255,255,0.08)'}`, background: form.wallet === w ? 'rgba(212,166,74,0.08)' : 'rgba(255,255,255,0.02)', color: form.wallet === w ? GOLD : '#A8B0BD', fontFamily: M, fontSize: 14, fontWeight: 600, transition: 'all 0.2s' }}>{w}</button>))}
-                </div>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginTop: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
               <button onClick={() => setAgree(!agree)} style={{ width: 18, height: 18, borderRadius: 4, flexShrink: 0, marginTop: 1, border: `1px solid ${agree ? GOLD : 'rgba(212,166,74,0.3)'}`, background: agree ? GOLD : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {agree && <span style={{ color: '#050505', fontSize: 14, fontWeight: 900 }}>✓</span>}
               </button>
@@ -216,15 +208,14 @@ function PaymentInner() {
             </div>
 
             {error && (
-              <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'rgba(200,32,42,0.1)', border: '1px solid rgba(200,32,42,0.3)', borderRadius: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'rgba(200,32,42,0.1)', border: '1px solid rgba(200,32,42,0.3)', borderRadius: 8 }}>
                 <span style={{ fontSize: 16, flexShrink: 0 }}>⚠️</span>
                 <span style={{ fontFamily: M, fontSize: 14, color: '#fca5a5' }}>{error}</span>
               </div>
             )}
           </div>
 
-          <div>
-            <div style={{ background: '#0B0F14', border: '1px solid rgba(212,166,74,0.15)', borderRadius: 12, padding: 24, position: 'sticky' as const, top: 100 }}>
+          <div style={{ background: '#0B0F14', border: '1px solid rgba(212,166,74,0.15)', borderRadius: 12, padding: 24, position: 'sticky' as const, top: 100 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                 <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(212,166,74,0.12)', border: '1px solid rgba(212,166,74,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>{plan.type === 'Aspirant' ? '🎭' : '🏢'}</div>
                 <div>
@@ -264,7 +255,7 @@ function PaymentInner() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)' }}><span style={{ fontFamily: B, fontSize: 18, letterSpacing: 1, color: '#F5F5F5' }}>TOTAL</span><span style={{ fontFamily: B, fontSize: 30, letterSpacing: 1, color: GOLD }}>{fmt(total)}</span></div>
               </div>
               <button onClick={handlePay} disabled={!agree || loading} style={{ width: '100%', padding: '15px', background: agree && !loading ? GOLD : 'rgba(212,166,74,0.3)', border: 'none', borderRadius: 8, cursor: agree && !loading ? 'pointer' : 'not-allowed', fontFamily: B, fontSize: 22, letterSpacing: 3, color: '#050505', boxShadow: agree && !loading ? '0 8px 28px rgba(212,166,74,0.3)' : 'none', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-                {loading ? <><span style={{ fontSize: 18, display: 'inline-block', animation: 'spin 1s linear infinite' }}>⟳</span> PROCESSING…</> : <>🔒 PAY {fmt(total)}</>}
+                {loading ? <><span style={{ fontSize: 18, display: 'inline-block', animation: 'spin 1s linear infinite' }}>{'\u27F3'}</span> PROCESSING...</> : <>{'\uD83D\uDD12'} PAY {fmt(total)}</>}
               </button>
               <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginTop: 16 }}>
                 {['🛡️ Secure', '🔄 Cancel Anytime', '🎧 24/7 Support'].map(b => (<span key={b} style={{ fontFamily: M, fontSize: 13, color: '#6A7080' }}>{b}</span>))}
@@ -272,8 +263,7 @@ function PaymentInner() {
             </div>
           </div>
         </div>
-        <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
-      </div>
+      <style dangerouslySetInnerHTML={{__html: `@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}} />
     </>
   )
 }

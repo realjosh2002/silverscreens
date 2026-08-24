@@ -1,6 +1,7 @@
-'use client';
+﻿'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
@@ -25,6 +26,15 @@ const BG4    = '#1C2030';
 const BEBAS  = "'Bebas Neue', sans-serif";
 const BARLOW = "'Barlow Condensed', sans-serif";
 
+function getIsApproved(): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
+    const ps = u?.profileStatus ?? 'pending';
+    return ps === 'approved' || ps === 'active';
+  } catch { return true; }
+}
+
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard',               href: '/agency/dashboard' },
   { icon: PlusCircle,      label: 'Create Casting Call',     href: '/agency/create-casting' },
@@ -34,11 +44,11 @@ const NAV_ITEMS = [
   { icon: Star,            label: 'Shortlisted Talents',     href: '/agency/shortlisted' },
   { icon: CalendarCheck,   label: 'Audition Management',     href: '/agency/auditions', active: true },
   { icon: Bookmark,        label: 'Saved Talents',           href: '/agency/saved-talents' },
-  { icon: MessageSquare,   label: 'Messages',  badge: 12,    href: '/agency/messages' },
-  { icon: Bell,            label: 'Notifications', badge: 3, href: '/agency/notifications' },
+  { icon: MessageSquare,   label: 'Messages',  href: '/agency/messages' },
+  { icon: Bell,            label: 'Notifications', href: '/agency/notifications' },
 ];
 
-type AuditionStatus = 'Scheduled' | 'Completed' | 'Cancelled' | 'Rescheduled' | 'Pending' | 'In Review' | 'Selected' | 'Rejected';
+type AuditionStatus = 'Scheduled' | 'Completed' | 'Cancelled' | 'Rescheduled' | 'Pending' | 'In Review' | 'Selected' | 'Rejected' | 'On Hold';
 
 const STATUS_CFG: Record<AuditionStatus, { color: string; bg: string; border: string }> = {
   Scheduled:   { color: BLUE,   bg: 'rgba(59,130,246,0.12)',  border: 'rgba(59,130,246,0.3)'  },
@@ -49,6 +59,7 @@ const STATUS_CFG: Record<AuditionStatus, { color: string; bg: string; border: st
   'In Review':  { color: GOLD,   bg: 'rgba(212,166,74,0.12)',  border: 'rgba(212,166,74,0.3)'  },
   Selected:    { color: GREEN,  bg: 'rgba(34,197,94,0.12)',   border: 'rgba(34,197,94,0.3)'   },
   Rejected:    { color: RED,    bg: 'rgba(200,32,42,0.12)',   border: 'rgba(200,32,42,0.3)'   },
+  'On Hold':   { color: GOLD,   bg: 'rgba(212,166,74,0.12)',  border: 'rgba(212,166,74,0.3)'  },
 };
 
 interface Audition {
@@ -68,6 +79,8 @@ interface Audition {
 }
 
 const STATUS_TAB_MAP: Record<string, AuditionStatus[]> = {
+  active:      ['Scheduled', 'Rescheduled', 'Pending', 'In Review', 'On Hold'],
+  archived:    ['Completed', 'Cancelled', 'Selected', 'Rejected'],
   all:         ['Scheduled', 'Completed', 'Cancelled', 'Rescheduled', 'Pending', 'In Review', 'Selected', 'Rejected'],
   inreview:    ['In Review'],
   scheduled:   ['Scheduled'],
@@ -77,6 +90,7 @@ const STATUS_TAB_MAP: Record<string, AuditionStatus[]> = {
   cancelled:   ['Cancelled'],
   selected:    ['Selected'],
   rejected:    ['Rejected'],
+  on_hold:    ['On Hold'],
 };
 
 const FORMAT_ICON: Record<string, React.ReactNode> = {
@@ -89,12 +103,13 @@ export default function AuditionManagementPage() {
   const router = useRouter();
   const [sidebarOpen,  setSidebarOpen]  = useState(false);
   const [profileOpen,  setProfileOpen]  = useState(false);
-  const [activeTab,    setActiveTab]    = useState('all');
+  const [activeTab,    setActiveTab]    = useState('active');
   const [search,       setSearch]       = useState('');
   const [sortBy,       setSortBy]       = useState('Date: Newest');
   const [sortOpen,     setSortOpen]     = useState(false);
   const [selectedIds,  setSelectedIds]  = useState<string[]>([]);
   const [rowMenuOpen,  setRowMenuOpen]  = useState<string | null>(null);
+  const [menuPos,      setMenuPos]      = useState({ top: 0, right: 0 });
   const [page,         setPage]         = useState(1);
   const [auditions,    setAuditions]    = useState<Audition[]>([]);
   const [loading,      setLoading]      = useState(true);
@@ -105,16 +120,19 @@ export default function AuditionManagementPage() {
   const [notifCount,   setNotifCount]   = useState(0);
   const PER_PAGE = 10;
 
+  const activeCount   = auditions.filter(a => STATUS_TAB_MAP.active.includes(a.status)).length;
+  const archivedCount = auditions.filter(a => STATUS_TAB_MAP.archived.includes(a.status)).length;
   const SUB_TABS = [
+    { key: 'active',      label: 'Active',      count: activeCount,   highlight: true  },
+    { key: 'archived',    label: 'Archived',    count: archivedCount, highlight: false },
     { key: 'all',         label: 'All',         count: auditions.length },
-    { key: 'inreview',    label: 'In Review',   count: auditions.filter(a => a.status === 'In Review').length   },
     { key: 'scheduled',   label: 'Scheduled',   count: auditions.filter(a => a.status === 'Scheduled').length   },
-    { key: 'completed',   label: 'Completed',   count: auditions.filter(a => a.status === 'Completed').length   },
-    { key: 'pending',     label: 'Pending',     count: auditions.filter(a => a.status === 'Pending').length     },
     { key: 'rescheduled', label: 'Rescheduled', count: auditions.filter(a => a.status === 'Rescheduled').length },
+    { key: 'completed',   label: 'Completed',   count: auditions.filter(a => a.status === 'Completed').length   },
     { key: 'cancelled',   label: 'Cancelled',   count: auditions.filter(a => a.status === 'Cancelled').length   },
     { key: 'selected',    label: 'Selected',    count: auditions.filter(a => a.status === 'Selected').length    },
     { key: 'rejected',    label: 'Rejected',    count: auditions.filter(a => a.status === 'Rejected').length    },
+    { key: 'on_hold',     label: 'On Hold',     count: auditions.filter(a => a.status === 'On Hold').length     },
   ];
 
   const SB_W = sidebarOpen ? 230 : 52;
@@ -130,60 +148,93 @@ export default function AuditionManagementPage() {
     } catch {}
   }, []);
 
+  async function getFreshHeaders(): Promise<Record<string, string>> {
+    try {
+      const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
+      const rt = u.refreshToken ?? u.refresh_token ?? '';
+      if (rt) {
+        const res = await fetch('/api/auth/refresh', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: rt }),
+        });
+        if (res.ok) {
+          const d = await res.json();
+          const nt = d?.data?.access_token ?? '';
+          if (nt) {
+            localStorage.setItem('ss_user', JSON.stringify({ ...u, token: nt, refreshToken: d?.data?.refresh_token ?? rt }));
+            return { Authorization: `Bearer ${nt}` };
+          }
+        }
+      }
+      if (u.token) return { Authorization: `Bearer ${u.token}` };
+    } catch {}
+    return {};
+  }
+
   useEffect(() => {
     const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
-    const token = u.token;
-    if (!token) { setLoading(false); return; }
+    const h = u.token ? { Authorization: `Bearer ${u.token}` } : {};
+    if (!u.token) { setLoading(false); return; }
 
-    const h = { Authorization: `Bearer ${token}` };
+    // Refresh token in background then re-fetch if needed
+    getFreshHeaders().then(freshH => {
+      if (freshH.Authorization !== h.Authorization) {
+        // Token was refreshed — re-fetch with new token
+        fetch('/api/auditions?limit=100', { headers: freshH })
+          .then(r => r.ok ? r.json() : null)
+          .then(data => {
+            if (!data) return;
+            const list = data.data?.auditions ?? data.auditions ?? [];
+            if (!Array.isArray(list) || list.length === 0) return;
+            processList(list);
+          }).catch(() => {});
+      }
+    }).catch(() => {});
+
+    const processList = (list: any[]) => {
+      const statusMap: Record<string, AuditionStatus> = {
+        scheduled: 'Scheduled', completed: 'Completed',
+        cancelled: 'Cancelled', rescheduled: 'Rescheduled',
+        selected: 'Selected', rejected: 'Rejected', on_hold: 'On Hold',
+      };
+      const modeMap: Record<string, Audition['format']> = {
+        offline: 'In-Person', online: 'Virtual', both: 'Self-Tape',
+      };
+      setAuditions(list.map((a: any) => {
+        const ap = a.aspirant_profiles ?? {};
+        const cc = a.casting_calls ?? {};
+        const scheduledAt = a.scheduled_at ? new Date(a.scheduled_at) : null;
+        return {
+          id: a.id, candidateId: ap.id ?? a.aspirant_id,
+          aspirantUserId: ap.user_id ?? a.aspirant_id ?? '',
+          name: [ap.first_name, ap.last_name].filter(Boolean).join(' ') || 'Unknown',
+          verified: ap.verification_status === 'approved',
+          role: cc.role_name ?? '', castingCall: cc.title ?? '',
+          projectType: cc.project_type ?? '',
+          date: scheduledAt ? scheduledAt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
+          time: scheduledAt ? scheduledAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '',
+          duration: `${a.duration_minutes ?? 30} min`,
+          format: modeMap[a.mode] ?? 'In-Person',
+          location: a.venue_details ?? (a.mode === 'online' ? 'Video Call (link sent)' : ''),
+          round: 'Audition Round',
+          status: statusMap[a.status] ?? 'Scheduled',
+          img: ap.profile_image_url ?? '',
+          notes: a.notes,
+        } as Audition;
+      }));
+    };
 
     fetch('/api/auditions?limit=100', { headers: h })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data) return;
         const list = data.data?.auditions ?? data.auditions ?? [];
-        if (!Array.isArray(list) || list.length === 0) return;
-        const statusMap: Record<string, AuditionStatus> = {
-          scheduled:   'Scheduled',
-          completed:   'Completed',
-          cancelled:   'Cancelled',
-          rescheduled: 'Rescheduled',
-        };
-        const modeMap: Record<string, Audition['format']> = {
-          offline: 'In-Person',
-          online:  'Virtual',
-          both:    'Self-Tape',
-        };
-        setAuditions(list.map((a: any) => {
-          const ap = a.aspirant_profiles ?? {};
-          const cc = a.casting_calls ?? {};
-          const scheduledAt = a.scheduled_at ? new Date(a.scheduled_at) : null;
-          return {
-            id:             a.id,
-            candidateId:    ap.id ?? a.aspirant_id,
-            // aspirant_profiles.user_id is the profiles.id needed for messaging
-            aspirantUserId: ap.user_id ?? a.aspirant_id ?? '',
-            name:           [ap.first_name, ap.last_name].filter(Boolean).join(' ') || 'Unknown',
-            verified:       ap.verification_status === 'approved',
-            role:           cc.role_name ?? '',
-            castingCall:    cc.title ?? '',
-            projectType:    cc.project_type ?? '',
-            date:           scheduledAt ? scheduledAt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
-            time:           scheduledAt ? scheduledAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '',
-            duration:       `${a.duration_minutes ?? 30} min`,
-            format:         modeMap[a.mode] ?? 'In-Person',
-            location:       a.venue_details ?? (a.mode === 'online' ? 'Video Call (link sent)' : ''),
-            round:          'Audition Round',
-            status:         statusMap[a.status] ?? 'Scheduled',
-            img:            ap.profile_image_url ?? 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face',
-            notes:          a.notes,
-          } as Audition;
-        }));
+        if (Array.isArray(list) && list.length > 0) processList(list);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
 
-    fetch('/api/messages/conversations', { headers: h })
+      fetch('/api/messages/conversations', { headers: h })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data) return;
@@ -198,22 +249,73 @@ export default function AuditionManagementPage() {
         const count = data.data?.unread_count ?? data.unread_count;
         if (count != null) setNotifCount(count);
       }).catch(() => {});
+
   }, []);
 
+  const [filterOpen,   setFilterOpen]   = useState(false);
+  const [fFormat,      setFFormat]      = useState('All');
+  const [fStatus,      setFStatus]      = useState('All');
+
   const filtered = auditions.filter(a => {
-    const tabMatch = STATUS_TAB_MAP[activeTab]?.includes(a.status);
+    const tabMatch    = STATUS_TAB_MAP[activeTab]?.includes(a.status);
     const searchMatch = !search || a.name.toLowerCase().includes(search.toLowerCase()) || a.castingCall.toLowerCase().includes(search.toLowerCase());
-    return tabMatch && searchMatch;
+    const formatMatch = fFormat === 'All' || a.format === fFormat;
+    const statusMatch = fStatus === 'All' || a.status === fStatus;
+    return tabMatch && searchMatch && formatMatch && statusMatch;
   });
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
-  const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortBy === 'Date: Newest') return new Date(b.date).getTime() - new Date(a.date).getTime();
+    if (sortBy === 'Date: Oldest') return new Date(a.date).getTime() - new Date(b.date).getTime();
+    if (sortBy === 'Name: A–Z')   return a.name.localeCompare(b.name);
+    if (sortBy === 'Status')      return a.status.localeCompare(b.status);
+    return 0;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PER_PAGE));
+  const paged = sorted.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   // Stats from real data
   const totalScheduled = auditions.filter(a => a.status === 'Scheduled').length;
   const totalCompleted = auditions.filter(a => a.status === 'Completed').length;
   const totalPending   = auditions.filter(a => a.status === 'Pending').length;
   const totalCancelled = auditions.filter(a => a.status === 'Cancelled').length;
+
+  const updateAuditionStatus = async (id: string, status: string) => {
+    const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
+    const token = u.token;
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/auditions/${id}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body:    JSON.stringify({ status }),
+      });
+      if (res.ok) {
+        const statusMap: Record<string, AuditionStatus> = {
+          completed: 'Completed',
+          cancelled: 'Cancelled',
+          selected: 'Selected',
+          rejected: 'Rejected',
+          on_hold: 'On Hold',
+        };
+        setAuditions(prev => prev.map(a =>
+          a.id === id ? { ...a, status: statusMap[status] ?? a.status } : a
+        ));
+      }
+    } catch {}
+  };
+
+  const handleExport = () => {
+    const headers = ['Name', 'Role', 'Casting Call', 'Date', 'Time', 'Format', 'Location', 'Status'];
+    const rows = filtered.map(a => [a.name, a.role, a.castingCall, a.date, a.time, a.format, a.location, a.status]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'auditions.csv'; a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const toggleSelect = (id: string) => setSelectedIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
   const toggleAll = () => setSelectedIds(p => p.length === filtered.length ? [] : filtered.map(a => a.id));
@@ -225,7 +327,10 @@ export default function AuditionManagementPage() {
       <header style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, padding: '0 24px', height: 60, background: BG2, borderBottom: '1px solid rgba(255,255,255,0.06)', zIndex: 100 }}>
         <SilverScreensLogo size="md" href="/" showTagline={false} />
         <div style={{ flex: 1 }} />
-        <button onClick={() => router.push('/agency/create-casting')} style={{ display: 'flex', alignItems: 'center', gap: 7, background: RED, color: '#fff', border: 'none', borderRadius: 8, padding: '0 18px', height: 36, fontSize: 15, fontWeight: 700, fontFamily: BARLOW, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+        <button
+          onClick={() => { if (!getIsApproved()) return; router.push('/agency/create-casting'); }}
+          title={!getIsApproved() ? 'Available after agency verification' : undefined}
+          style={{ display: 'flex', alignItems: 'center', gap: 7, background: getIsApproved() ? RED : 'rgba(200,32,42,0.3)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 18px', height: 36, fontSize: 15, fontWeight: 700, fontFamily: BARLOW, cursor: getIsApproved() ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap', opacity: getIsApproved() ? 1 : 0.5 }}>
           Post a Casting <span style={{ fontSize: 16, fontWeight: 400 }}>+</span>
         </button>
         <div onClick={() => router.push('/agency/messages')} style={{ position: 'relative', cursor: 'pointer' }}>
@@ -257,25 +362,15 @@ export default function AuditionManagementPage() {
                   <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Agency ID</span>
                   <span style={{ fontSize: 14, fontWeight: 700, color: GOLD }}>{agencyId}</span>
                 </div>
-                {[
-                  { label: 'Reports & Analytics',   href: '/agency/reports'    },
-                  { label: 'Subscription & Billing', href: '/pricing'           },
-                  { label: 'Company Profile',        href: '/agency-profile'    },
-                  { label: 'Documents',              href: '/agency/documents'  },
-                  { label: 'Calendar',               href: '/agency/calendar'   },
-                  { label: 'Settings',               href: '/agency/settings'   },
-                  { label: 'Support',                href: '/contact'           },
-                  { label: 'Logout',                 href: '/login'             },
-                ].map(({ label, href }) => (
-                  <div key={label} onClick={() => {
-                    if (label === 'Logout') { localStorage.removeItem('ss_user'); window.location.replace('/login'); }
-                    else { router.push(href); setProfileOpen(false); }
-                  }}
-                    style={{ padding: '10px 16px', fontSize: 15, cursor: 'pointer', color: label === 'Logout' ? '#ff6b6b' : '#F5F5F5', borderTop: label === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >{label}</div>
-                ))}
+                {(()=>{
+                  const isApproved=(()=>{try{const u=JSON.parse(localStorage.getItem('ss_user')||'{}');const ps=u?.profileStatus??'pending';return ps==='approved'||ps==='active';}catch{return true;}})();
+                  const menuItems=isApproved
+                    ?[{label:'Reports & Analytics',href:'/agency/reports'},{label:'Subscription & Billing',href:'/pricing'},{label:'Company Profile',href:'/agency-profile'},{label:'Documents',href:'/agency/documents'},{label:'Calendar',href:'/agency/calendar'},{label:'Settings',href:'/agency/settings'},{label:'Support',href:'/agency/support'},{label:'Logout',href:'/login'}]
+                    :[{label:'Company Profile',href:'/create-company-profile'},{label:'Logout',href:'/login'}];
+                  return menuItems.map(({label,href})=>(
+                    <div key={label} onClick={()=>{if(label==='Logout'){localStorage.removeItem('ss_user');window.location.replace('/login');}else{router.push(href);setProfileOpen(false);}}} style={{padding:'10px 16px',fontSize:15,cursor:'pointer',color:label==='Logout'?'#ff6b6b':'#F5F5F5',borderTop:label==='Logout'?'1px solid rgba(255,255,255,0.07)':'none'}} onMouseEnter={e=>(e.currentTarget.style.background='rgba(255,255,255,0.05)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>{label}</div>
+                  ));
+                })()}
               </div>
             </>
           )}
@@ -303,7 +398,9 @@ export default function AuditionManagementPage() {
             </div>
           )}
           <nav style={{ flex: 1, padding: sidebarOpen ? '8px 6px' : '8px 4px', overflowY: 'auto', scrollbarWidth: 'none' }}>
-            {NAV_ITEMS.map(({ icon: Icon, label, active, badge, href }) => (
+            {NAV_ITEMS.map(({ icon: Icon, label, active, href }) => {
+                const badge = label === 'Messages' ? (msgCount > 0 ? msgCount : undefined) : label === 'Notifications' ? (notifCount > 0 ? notifCount : undefined) : undefined;
+                return (
               <div key={label} onClick={() => router.push(href)} title={!sidebarOpen ? label : undefined}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'space-between' : 'center', padding: sidebarOpen ? '8px 10px' : '10px 0', marginBottom: 2, borderRadius: 6, cursor: 'pointer', background: active ? 'rgba(200,32,42,0.12)' : 'transparent', borderLeft: sidebarOpen && active ? `3px solid ${RED}` : sidebarOpen ? '3px solid transparent' : 'none' }}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
@@ -315,7 +412,8 @@ export default function AuditionManagementPage() {
                 </div>
                 {sidebarOpen && badge && <div style={{ background: RED, color: '#fff', borderRadius: 12, fontSize: 14, fontWeight: 700, padding: '1px 6px', minWidth: 18, textAlign: 'center' }}>{badge}</div>}
               </div>
-            ))}
+                );
+              })}
           </nav>
         </aside>
 
@@ -328,7 +426,9 @@ export default function AuditionManagementPage() {
               <h1 style={{ fontFamily: BEBAS, fontSize: 28, letterSpacing: 1, fontWeight: 400, marginBottom: 4 }}>Audition Management</h1>
               <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.45)' }}>Track, manage and review all your scheduled auditions.</p>
             </div>
-            <button onClick={() => router.push('/agency/auditions/schedule')} style={{ display: 'flex', alignItems: 'center', gap: 8, background: RED, color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: 15, fontWeight: 700, fontFamily: BARLOW, cursor: 'pointer' }}>
+            <button onClick={() => { if (!getIsApproved()) return; router.push('/agency/auditions/schedule'); }}
+              title={!getIsApproved() ? 'Available after agency verification' : undefined}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, background: getIsApproved() ? RED : 'rgba(200,32,42,0.3)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: 15, fontWeight: 700, fontFamily: BARLOW, cursor: getIsApproved() ? 'pointer' : 'not-allowed', opacity: getIsApproved() ? 1 : 0.5 }}>
               <Plus size={15} /> Schedule Audition
             </button>
           </div>
@@ -359,9 +459,9 @@ export default function AuditionManagementPage() {
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by candidate or casting call..." style={{ flex: 1, background: 'none', border: 'none', outline: 'none', fontSize: 14, color: '#fff', fontFamily: BARLOW }} />
               {search && <X size={13} color="rgba(255,255,255,0.4)" style={{ cursor: 'pointer' }} onClick={() => setSearch('')} />}
             </div>
-            <button style={{ display: 'flex', alignItems: 'center', gap: 6, background: BG2, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '0 14px', height: 38, fontSize: 14, color: 'rgba(255,255,255,0.7)', fontFamily: BARLOW, cursor: 'pointer' }}><Filter size={13} /> Filters</button>
-            <button style={{ display: 'flex', alignItems: 'center', gap: 6, background: BG2, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '0 14px', height: 38, fontSize: 14, color: 'rgba(255,255,255,0.7)', fontFamily: BARLOW, cursor: 'pointer' }}><Download size={13} /> Export</button>
-            <button style={{ display: 'flex', alignItems: 'center', gap: 6, background: BG2, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '0 14px', height: 38, fontSize: 14, color: 'rgba(255,255,255,0.7)', fontFamily: BARLOW, cursor: 'pointer' }}><Calendar size={13} /> Calendar View</button>
+            <button onClick={() => setFilterOpen(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: filterOpen ? `${RED}15` : BG2, border: `1px solid ${filterOpen ? RED : 'rgba(255,255,255,0.1)'}`, borderRadius: 8, padding: '0 14px', height: 38, fontSize: 14, color: filterOpen ? RED : 'rgba(255,255,255,0.7)', fontFamily: BARLOW, cursor: 'pointer' }}><Filter size={13} /> Filters</button>
+            <button onClick={handleExport} style={{ display: 'flex', alignItems: 'center', gap: 6, background: BG2, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '0 14px', height: 38, fontSize: 14, color: 'rgba(255,255,255,0.7)', fontFamily: BARLOW, cursor: 'pointer' }}><Download size={13} /> Export</button>
+            <button onClick={() => router.push('/agency/calendar')} style={{ display: 'flex', alignItems: 'center', gap: 6, background: BG2, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '0 14px', height: 38, fontSize: 14, color: 'rgba(255,255,255,0.7)', fontFamily: BARLOW, cursor: 'pointer' }}><Calendar size={13} /> Calendar View</button>
             <div style={{ position: 'relative' }}>
               <button onClick={() => setSortOpen(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: BG2, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '0 14px', height: 38, fontSize: 14, color: 'rgba(255,255,255,0.7)', fontFamily: BARLOW, cursor: 'pointer' }}>Sort: {sortBy} <ChevronDown size={12} /></button>
               {sortOpen && (
@@ -380,15 +480,49 @@ export default function AuditionManagementPage() {
             </div>
           </div>
 
+          {/* Filter panel */}
+          {filterOpen && (
+            <div style={{ background: BG2, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '14px 16px', marginBottom: 12, display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <div>
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 5 }}>Format</div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {['All', 'In-Person', 'Virtual', 'Self-Tape'].map(f => (
+                    <button key={f} onClick={() => { setFFormat(f); setPage(1); }} style={{ background: fFormat === f ? RED : BG3, border: `1px solid ${fFormat === f ? RED : 'rgba(255,255,255,0.1)'}`, borderRadius: 6, padding: '5px 12px', fontSize: 13, color: fFormat === f ? '#fff' : 'rgba(255,255,255,0.6)', fontFamily: BARLOW, cursor: 'pointer' }}>{f}</button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 5 }}>Status</div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {['All', 'Scheduled', 'Completed', 'Pending', 'Cancelled', 'Rescheduled', 'Selected', 'Rejected'].map(s => (
+                    <button key={s} onClick={() => { setFStatus(s); setPage(1); }} style={{ background: fStatus === s ? RED : BG3, border: `1px solid ${fStatus === s ? RED : 'rgba(255,255,255,0.1)'}`, borderRadius: 6, padding: '5px 12px', fontSize: 13, color: fStatus === s ? '#fff' : 'rgba(255,255,255,0.6)', fontFamily: BARLOW, cursor: 'pointer' }}>{s}</button>
+                  ))}
+                </div>
+              </div>
+              <button onClick={() => { setFFormat('All'); setFStatus('All'); setPage(1); }} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, padding: '5px 12px', fontSize: 13, color: 'rgba(255,255,255,0.5)', fontFamily: BARLOW, cursor: 'pointer' }}>Clear</button>
+            </div>
+          )}
+
           {/* Table */}
           <div style={{ background: BG2, border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, overflow: 'hidden' }}>
 
             {/* Sub-tabs */}
             <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.07)', overflowX: 'auto', scrollbarWidth: 'none' }}>
-              {SUB_TABS.map(t => (
-                <button key={t.key} onClick={() => { setActiveTab(t.key); setPage(1); }} style={{ background: 'none', border: 'none', borderBottom: `2px solid ${activeTab === t.key ? RED : 'transparent'}`, padding: '12px 16px', fontSize: 14, fontFamily: BARLOW, fontWeight: activeTab === t.key ? 700 : 400, color: activeTab === t.key ? RED : 'rgba(255,255,255,0.5)', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}>
-                  {t.label} ({t.count})
-                </button>
+              {SUB_TABS.map((t) => (
+                <React.Fragment key={t.key}>
+                  {t.key === 'all' && <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.1)', alignSelf: 'center', margin: '0 4px' }} />}
+                  <button onClick={() => { setActiveTab(t.key); setPage(1); }}
+                    style={{
+                      background: 'none', border: 'none',
+                      borderBottom: `2px solid ${activeTab === t.key ? (t.key === 'archived' ? GOLD : RED) : 'transparent'}`,
+                      padding: '12px 16px', fontSize: 14, fontFamily: BARLOW,
+                      fontWeight: activeTab === t.key ? 700 : 400,
+                      color: activeTab === t.key ? (t.key === 'archived' ? GOLD : RED) : 'rgba(255,255,255,0.5)',
+                      cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s',
+                    }}>
+                    {t.key === 'archived' ? '📦 ' : t.key === 'active' ? '⚡ ' : ''}{t.label} ({t.count})
+                  </button>
+                </React.Fragment>
               ))}
             </div>
 
@@ -425,10 +559,11 @@ export default function AuditionManagementPage() {
             {!loading && paged.map((a, idx) => {
               const checked = selectedIds.includes(a.id);
               const scfg = STATUS_CFG[a.status];
+              const isArchived = ['Completed', 'Cancelled', 'Selected', 'Rejected'].includes(a.status);
               return (
-                <div key={a.id} style={{ display: 'grid', gridTemplateColumns: '36px 2fr 1.4fr 1.1fr 0.9fr 0.85fr 96px', alignItems: 'center', padding: '13px 18px', borderBottom: idx < paged.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none', transition: 'background 0.12s' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                <div key={a.id} style={{ display: 'grid', gridTemplateColumns: '36px 2fr 1.4fr 1.1fr 0.9fr 0.85fr 96px', alignItems: 'center', padding: '13px 18px', borderBottom: idx < paged.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none', transition: 'background 0.12s', opacity: isArchived ? 0.6 : 1 }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.02)'; (e.currentTarget as HTMLElement).style.opacity = '1'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.opacity = isArchived ? '0.6' : '1'; }}
                 >
                   <span onClick={() => toggleSelect(a.id)} style={{ cursor: 'pointer', display: 'flex' }}>
                     {checked ? <CheckSquare size={15} color={RED} /> : <Square size={15} color="rgba(255,255,255,0.35)" />}
@@ -481,55 +616,65 @@ export default function AuditionManagementPage() {
                     <ABtn title="View Profile" onClick={() => router.push(`/agency/talent/${a.candidateId}`)}>
                       <Eye size={13} color="rgba(255,255,255,0.55)" />
                     </ABtn>
-                    <ABtn title="Reschedule" onClick={() => router.push(`/agency/auditions/schedule?candidate=${a.candidateId}&from=auditions`)}>
+                    <ABtn title="Reschedule" onClick={() => getIsApproved() && getIsApproved() && router.push(`/agency/auditions/schedule?auditionId=${a.id}&candidate=${a.candidateId}&from=auditions`)}>
                       <Edit2 size={13} color="rgba(255,255,255,0.55)" />
                     </ABtn>
                     <div style={{ position: 'relative' }}>
-                      <ABtn title="More" onClick={() => setRowMenuOpen(rowMenuOpen === a.id ? null : a.id)}>
+                      <ABtn title="More" onClick={(e) => {
+                        const rect = (e!.currentTarget as HTMLElement).getBoundingClientRect();
+                        const menuHeight = 220; // approx height of 6-item menu
+                        const spaceBelow = window.innerHeight - rect.bottom;
+                        const top = spaceBelow < menuHeight
+                          ? rect.top - menuHeight - 4   // open upward
+                          : rect.bottom + 4;             // open downward
+                        setMenuPos({ top, right: window.innerWidth - rect.right });
+                        setRowMenuOpen(rowMenuOpen === a.id ? null : a.id);
+                      }}>
                         <MoreVertical size={13} color="rgba(255,255,255,0.55)" />
                       </ABtn>
-                      {rowMenuOpen === a.id && (
+                      {rowMenuOpen === a.id && typeof document !== 'undefined' && createPortal(
                         <>
-                          <div onClick={() => setRowMenuOpen(null)} style={{ position: 'fixed', inset: 0, zIndex: 150 }} />
-                          <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, width: 190, background: BG4, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', zIndex: 300, boxShadow: '0 12px 32px rgba(0,0,0,0.8)' }}>
+                          <div onClick={() => setRowMenuOpen(null)} style={{ position: 'fixed', inset: 0, zIndex: 499 }} />
+                          <div style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, width: 190, background: BG4, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', zIndex: 500, boxShadow: '0 12px 32px rgba(0,0,0,0.8)' }}>
+                            {/* Navigation actions */}
                             {[
-                              {
-                                label: 'View Profile',
-                                onClick: () => { router.push(`/agency/talent/${a.candidateId}`); setRowMenuOpen(null); }
-                              },
-                              {
-                                label: 'View Application',
-                                onClick: () => { router.push(`/agency/applications/${a.candidateId}`); setRowMenuOpen(null); }
-                              },
-                              {
-                                label: 'Reschedule',
-                                onClick: () => { router.push(`/agency/auditions/schedule?candidate=${a.candidateId}&from=auditions`); setRowMenuOpen(null); }
-                              },
-                              {
-                                label: 'Send Message',
-                                // ← Pass aspirantUserId and name so messages page can open the right conversation
-                                onClick: () => {
-                                  const params = new URLSearchParams({
-                                    recipient_id:   a.aspirantUserId,
-                                    recipient_name: a.name,
-                                  });
-                                  router.push(`/agency/messages?${params.toString()}`);
+                              { label: '👤  View Talent Profile',   onClick: () => { router.push(`/agency/talent/${a.candidateId}`); setRowMenuOpen(null); } },
+                              { label: '📋  View Application',      onClick: () => { router.push(`/agency/applications/${a.id}`); setRowMenuOpen(null); } },
+                              { label: '💬  Send Message',          onClick: () => { router.push(`/agency/messages?recipient_id=${a.aspirantUserId}&recipient_name=${encodeURIComponent(a.name)}`); setRowMenuOpen(null); } },
+                              { label: '🔄  Reschedule',            onClick: () => { getIsApproved() && getIsApproved() && router.push(`/agency/auditions/schedule?auditionId=${a.id}&candidate=${a.candidateId}&from=auditions`); setRowMenuOpen(null); } },
+                            ].map(({ label, onClick }) => (
+                              <div key={label} onClick={onClick}
+                                style={{ padding: '9px 14px', cursor: 'pointer', fontSize: 14, fontFamily: BARLOW, color: '#F5F5F5' }}
+                                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+                                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                              >{label}</div>
+                            ))}
+                            {/* Status change section */}
+                            <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '4px 0' }} />
+                            <div style={{ padding: '6px 14px 4px', fontSize: 12, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>Change Status</div>
+                            {[
+                              { label: '✅  Mark as Completed', status: 'completed', color: GREEN,  show: a.status !== 'Completed' },
+                              { label: '🎬  Select Aspirant',   status: 'selected',  color: GREEN,  show: a.status !== 'Selected' },
+                              { label: '⏸️  Put on Hold',       status: 'on_hold',   color: GOLD,   show: a.status !== 'On Hold' },
+                              { label: '❌  Reject',            status: 'rejected',  color: RED,    show: a.status !== 'Rejected' },
+                              { label: '🚫  Cancel Audition',  status: 'cancelled', color: RED,    show: a.status !== 'Cancelled' },
+                            ].filter(s => s.show).map(({ label, status, color }) => (
+                              <div key={status}
+                                onClick={() => {
+                                  if (status === 'selected' || status === 'rejected' || status === 'cancelled') {
+                                    if (!confirm(`Are you sure you want to "${label.replace(/^[^ ]+ /, '')}" for ${a.name}?`)) return;
+                                  }
+                                  updateAuditionStatus(a.id, status);
                                   setRowMenuOpen(null);
-                                }
-                              },
-                              { label: 'Mark as Completed', onClick: () => setRowMenuOpen(null), color: GREEN },
-                              { label: 'Cancel Audition',   onClick: () => setRowMenuOpen(null), color: RED   },
-                            ].map(({ label, onClick, color }, mi) => (
-                              <div key={label}>
-                                {mi === 4 && <div style={{ height: 1, background: 'rgba(255,255,255,0.07)' }} />}
-                                <div onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 14px', cursor: 'pointer', fontSize: 14, fontFamily: BARLOW, color: color || '#F5F5F5' }}
-                                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
-                                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                                >{label}</div>
-                              </div>
+                                }}
+                                style={{ padding: '9px 14px', cursor: 'pointer', fontSize: 14, fontFamily: BARLOW, color }}
+                                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+                                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                              >{label}</div>
                             ))}
                           </div>
-                        </>
+                        </>,
+                        document.body
                       )}
                     </div>
                   </div>
@@ -541,7 +686,7 @@ export default function AuditionManagementPage() {
             {!loading && totalPages > 1 && (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderTop: '1px solid rgba(255,255,255,0.06)', flexWrap: 'wrap', gap: 10 }}>
                 <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>
-                  Showing {(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, filtered.length)} of {filtered.length} auditions
+                  Showing {(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, sorted.length)} of {sorted.length} auditions
                 </div>
                 <div style={{ display: 'flex', gap: 4 }}>
                   <PBtn onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}><ChevronLeft size={13} /></PBtn>
@@ -559,7 +704,7 @@ export default function AuditionManagementPage() {
   );
 }
 
-function ABtn({ onClick, title, children }: { onClick: () => void; title: string; children: React.ReactNode }) {
+function ABtn({ onClick, title, children }: { onClick: (e?: React.MouseEvent<HTMLButtonElement>) => void; title: string; children: React.ReactNode }) {
   return (
     <button onClick={onClick} title={title} style={{ width: 28, height: 28, borderRadius: 6, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
       onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}

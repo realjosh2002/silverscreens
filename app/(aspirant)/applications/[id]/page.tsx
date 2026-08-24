@@ -42,7 +42,7 @@ const PROFILE_MENU = [
   { label: 'Analytics',      href: '/analytics' },
   { label: 'Calendar',       href: '/calendar' },
   { label: 'Settings',       href: '/settings' },
-  { label: 'Help & Support', href: '/contact' },
+  { label: 'Help & Support', href: '/settings?tab=support' },
   { label: 'Logout',         href: '' },
 ];
 

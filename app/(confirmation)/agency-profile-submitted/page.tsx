@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -91,7 +91,7 @@ export default function AgencyProfileSubmittedPage() {
 
         {/* CTA button */}
         <button
-          onClick={() => router.push('/dashboard')}
+          onClick={() => router.push('/agency/dashboard')}
           style={{
             width: '100%', padding: '14px',
             background: '#1a1f2a',

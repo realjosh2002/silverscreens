@@ -1,7 +1,7 @@
-'use client';
+﻿'use client';
 
 import AgencyTopnav from '@/components/layout/AgencyTopnav'
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
@@ -47,7 +47,7 @@ const PROFILE_MENU = [
   { label: 'Documents',              href: '/agency/documents' },
   { label: 'Calendar',               href: '/agency/calendar' },
   { label: 'Settings',               href: '/agency/settings' },
-  { label: 'Support',                href: '/contact' },
+  { label: 'Support',                href: '/agency/support' },
   { label: 'Logout',                 href: '/login' },
 ];
 
@@ -128,9 +128,104 @@ export default function DocumentsPage() {
   const [renameDocId,  setRenameDocId]  = useState('');        // rename doc modal
   const [shareDocId,   setShareDocId]   = useState('');        // share doc modal
 
+  const [agencyName,     setAgencyName]     = useState(() => {
+    try { const u=JSON.parse(localStorage.getItem('ss_user')||'{}'); return u.name||'My Agency'; } catch { return 'My Agency'; }
+  });
+  const [agencyInitials, setAgencyInitials] = useState(() => {
+    try { const u=JSON.parse(localStorage.getItem('ss_user')||'{}'); if(u.name) return u.name.split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase(); return 'AG'; } catch { return 'AG'; }
+  });
+  const [realDocs,       setRealDocs]       = useState<any[]>([]);
+  const [docsLoading,    setDocsLoading]    = useState(true);
+  const [uploadFile,     setUploadFile]     = useState<File|null>(null);
+  const [uploadLabel,    setUploadLabel]    = useState('');
+  const [uploadType,     setUploadType]     = useState('verification');
+  const [uploadProgress, setUploadProgress] = useState(false);
+  const [uploadMsg,      setUploadMsg]      = useState('');
+
+  function getAuthHeaders(): Record<string,string> {
+    try { const u=JSON.parse(localStorage.getItem('ss_user')||'{}'); return u.token?{Authorization:`Bearer ${u.token}`}:{}; } catch { return {}; }
+  }
+
+  function fetchDocs() {
+    setDocsLoading(true);
+    fetch('/api/agency/documents', { headers: getAuthHeaders() })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.data) setRealDocs(Array.isArray(d.data) ? d.data : []); })
+      .catch(() => {})
+      .finally(() => setDocsLoading(false));
+  }
+
+  useEffect(() => {
+    // Load name instantly from localStorage
+    try {
+      const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
+      if (u.name) {
+        setAgencyName(u.name);
+        setAgencyInitials(u.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase());
+      }
+    } catch {}
+    // Also fetch from API for accuracy
+    try {
+      const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
+      const headers = u.token ? { Authorization: `Bearer ${u.token}` } : {};
+      fetch('/api/profile/agency', { headers })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          const name = d?.data?.profile?.company_name ?? d?.profile?.company_name;
+          if (name) {
+            setAgencyName(name);
+            setAgencyInitials(name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase());
+          }
+        }).catch(() => {});
+    } catch {}
+    fetchDocs();
+  }, []);
+
   const SB_W = sidebarOpen ? 230 : 52;
 
-  const filtered = DOCS.filter(d => {
+  // Map real API docs to display format
+  const EXT_FROM_FILENAME = (name: string) => {
+    const ext = name.split('.').pop()?.toUpperCase() || 'DOC';
+    return ['PDF','DOCX','XLSX','JPG','PNG'].includes(ext) ? ext : 'DOC';
+  };
+  const STATUS_FROM_API = (s: string) => {
+    if (s === 'approved') return 'Verified';
+    if (s === 'pending_review') return 'Pending Verification';
+    if (s === 'rejected') return 'Rejected';
+    return 'Active';
+  };
+  const STATUS_COLOR_FROM = (s: string) => {
+    if (s === 'Verified') return { color: GREEN, bg: 'rgba(34,197,94,0.12)' };
+    if (s === 'Rejected') return { color: RED,   bg: 'rgba(200,32,42,0.12)' };
+    return { color: GOLD, bg: 'rgba(212,166,74,0.12)' };
+  };
+  const CAT_FROM_TYPE = (t: string) => {
+    if (t?.includes('gst') || t?.includes('pan') || t?.includes('verif') || t?.includes('certif')) return 'Verification';
+    if (t?.includes('contract') || t?.includes('agreement') || t?.includes('nda')) return 'Contracts';
+    if (t?.includes('cast') || t?.includes('brief') || t?.includes('audition')) return 'Casting Files';
+    if (t?.includes('invoice') || t?.includes('receipt') || t?.includes('finance') || t?.includes('bill')) return 'Financial';
+    if (t?.includes('legal') || t?.includes('compli')) return 'Compliance';
+    return 'Verification';
+  };
+
+  const allDocs = realDocs.map((d: any) => {
+    const ext = EXT_FROM_FILENAME(d.file_name ?? '');
+    const status = STATUS_FROM_API(d.status ?? '');
+    const sc = STATUS_COLOR_FROM(status);
+    const cat = CAT_FROM_TYPE((d.doc_type ?? '').toLowerCase());
+    const sizeKB = Math.round((d.file_size ?? 0) / 1024);
+    const size = sizeKB > 1024 ? `${(sizeKB/1024).toFixed(1)} MB` : `${sizeKB} KB`;
+    const date = d.created_at ? new Date(d.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+    const time = d.created_at ? new Date(d.created_at).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : '';
+    return {
+      id: d.id, name: d.file_name ?? d.doc_label ?? 'Document',
+      ext, size, category: cat, uploader: agencyName, role: 'Agency',
+      date, time, status, statusColor: sc.color, statusBg: sc.bg,
+      url: d.public_url ?? '',
+    };
+  });
+
+  const filtered = allDocs.filter((d: any) => {
     if (activeTab !== 'All Documents' && activeTab !== 'E-Signatures' && d.category !== activeTab) return false;
     if (activeTab === 'E-Signatures' && d.status !== 'Signed' && d.status !== 'Pending Signature') return false;
     if (search && !d.name.toLowerCase().includes(search.toLowerCase())) return false;
@@ -141,7 +236,35 @@ export default function DocumentsPage() {
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-  const viewDoc = DOCS.find(d => d.id === viewDocId) || null;
+  const viewDoc = allDocs.find((d: any) => d.id === viewDocId) || null;
+
+  // Live stats from real docs
+  const liveStats = [
+    { label:'Total Documents',     value: docsLoading ? '…' : String(allDocs.length),                                                       sub:'Across all categories',  icon:'📄', alert:false },
+    { label:'Storage Used',        value: docsLoading ? '…' : `${(realDocs.reduce((s:number,d:any)=>s+(d.file_size??0),0)/1024/1024).toFixed(1)} MB`, sub:'Uploaded files', icon:'☁️', alert:false },
+    { label:'Pending Review',      value: docsLoading ? '…' : String(realDocs.filter((d:any)=>d.status==='pending_review').length),          sub:'Awaiting admin review',  icon:'⏰', alert:true,  alertColor:ORANGE },
+    { label:'Verified Documents',  value: docsLoading ? '…' : String(realDocs.filter((d:any)=>d.status==='approved').length),               sub:'Approved by admin',      icon:'🛡️', alert:false },
+    { label:'Rejected Documents',  value: docsLoading ? '…' : String(realDocs.filter((d:any)=>d.status==='rejected').length),               sub:'Need re-upload',         icon:'⚠️', alert: realDocs.filter((d:any)=>d.status==='rejected').length>0, alertColor:RED },
+  ];
+
+  // Live folders from real docs
+  const liveFolders = [
+    { name:'Agency Verification',    color:GOLD,   cat:'Verification',   icon:'🏛️' },
+    { name:'Contracts',              color:BLUE,   cat:'Contracts',      icon:'📝' },
+    { name:'Casting Call Documents', color:PURPLE, cat:'Casting Files',  icon:'🎬' },
+    { name:'Financial Documents',    color:ORANGE, cat:'Financial',      icon:'💰' },
+    { name:'Legal & Compliance',     color:RED,    cat:'Compliance',     icon:'⚖️' },
+  ].map(f => ({
+    ...f,
+    count: allDocs.filter((d:any) => d.category === f.cat).length,
+    verified: f.cat === 'Verification' && allDocs.filter((d:any)=>d.category==='Verification').every((d:any)=>d.status==='Verified'),
+    includes: allDocs.filter((d:any)=>d.category===f.cat).slice(0,3).map((d:any)=>d.name),
+  }));
+
+  // Live activity from last 5 docs
+  const liveActivity = allDocs.slice(0,5).map((d:any) => ({
+    time: d.time, title: d.name, sub: `Uploaded by ${d.uploader}`,
+  }));
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100vh', overflow:'hidden', background:BG, fontFamily:BARLOW, color:'#F5F5F5' }}>
@@ -162,9 +285,9 @@ export default function DocumentsPage() {
           </div>
           {sidebarOpen && (
             <div style={{ padding:'14px 16px', borderBottom:'1px solid rgba(255,255,255,0.06)', display:'flex', alignItems:'center', gap:12 }}>
-              <div style={{ width:38, height:38, borderRadius:9, background:'linear-gradient(135deg,#1a1410,#2a1e0e)', border:'1px solid rgba(212,166,74,0.25)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:800, color:GOLD, fontFamily:BEBAS, flexShrink:0 }}>DP</div>
+              <div style={{ width:38, height:38, borderRadius:9, background:'linear-gradient(135deg,#1a1410,#2a1e0e)', border:'1px solid rgba(212,166,74,0.25)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:800, color:GOLD, fontFamily:BEBAS, flexShrink:0 }}>{agencyInitials}</div>
               <div style={{ minWidth:0 }}>
-                <div style={{ fontSize:15, fontWeight:700, color:'#F5F5F5', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>Dharma Productions</div>
+                <div style={{ fontSize:15, fontWeight:700, color:'#F5F5F5', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{agencyName}</div>
                 <div onClick={() => router.push('/agency-profile')} style={{ fontSize: 14, color:RED, fontWeight:600, cursor:'pointer' }}>View Company Profile</div>
               </div>
             </div>
@@ -191,7 +314,7 @@ export default function DocumentsPage() {
               <div style={{ fontSize:20, marginBottom:4 }}>👑</div>
               <div style={{ fontSize:15, fontWeight:700, color:GOLD, marginBottom:3 }}>Upgrade to Pro</div>
               <div style={{ fontSize: 14, color:'rgba(255,255,255,0.45)', marginBottom:10, lineHeight:1.5 }}>Unlock advanced filters and AI matching.</div>
-              <button onClick={() => router.push('/pricing')} style={{ width:'100%', background:GOLD, color:'#000', border:'none', borderRadius:8, padding:'7px 0', fontSize:14, fontWeight:700, fontFamily:BARLOW, cursor:'pointer' }}>Upgrade Now</button>
+              <button onClick={() => router.push('/agency/subscription')} style={{ width:'100%', background:GOLD, color:'#000', border:'none', borderRadius:8, padding:'7px 0', fontSize:14, fontWeight:700, fontFamily:BARLOW, cursor:'pointer' }}>Upgrade Now</button>
             </div>
           )}
         </aside>
@@ -226,13 +349,7 @@ export default function DocumentsPage() {
 
               {/* Stats */}
               <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12 }}>
-                {[
-                  { label:'Total Documents',     value:'487', sub:'Across all categories',  icon:'📄', alert:false },
-                  { label:'Storage Used',        value:'8.2 GB', sub:'/ 50 GB · 16% Used',  icon:'☁️', alert:false, bar:true },
-                  { label:'Expiring Documents',  value:'5',   sub:'In next 30 days',         icon:'⏰', alert:true,  alertColor:ORANGE },
-                  { label:'Pending Verification',value:'2',   sub:'Require attention',       icon:'🛡️', alert:true,  alertColor:RED    },
-                  { label:'Signed Contracts',    value:'78',  sub:'Active & completed',      icon:'✍️', alert:false },
-                ].map(s => (
+                {liveStats.map(s => (
                   <div key={s.label} style={{ background:BG2, border:'1px solid rgba(255,255,255,0.06)', borderRadius:10, padding:'14px 16px' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
                       <span style={{ fontSize:22 }}>{s.icon}</span>
@@ -280,7 +397,7 @@ export default function DocumentsPage() {
 
               {/* Folder cards */}
               <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12 }}>
-                {FOLDERS.map(f => (
+                {liveFolders.map((f:any) => (
                   <div key={f.name}
                     onClick={() => setOpenFolder(f.name)}
                     style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, padding:14, cursor:'pointer', position:'relative' }}
@@ -398,7 +515,7 @@ export default function DocumentsPage() {
                             onMouseEnter={e => (e.currentTarget.style.background='rgba(212,166,74,0.35)')}
                             onMouseLeave={e => (e.currentTarget.style.background='rgba(212,166,74,0.18)')}
                           ><Send size={14} /></button>
-                        : <button title="Download"
+                        : <button title="Download" onClick={() => { if (doc.url) window.open(doc.url, '_blank'); }}
                             style={{ width:30, height:30, borderRadius:6, background:'rgba(34,197,94,0.18)', border:'1px solid rgba(34,197,94,0.4)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:GREEN, flexShrink:0 }}
                             onMouseEnter={e => (e.currentTarget.style.background='rgba(34,197,94,0.35)')}
                             onMouseLeave={e => (e.currentTarget.style.background='rgba(34,197,94,0.18)')}
@@ -455,7 +572,12 @@ export default function DocumentsPage() {
                   <button onClick={() => setShowEsig(true)} style={{ background:'none', border:'none', color:GOLD, fontFamily:BARLOW, fontSize:15, fontWeight:600, cursor:'pointer' }}>View All Signatures</button>
                 </div>
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:14 }}>
-                  {ESIGS.map(sig => (
+                  {(allDocs.filter((d:any)=>d.status==='Signed'||d.status==='Pending Signature').length>0
+                    ? allDocs.filter((d:any)=>d.status==='Signed'||d.status==='Pending Signature').slice(0,3).map((d:any)=>({
+                        title:d.name, signer:d.uploader, date:`${d.date} · ${d.time}`, color:d.status==='Signed'?GREEN:GOLD,
+                      }))
+                    : [{title:'No signed documents yet',signer:'Upload documents to get started',date:'',color:'rgba(255,255,255,0.3)'}]
+                  ).map(sig => (
                     <div key={sig.title} onClick={() => setShowEsig(true)} style={{ background:BG3, border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, padding:14, display:'flex', alignItems:'center', gap:12, cursor:'pointer' }}
                       onMouseEnter={e => (e.currentTarget.style.borderColor=sig.color)}
                       onMouseLeave={e => (e.currentTarget.style.borderColor='rgba(255,255,255,0.06)')}
@@ -489,64 +611,98 @@ export default function DocumentsPage() {
             <div style={{ width:250, flexShrink:0, display:'flex', flexDirection:'column', gap:14 }}>
 
               {/* Doc Health */}
-              <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, padding:16 }}>
-                <div style={{ fontFamily:BEBAS, fontSize:15, color:GOLD, letterSpacing:1, marginBottom:12 }}>DOCUMENT HEALTH</div>
-                <div style={{ display:'flex', justifyContent:'center', marginBottom:12 }}>
-                  <svg viewBox="0 0 120 120" style={{ width:120, height:120 }}>
-                    <circle cx="60" cy="60" r="44" fill="none" stroke={BG4} strokeWidth={14} />
-                    <circle cx="60" cy="60" r="44" fill="none" stroke={GREEN} strokeWidth={14} strokeDasharray="253 276" strokeDashoffset="69" strokeLinecap="butt" transform="rotate(-90 60 60)" />
-                    <circle cx="60" cy="60" r="44" fill="none" stroke={GOLD} strokeWidth={14} strokeDasharray="17 276" strokeDashoffset="-184" strokeLinecap="butt" transform="rotate(-90 60 60)" />
-                    <circle cx="60" cy="60" r="44" fill="none" stroke={RED} strokeWidth={14} strokeDasharray="6 276" strokeDashoffset="-201" strokeLinecap="butt" transform="rotate(-90 60 60)" />
-                    <text x="60" y="55" textAnchor="middle" fill="#F5F5F5" fontFamily={BEBAS} fontSize="20" letterSpacing="1">92%</text>
-                    <text x="60" y="70" textAnchor="middle" fill="rgba(255,255,255,0.4)" fontFamily={BARLOW} fontSize="10">Compliance Score</text>
-                  </svg>
-                </div>
-                {[{label:'Compliant',pct:'92%',color:GREEN},{label:'Warning',pct:'6%',color:GOLD},{label:'Critical',pct:'2%',color:RED}].map(s=>(
-                  <div key={s.label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:7 }}>
-                      <div style={{ width:8, height:8, borderRadius:'50%', background:s.color }} />
-                      <span style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.6)' }}>{s.label}</span>
+              {(()=>{
+                const tot=allDocs.length;
+                const ver=allDocs.filter((d:any)=>d.status==='Verified').length;
+                const pen=allDocs.filter((d:any)=>d.status==='Pending Verification').length;
+                const rej=allDocs.filter((d:any)=>d.status==='Rejected').length;
+                const cPct=tot>0?Math.round((ver/tot)*100):0;
+                const wPct=tot>0?Math.round((pen/tot)*100):0;
+                const rPct=tot>0?Math.round((rej/tot)*100):0;
+                const circ=2*Math.PI*44;
+                const cDash=(cPct/100)*circ; const wDash=(wPct/100)*circ; const rDash=(rPct/100)*circ;
+                return (
+                  <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, padding:16 }}>
+                    <div style={{ fontFamily:BEBAS, fontSize:15, color:GOLD, letterSpacing:1, marginBottom:12 }}>DOCUMENT HEALTH</div>
+                    <div style={{ display:'flex', justifyContent:'center', marginBottom:12 }}>
+                      <svg viewBox="0 0 120 120" style={{ width:120, height:120 }}>
+                        <circle cx="60" cy="60" r="44" fill="none" stroke={BG4} strokeWidth={14} />
+                        {cDash>0&&<circle cx="60" cy="60" r="44" fill="none" stroke={GREEN} strokeWidth={14} strokeDasharray={`${cDash} ${circ}`} strokeDashoffset={circ*0.25} strokeLinecap="butt" transform="rotate(-90 60 60)" />}
+                        {wDash>0&&<circle cx="60" cy="60" r="44" fill="none" stroke={GOLD} strokeWidth={14} strokeDasharray={`${wDash} ${circ}`} strokeDashoffset={circ*0.25-cDash} strokeLinecap="butt" transform="rotate(-90 60 60)" />}
+                        {rDash>0&&<circle cx="60" cy="60" r="44" fill="none" stroke={RED} strokeWidth={14} strokeDasharray={`${rDash} ${circ}`} strokeDashoffset={circ*0.25-cDash-wDash} strokeLinecap="butt" transform="rotate(-90 60 60)" />}
+                        <text x="60" y="55" textAnchor="middle" fill="#F5F5F5" fontFamily={BEBAS} fontSize="20" letterSpacing="1">{tot>0?`${cPct}%`:'—'}</text>
+                        <text x="60" y="70" textAnchor="middle" fill="rgba(255,255,255,0.4)" fontFamily={BARLOW} fontSize="10">Compliance Score</text>
+                      </svg>
                     </div>
-                    <span style={{ fontFamily:BARLOW, fontSize:14, fontWeight:700, color:s.color }}>{s.pct}</span>
+                    {[{label:'Compliant',pct:`${cPct}%`,color:GREEN},{label:'Pending',pct:`${wPct}%`,color:GOLD},{label:'Rejected',pct:`${rPct}%`,color:RED}].map(s=>(
+                      <div key={s.label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                          <div style={{ width:8, height:8, borderRadius:'50%', background:s.color }} />
+                          <span style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.6)' }}>{s.label}</span>
+                        </div>
+                        <span style={{ fontFamily:BARLOW, fontSize:14, fontWeight:700, color:s.color }}>{s.pct}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                );
+              })()}
 
               {/* Verification Status */}
-              <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, padding:16 }}>
-                <div style={{ fontFamily:BEBAS, fontSize:15, color:GOLD, letterSpacing:1, marginBottom:12 }}>VERIFICATION STATUS</div>
-                {[
-                  { label:'Agency Verified', status:'Verified', ok:true },
-                  { label:'GST Verified',    status:'Verified', ok:true },
-                  { label:'PAN Verified',    status:'Verified', ok:true },
-                  { label:'One Document Expiring', status:'Action Required', ok:false },
-                ].map(v=>(
-                  <div key={v.label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:7 }}>
-                      {v.ok ? <CheckCircle size={14} color={GREEN} /> : <AlertTriangle size={14} color={ORANGE} />}
-                      <span style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.7)' }}>{v.label}</span>
-                    </div>
-                    <span style={{ fontFamily:BARLOW, fontSize: 14, fontWeight:600, color:v.ok?GREEN:ORANGE }}>{v.status}</span>
+              {(()=>{
+                const verifiedDocs = realDocs.filter((d:any)=>d.status==='approved');
+                const pendingDocs  = realDocs.filter((d:any)=>d.status==='pending_review');
+                const rejectedDocs = realDocs.filter((d:any)=>d.status==='rejected');
+                const hasAny = realDocs.length > 0;
+                const items = hasAny ? [
+                  { label:`${verifiedDocs.length} Document${verifiedDocs.length!==1?'s':''} Verified`, ok: verifiedDocs.length>0, status: verifiedDocs.length>0?'Verified':'None' },
+                  { label:`${pendingDocs.length} Pending Review`,  ok: pendingDocs.length===0,  status: pendingDocs.length===0?'Clear':'Pending' },
+                  { label:`${rejectedDocs.length} Rejected`,       ok: rejectedDocs.length===0, status: rejectedDocs.length===0?'Clear':'Action Required' },
+                ] : [
+                  { label:'No documents uploaded yet', ok:false, status:'Action Required' },
+                ];
+                return (
+                  <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, padding:16 }}>
+                    <div style={{ fontFamily:BEBAS, fontSize:15, color:GOLD, letterSpacing:1, marginBottom:12 }}>VERIFICATION STATUS</div>
+                    {items.map(v=>(
+                      <div key={v.label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                          {v.ok ? <CheckCircle size={14} color={GREEN} /> : <AlertTriangle size={14} color={ORANGE} />}
+                          <span style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.7)' }}>{v.label}</span>
+                        </div>
+                        <span style={{ fontFamily:BARLOW, fontSize:14, fontWeight:600, color:v.ok?GREEN:ORANGE }}>{v.status}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                );
+              })()}
 
               {/* Storage */}
-              <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, padding:16 }}>
-                <div style={{ fontFamily:BEBAS, fontSize:15, color:GOLD, letterSpacing:1, marginBottom:12 }}>STORAGE ANALYTICS</div>
-                <div style={{ fontFamily:BEBAS, fontSize:20, color:'#F5F5F5', letterSpacing:0.5, marginBottom:4 }}>
-                  8.2 GB <span style={{ fontSize:14, color:'rgba(255,255,255,0.4)', fontFamily:BARLOW, fontWeight:400 }}>/ 50 GB Used</span>
-                  <span style={{ fontSize:14, color:GOLD, fontFamily:BARLOW, marginLeft:8 }}>16%</span>
-                </div>
-                <div style={{ height:6, background:BG4, borderRadius:3, overflow:'hidden', marginBottom:8 }}>
-                  <div style={{ height:'100%', width:'16%', background:`linear-gradient(90deg,${GOLD},${ORANGE})`, borderRadius:3 }} />
-                </div>
-                <div style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.4)', marginBottom:14 }}>41.8 GB Available</div>
-                <button onClick={() => setShowStorage(true)} style={{ width:'100%', padding:8, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:6, color:'#F5F5F5', fontFamily:BARLOW, fontSize:14, fontWeight:600, cursor:'pointer' }}
-                  onMouseEnter={e => (e.currentTarget.style.borderColor=GOLD)}
-                  onMouseLeave={e => (e.currentTarget.style.borderColor='rgba(255,255,255,0.1)')}
-                >Manage Storage</button>
-              </div>
+              {(()=>{
+                const totalBytes = realDocs.reduce((s:number,d:any)=>s+(d.file_size??0),0);
+                const usedMB = totalBytes/1024/1024;
+                const limitMB = 500;
+                const usedPct = Math.min(Math.round((usedMB/limitMB)*100),100);
+                const usedLabel = usedMB>1024?`${(usedMB/1024).toFixed(1)} GB`:`${usedMB.toFixed(1)} MB`;
+                const availMB = Math.max(limitMB-usedMB,0);
+                const availLabel = availMB>1024?`${(availMB/1024).toFixed(1)} GB`:`${availMB.toFixed(0)} MB`;
+                return (
+                  <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, padding:16 }}>
+                    <div style={{ fontFamily:BEBAS, fontSize:15, color:GOLD, letterSpacing:1, marginBottom:12 }}>STORAGE ANALYTICS</div>
+                    <div style={{ fontFamily:BEBAS, fontSize:20, color:'#F5F5F5', letterSpacing:0.5, marginBottom:4 }}>
+                      {usedLabel} <span style={{ fontSize:14, color:'rgba(255,255,255,0.4)', fontFamily:BARLOW, fontWeight:400 }}>/ 500 MB Limit</span>
+                      <span style={{ fontSize:14, color:GOLD, fontFamily:BARLOW, marginLeft:8 }}>{usedPct}%</span>
+                    </div>
+                    <div style={{ height:6, background:BG4, borderRadius:3, overflow:'hidden', marginBottom:8 }}>
+                      <div style={{ height:'100%', width:`${Math.max(usedPct,1)}%`, background:`linear-gradient(90deg,${GOLD},${ORANGE})`, borderRadius:3 }} />
+                    </div>
+                    <div style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.4)', marginBottom:14 }}>{availLabel} Available</div>
+                    <button onClick={() => alert(`Storage Usage:\n\nTotal Files: ${allDocs.length}\nUsed: ${usedLabel}\nAvailable: ${availLabel}\n\nContact support to increase your storage limit.`)} style={{ width:'100%', padding:8, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:6, color:'#F5F5F5', fontFamily:BARLOW, fontSize:14, fontWeight:600, cursor:'pointer' }}
+                      onMouseEnter={e => (e.currentTarget.style.borderColor=GOLD)}
+                      onMouseLeave={e => (e.currentTarget.style.borderColor='rgba(255,255,255,0.1)')}
+                    >Manage Storage</button>
+                  </div>
+                );
+              })()}
 
               {/* Recent Activity */}
               <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, padding:16 }}>
@@ -554,7 +710,9 @@ export default function DocumentsPage() {
                   <div style={{ fontFamily:BEBAS, fontSize:15, color:GOLD, letterSpacing:1 }}>RECENT ACTIVITY</div>
                   <button onClick={() => { setActiveTab('All Documents'); setPage(1); }} style={{ background:'none', border:'none', color:GOLD, fontFamily:BARLOW, fontSize:15, fontWeight:600, cursor:'pointer' }}>View All</button>
                 </div>
-                {ACTIVITY.map(a=>(
+                {liveActivity.length === 0
+                  ? <div style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.3)', textAlign:'center' as const, padding:'16px 0' }}>No activity yet. Upload documents to see activity here.</div>
+                  : liveActivity.map(a=>(
                   <div key={a.time} style={{ display:'flex', gap:10, marginBottom:10 }}>
                     <div style={{ flexShrink:0, width:46, fontFamily:BARLOW, fontSize: 14, color:'rgba(255,255,255,0.35)', paddingTop:2 }}>{a.time}</div>
                     <div>
@@ -924,7 +1082,12 @@ export default function DocumentsPage() {
                 ))}
               </div>
               <div style={{ fontFamily:BEBAS, fontSize:16, color:'#F5F5F5', letterSpacing:1, marginBottom:12 }}>RECENT SIGNATURE REQUESTS</div>
-              {[...ESIGS, { title:'Production NDA #445', signer:'Studio XYZ', date:'05 Jun 2026 · 01:00 PM', color:ORANGE }, { title:'Casting Agreement #112', signer:'Priya K', date:'03 Jun 2026 · 03:30 PM', color:PURPLE }].map(sig => (
+              {(allDocs.filter((d:any)=>d.status==='Signed'||d.status==='Pending Signature').length>0
+                ? allDocs.filter((d:any)=>d.status==='Signed'||d.status==='Pending Signature').map((d:any)=>({
+                    title:d.name, signer:d.uploader, date:`${d.date} · ${d.time}`, color:d.status==='Signed'?GREEN:GOLD,
+                  }))
+                : [{title:'No signed documents yet',signer:'Upload and sign documents to see them here',date:'',color:'rgba(255,255,255,0.3)'}]
+              ).map(sig => (
                 <div key={sig.title} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px', background:BG3, border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, marginBottom:8 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                     <div style={{ width:36, height:36, borderRadius:'50%', background:'rgba(34,197,94,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
@@ -972,7 +1135,16 @@ export default function DocumentsPage() {
             ))}
             <div style={{ display:'flex', gap:10, marginTop:8 }}>
               <button onClick={() => setShowExport(false)} style={{ flex:1, padding:10, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:6, color:'rgba(255,255,255,0.6)', fontFamily:BARLOW, fontSize:15, cursor:'pointer' }}>Cancel</button>
-              <button onClick={() => setShowExport(false)} style={{ flex:2, padding:10, background:GOLD, border:'none', borderRadius:6, color:BG, fontFamily:BEBAS, fontSize:17, letterSpacing:1, cursor:'pointer' }}>Export Now</button>
+              <button onClick={() => {
+                const headers = 'Document Name,Category,Uploaded By,Date,Status,Size';
+                const rows = allDocs.map((d:any) => [`"${d.name}"`, d.category, d.uploader, d.date, d.status, d.size].join(',')).join('\n');
+                const blob = new Blob([headers+'\n'+rows],{type:'text/csv'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href=url; a.download=`documents-report-${new Date().toISOString().slice(0,10)}.csv`;
+                a.click(); URL.revokeObjectURL(url);
+                setShowExport(false);
+              }} style={{ flex:2, padding:10, background:GOLD, border:'none', borderRadius:6, color:BG, fontFamily:BEBAS, fontSize:17, letterSpacing:1, cursor:'pointer' }}>Export Now</button>
             </div>
           </div>
         </div>
@@ -1024,7 +1196,7 @@ export default function DocumentsPage() {
               </select>
               <div style={{ padding:'10px 14px', background:BG3, borderRadius:6, marginBottom:16, display:'flex', alignItems:'center', gap:10 }}>
                 <span style={{ fontFamily:BARLOW, fontSize: 14, color:'rgba(255,255,255,0.4)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>https://silverscreens.com/docs/share/{doc.id}</span>
-                <button style={{ padding:'4px 10px', background:GOLD, border:'none', borderRadius:4, color:BG, fontFamily:BARLOW, fontSize: 14, fontWeight:700, cursor:'pointer', flexShrink:0 }}>Copy</button>
+                <button onClick={() => navigator.clipboard.writeText(`https://silverscreens.com/docs/share/${doc.id}`).then(()=>alert('Link copied!'))} style={{ padding:'4px 10px', background:GOLD, border:'none', borderRadius:4, color:BG, fontFamily:BARLOW, fontSize: 14, fontWeight:700, cursor:'pointer', flexShrink:0 }}>Copy</button>
               </div>
               <div style={{ display:'flex', gap:10 }}>
                 <button onClick={() => setShareDocId('')} style={{ flex:1, padding:10, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:6, color:'rgba(255,255,255,0.6)', fontFamily:BARLOW, fontSize:15, cursor:'pointer' }}>Cancel</button>

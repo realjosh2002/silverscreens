@@ -1035,3 +1035,8 @@ aside nav,
 /* Cursor fix */
 * { cursor: default; }
 a, button { cursor: pointer !important; }
+
+select option {
+  background: #121821;
+  color: #F5F5F5;
+}

@@ -527,6 +527,14 @@ model agency_profiles {
   profile_views       Int?                  @default(0)
   created_at          DateTime?             @default(now()) @db.Timestamptz(6)
   updated_at          DateTime?             @default(now()) @db.Timestamptz(6)
+  company_type        String?
+  company_size        String?
+  languages           Json?
+  genres              Json?
+  expertise           Json?
+  operating_cities    Json?
+  contact_designation String?
+  gallery_urls        Json?
   profiles            profiles              @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   applications        applications[]
   auditions           auditions[]
@@ -570,6 +578,10 @@ model aspirant_media {
   is_primary        Boolean?          @default(false)
   order_index       Int?              @default(0)
   created_at        DateTime?         @default(now()) @db.Timestamptz(6)
+  moderation_status String?           @default("pending")
+  rejection_reason  String?
+  moderated_at      DateTime?         @db.Timestamptz(6)
+  moderated_by      String?           @db.Uuid
   aspirant_profiles aspirant_profiles @relation(fields: [aspirant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@schema("public")
@@ -622,6 +634,8 @@ model aspirant_profiles {
   updated_at          DateTime?             @default(now()) @db.Timestamptz(6)
   rnr_eligible        Boolean?              @default(false)
   rnr_categories      String[]              @default([])
+  skills              String[]
+  documents           Json?
   applications        applications[]
   aspirant_media      aspirant_media[]
   profiles            profiles              @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -649,6 +663,8 @@ model audit_logs {
   ip_address  String?   @db.Inet
   user_agent  String?
   created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  module      String?
+  status      String?   @default("success")
   profiles    profiles? @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([created_at(sort: Desc)], map: "idx_audit_logs_created")
@@ -659,8 +675,8 @@ model audit_logs {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model auditions {
   id                         String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  application_id             String            @db.Uuid
-  casting_call_id            String            @db.Uuid
+  application_id             String?           @db.Uuid
+  casting_call_id            String?           @db.Uuid
   aspirant_id                String            @db.Uuid
   agency_id                  String            @db.Uuid
   scheduled_at               DateTime          @db.Timestamptz(6)
@@ -674,9 +690,9 @@ model auditions {
   outcome                    audition_outcome?
   created_at                 DateTime?         @default(now()) @db.Timestamptz(6)
   agency_profiles            agency_profiles   @relation(fields: [agency_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  applications               applications      @relation(fields: [application_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  applications               applications?     @relation(fields: [application_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   aspirant_profiles          aspirant_profiles @relation(fields: [aspirant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  casting_calls              casting_calls     @relation(fields: [casting_call_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  casting_calls              casting_calls?    @relation(fields: [casting_call_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@schema("public")
 }
@@ -729,6 +745,7 @@ model casting_calls {
   auditions              auditions[]
   agency_profiles        agency_profiles       @relation(fields: [agency_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   saved_casting_calls    saved_casting_calls[]
+  shortlisted_talents    shortlisted_talents[]
 
   @@index([agency_id], map: "idx_casting_calls_agency")
   @@index([last_application_date], map: "idx_casting_calls_deadline")
@@ -773,16 +790,19 @@ model conversations {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model email_templates {
-  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name       String    @unique
-  subject    String
-  body_html  String
-  variables  String[]  @default([])
-  is_active  Boolean?  @default(true)
-  created_by String?   @db.Uuid
-  created_at DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at DateTime? @default(now()) @db.Timestamptz(6)
-  profiles   profiles? @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name        String    @unique
+  subject     String
+  body_html   String
+  variables   Json?
+  is_active   Boolean?  @default(true)
+  created_by  String?   @db.Uuid
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
+  slug        String?   @unique
+  description String?
+  category    String?   @default("transactional")
+  profiles    profiles? @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@schema("public")
 }
@@ -822,39 +842,48 @@ model notifications {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model profiles {
-  id                                                     String                 @id @db.Uuid
-  role                                                   user_role              @default(aspirant)
-  profile_number                                         String?                @unique
-  email                                                  String
-  phone                                                  String?
-  email_verified                                         Boolean?               @default(false)
-  phone_verified                                         Boolean?               @default(false)
-  two_fa_enabled                                         Boolean?               @default(false)
-  is_active                                              Boolean?               @default(true)
-  last_login_at                                          DateTime?              @db.Timestamptz(6)
-  created_at                                             DateTime?              @default(now()) @db.Timestamptz(6)
-  updated_at                                             DateTime?              @default(now()) @db.Timestamptz(6)
-  name                                                   String?
-  agency_profiles                                        agency_profiles?
-  aspirant_profiles                                      aspirant_profiles?
-  audit_logs                                             audit_logs[]
-  cms_content                                            cms_content[]
-  conversations_conversations_blocked_byToprofiles       conversations[]        @relation("conversations_blocked_byToprofiles")
-  conversations_conversations_participant_1_idToprofiles conversations[]        @relation("conversations_participant_1_idToprofiles")
-  conversations_conversations_participant_2_idToprofiles conversations[]        @relation("conversations_participant_2_idToprofiles")
-  email_templates                                        email_templates[]
-  messages                                               messages[]
-  notifications                                          notifications[]
-  otp_verifications                                      otp_verifications[]
-  payment_transactions                                   payment_transactions[]
-  users                                                  users                  @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  reports_reports_reported_byToprofiles                  reports[]              @relation("reports_reported_byToprofiles")
-  reports_reports_reported_user_idToprofiles             reports[]              @relation("reports_reported_user_idToprofiles")
-  subscriptions                                          subscriptions[]
-  support_tickets_support_tickets_assigned_toToprofiles  support_tickets[]      @relation("support_tickets_assigned_toToprofiles")
-  support_tickets_support_tickets_user_idToprofiles      support_tickets[]      @relation("support_tickets_user_idToprofiles")
-  system_settings                                        system_settings[]
-  ticket_replies                                         ticket_replies[]
+  id                                                      String                 @id @db.Uuid
+  role                                                    user_role              @default(aspirant)
+  profile_number                                          String?                @unique
+  email                                                   String
+  phone                                                   String?
+  email_verified                                          Boolean?               @default(false)
+  phone_verified                                          Boolean?               @default(false)
+  two_fa_enabled                                          Boolean?               @default(false)
+  is_active                                               Boolean?               @default(true)
+  last_login_at                                           DateTime?              @db.Timestamptz(6)
+  created_at                                              DateTime?              @default(now()) @db.Timestamptz(6)
+  updated_at                                              DateTime?              @default(now()) @db.Timestamptz(6)
+  name                                                    String?
+  role_id                                                 String?
+  avatar_url                                              String?
+  display_name                                            String?
+  agency_documents_agency_documents_reviewed_byToprofiles agency_documents[]     @relation("agency_documents_reviewed_byToprofiles")
+  agency_documents_agency_documents_user_idToprofiles     agency_documents[]     @relation("agency_documents_user_idToprofiles")
+  agency_profiles                                         agency_profiles?
+  aspirant_profiles                                       aspirant_profiles?
+  audit_logs                                              audit_logs[]
+  cms_content                                             cms_content[]
+  conversations_conversations_blocked_byToprofiles        conversations[]        @relation("conversations_blocked_byToprofiles")
+  conversations_conversations_participant_1_idToprofiles  conversations[]        @relation("conversations_participant_1_idToprofiles")
+  conversations_conversations_participant_2_idToprofiles  conversations[]        @relation("conversations_participant_2_idToprofiles")
+  device_sessions                                         device_sessions[]
+  email_templates                                         email_templates[]
+  messages                                                messages[]
+  notifications                                           notifications[]
+  otp_verifications                                       otp_verifications[]
+  payment_transactions                                    payment_transactions[]
+  users                                                   users                  @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  roles                                                   roles?                 @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reports_reports_reported_byToprofiles                   reports[]              @relation("reports_reported_byToprofiles")
+  reports_reports_reported_user_idToprofiles              reports[]              @relation("reports_reported_user_idToprofiles")
+  saved_talents_saved_talents_agency_idToprofiles         saved_talents[]        @relation("saved_talents_agency_idToprofiles")
+  saved_talents_saved_talents_aspirant_idToprofiles       saved_talents[]        @relation("saved_talents_aspirant_idToprofiles")
+  subscriptions                                           subscriptions[]
+  support_tickets_support_tickets_assigned_toToprofiles   support_tickets[]      @relation("support_tickets_assigned_toToprofiles")
+  support_tickets_support_tickets_user_idToprofiles       support_tickets[]      @relation("support_tickets_user_idToprofiles")
+  system_settings                                         system_settings[]
+  ticket_replies                                          ticket_replies[]
 
   @@schema("public")
 }
@@ -898,8 +927,10 @@ model shortlisted_talents {
   aspirant_id       String            @db.Uuid
   notes             String?
   created_at        DateTime?         @default(now()) @db.Timestamptz(6)
+  casting_call_id   String?           @db.Uuid
   agency_profiles   agency_profiles   @relation(fields: [agency_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   aspirant_profiles aspirant_profiles @relation(fields: [aspirant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  casting_calls     casting_calls?    @relation(fields: [casting_call_id], references: [id], onUpdate: NoAction)
 
   @@unique([agency_id, aspirant_id])
   @@schema("public")
@@ -1107,6 +1138,188 @@ model subscription_plans {
   @@schema("public")
 }
 
+model agency_documents {
+  id                                              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                                         String    @db.Uuid
+  doc_type                                        String
+  doc_label                                       String
+  file_name                                       String
+  file_size                                       BigInt    @default(0)
+  file_path                                       String
+  public_url                                      String
+  status                                          String    @default("pending_review")
+  rejection_reason                                String?
+  reviewed_by                                     String?   @db.Uuid
+  reviewed_at                                     DateTime? @db.Timestamptz(6)
+  created_at                                      DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at                                      DateTime? @default(now()) @db.Timestamptz(6)
+  profiles_agency_documents_reviewed_byToprofiles profiles? @relation("agency_documents_reviewed_byToprofiles", fields: [reviewed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  profiles_agency_documents_user_idToprofiles     profiles  @relation("agency_documents_user_idToprofiles", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([status], map: "idx_agency_documents_status")
+  @@index([user_id], map: "idx_agency_documents_user_id")
+  @@schema("public")
+}
+
+model saved_talents {
+  id                                           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agency_id                                    String    @db.Uuid
+  aspirant_id                                  String    @db.Uuid
+  notes                                        String?
+  created_at                                   DateTime? @default(now()) @db.Timestamptz(6)
+  profiles_saved_talents_agency_idToprofiles   profiles  @relation("saved_talents_agency_idToprofiles", fields: [agency_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  profiles_saved_talents_aspirant_idToprofiles profiles  @relation("saved_talents_aspirant_idToprofiles", fields: [aspirant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([agency_id, aspirant_id])
+  @@index([agency_id], map: "idx_saved_talents_agency_id")
+  @@index([aspirant_id], map: "idx_saved_talents_aspirant_id")
+  @@schema("public")
+}
+
+model advertisements {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name             String
+  placement        String
+  ad_type          String    @default("image_banner")
+  status           String    @default("draft")
+  media_url        String?
+  click_url        String?
+  impressions      Int       @default(0)
+  clicks           Int       @default(0)
+  starts_at        DateTime? @db.Timestamptz(6)
+  ends_at          DateTime? @db.Timestamptz(6)
+  created_by_name  String?
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime? @default(now()) @db.Timestamptz(6)
+  created_by       String?
+  target_user_type String?
+  target_category  String?
+  target_role      String?
+  target_age_min   Int?
+  target_age_max   Int?
+  target_gender    String?
+  target_location  String?
+  delivery_channel String?   @default("both")
+
+  @@index([placement], map: "idx_ads_placement")
+  @@index([status], map: "idx_ads_status")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model device_sessions {
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id     String?   @db.Uuid
+  device_type String
+  user_agent  String?
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  profiles    profiles? @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([created_at], map: "idx_device_sessions_created_at")
+  @@index([device_type], map: "idx_device_sessions_device_type")
+  @@schema("public")
+}
+
+model payment_gateways {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String
+  type       String?   @default("Backup")
+  is_active  Boolean?  @default(false)
+  mode       String?   @default("Test")
+  api_key    String?
+  secret_key String?
+  volume     String?   @default("—")
+  txns       Int?      @default(0)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@schema("public")
+}
+
+model platform_currencies {
+  id         String    @id
+  name       String
+  symbol     String
+  code       String    @unique
+  rate       String?   @default("1.00")
+  is_active  Boolean?  @default(true)
+  is_default Boolean?  @default(false)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@schema("public")
+}
+
+model platform_languages {
+  id          String    @id
+  name        String
+  native_name String?
+  code        String    @unique
+  direction   String?   @default("LTR")
+  is_active   Boolean?  @default(true)
+  is_default  Boolean?  @default(false)
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@schema("public")
+}
+
+model platform_regions {
+  id         String    @id
+  name       String
+  code       String    @unique
+  region     String?
+  currency   String?
+  is_active  Boolean?  @default(true)
+  is_primary Boolean?  @default(false)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@schema("public")
+}
+
+model roles {
+  id          String     @id
+  name        String
+  description String?
+  color       String?    @default("#8B5CF6")
+  is_system   Boolean?   @default(false)
+  permissions Json?      @default("{}")
+  created_at  DateTime?  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime?  @default(now()) @db.Timestamptz(6)
+  profiles    profiles[]
+
+  @@schema("public")
+}
+
+model sms_templates {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug        String    @unique
+  name        String
+  description String?
+  category    String?   @default("transactional")
+  sms_body    String
+  wa_body     String
+  variables   Json?     @default("[]")
+  is_active   Boolean?  @default(true)
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model locations {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  country    String
+  state      String    @default("")
+  city       String    @default("")
+  is_active  Boolean   @default(true)
+  sort_order Int       @default(0)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([is_active], map: "idx_locations_active")
+  @@index([country], map: "idx_locations_country")
+  @@index([state], map: "idx_locations_state")
+  @@schema("public")
+}
+
 enum aal_level {
   aal1
   aal2
@@ -1209,6 +1422,10 @@ enum audition_status {
   completed
   cancelled
   rescheduled
+  closed
+  selected
+  rejected
+  on_hold
 
   @@schema("public")
 }

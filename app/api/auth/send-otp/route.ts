@@ -1,8 +1,6 @@
 // app/api/auth/send-otp/route.ts
 import { NextRequest } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-import { prisma } from '@/lib/prisma'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { sendEmail, otpEmailTemplate } from '@/lib/email'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
 
@@ -12,86 +10,44 @@ function generateOTP(): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll: () => cookieStore.getAll(),
-          setAll: (cookiesToSet) => {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
-          },
-        },
-      }
-    )
+    const body = await req.json().catch(() => ({}))
+    const email = body.email?.toLowerCase().trim()
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (!email)
+      return errorResponse('Email is required', 400)
 
-    if (authError || !user) {
-      return errorResponse('Unauthorized', 401)
+    // Find auth user by email
+    const { data: listData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
+    const authUser = listData?.users?.find(u => u.email === email)
+    if (!authUser)
+      return errorResponse('Account not found', 404)
+
+    // Rate limit — check last OTP send time from user metadata
+    const lastSent = authUser.user_metadata?.pending_otp_expiry
+    if (lastSent) {
+      const expiry = new Date(lastSent).getTime()
+      const sentAt = expiry - 10 * 60 * 1000
+      if (Date.now() - sentAt < 60 * 1000)
+        return errorResponse('Please wait 60 seconds before requesting a new OTP', 429)
     }
 
-    // Fetch profile to check current state
-    const profile = await prisma.profiles.findUnique({
-      where: { id: user.id },
-      select: { id: true, email: true, name: true, email_verified: true },
-    })
+    // Generate new OTP and store in user metadata
+    const otp       = generateOTP()
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString()
 
-    if (!profile) {
-      return errorResponse('Profile not found', 404)
-    }
-
-    if (profile.email_verified) {
-      return successResponse({ message: 'Email already verified' })
-    }
-
-    // Rate limit — max 1 OTP per 60 seconds
-    const recentOtp = await prisma.otp_verifications.findFirst({
-      where: {
-        user_id:   profile.id,
-        otp_type:  'email_verification',
-        is_used:   false,
-        created_at: { gte: new Date(Date.now() - 60 * 1000) },
-      },
-      orderBy: { created_at: 'desc' },
-    })
-
-    if (recentOtp) {
-      return errorResponse('Please wait 60 seconds before requesting a new OTP', 429)
-    }
-
-    // Invalidate all previous unused OTPs for this user
-    await prisma.otp_verifications.updateMany({
-      where: {
-        user_id:  profile.id,
-        otp_type: 'email_verification',
-        is_used:  false,
-      },
-      data: { is_used: true },
-    })
-
-    // Generate and store new OTP
-    const otp = generateOTP()
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
-
-    await prisma.otp_verifications.create({
-      data: {
-        user_id:    profile.id,
-        identifier: profile.email,
-        otp_code:   otp,
-        otp_type:   'email_verification',
-        is_used:    false,
-        expires_at: expiresAt,
+    await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
+      user_metadata: {
+        ...authUser.user_metadata,
+        pending_otp:        otp,
+        pending_otp_expiry: expiresAt,
       },
     })
 
     // Send email
-    const template = otpEmailTemplate(otp, profile.name || undefined)
+    const name     = authUser.user_metadata?.name || undefined
+    const template = otpEmailTemplate(otp, name)
     await sendEmail({
-      to:      profile.email,
+      to:      email,
       subject: template.subject,
       html:    template.html,
       text:    template.text,

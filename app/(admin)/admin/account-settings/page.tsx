@@ -1,120 +1,48 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useAdminProfile } from "@/components/AdminProfileContext";
+import { supabase } from "@/lib/supabase";
+import AdminTopnav from "@/components/layout/AdminTopnav";
+import AdminSidebar from "@/components/layout/AdminSidebar";
 import {
-  Home,
-  Users,
-  CheckCircle2,
-  Building2,
-  ClipboardCheck,
-  FileText,
-  BarChart3,
-  AlertTriangle,
-  Layers,
-  Megaphone,
-  Bell,
-  Mail,
-  MessageSquare,
-  CreditCard,
-  Settings as SettingsIcon,
-  Lock,
-  ScrollText,
-  ChevronLeft,
-  Menu,
-  ChevronDown,
-  ChevronRight,
-  Save,
-  Inbox,
-  User,
-  Camera,
-  Eye,
-  EyeOff,
-  KeyRound,
-  RefreshCw,
-  Shield,
-  ShieldCheck,
-  Monitor,
-  Smartphone,
-  Laptop,
-  Tablet,
-  MoreVertical,
-  PenTool,
-  Upload,
-  Trash2,
-  Download,
-  FileSearch,
-  Key,
-  Zap,
-  AlertOctagon,
-  Info,
-  Clock,
+  ChevronRight, Save, User, Camera, Eye, EyeOff, KeyRound,
+  RefreshCw, Shield, ShieldCheck, Monitor, Smartphone, Laptop,
+  Tablet, MoreVertical, PenTool, Upload, Trash2, Download,
+  FileSearch, Key, Zap, AlertOctagon, Clock, ScrollText,
+  Settings as SettingsIcon, Bell, X, CheckCircle2,
 } from "lucide-react";
 
-// ---------- Design tokens (Admin pages) ----------
-const RED = "#C8202A";
-const GOLD = "#D4A64A";
-const GREEN = "#22C55E";
-const BLUE = "#3B82F6";
-const BG = "#0D1117";
-const BG2 = "#131720";
-const BG3 = "#181E2A";
-const BG4 = "#1C2338";
-const BEBAS = "'Bebas Neue', sans-serif";
-const BARLOW = "'Barlow Condensed', sans-serif";
-const BORDER = "#252C3A";
+const RED       = "#C8202A";
+const GOLD      = "#D4A64A";
+const GREEN     = "#22C55E";
+const BLUE      = "#3B82F6";
+const BG        = "#0D1117";
+const BG2       = "#131720";
+const BG3       = "#181E2A";
+const BG4       = "#1C2338";
+const BEBAS     = "'Bebas Neue', sans-serif";
+const BARLOW    = "'Barlow Condensed', sans-serif";
+const BORDER    = "#252C3A";
 const TEXT_MUTED = "#8B93A3";
 
-// ---------- Nav config (flat list, mirrors real dashboard sidebar) ----------
-type NavItem = { label: string; href: string; icon: React.ElementType; built: boolean };
-
-const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", href: "/admin/dashboard", icon: Home, built: true },
-  { label: "User Management", href: "/admin/users", icon: Users, built: true },
-  { label: "Talent Verification", href: "/admin/talent-verification", icon: CheckCircle2, built: true },
-  { label: "Agency Verification", href: "/admin/agency-verification", icon: Building2, built: true },
-  { label: "Applications Monitoring", href: "/admin/applications", icon: ClipboardCheck, built: true },
-  { label: "Reports & Complaints", href: "/admin/reports", icon: FileText, built: true },
-  { label: "Fraud Detection", href: "/admin/fraud-detection", icon: AlertTriangle, built: true },
-  { label: "Subscription Management", href: "/admin/subscriptions", icon: CreditCard, built: true },
-  { label: "Advertisement Management", href: "/admin/advertisements", icon: Megaphone, built: true },
-  { label: "CMS Management", href: "/admin/cms", icon: Layers, built: true },
-  { label: "Notifications Management", href: "/admin/notifications-management", icon: Bell, built: true },
-  { label: "Analytics & Reports", href: "/admin/analytics", icon: BarChart3, built: true },
-  { label: "Support Tickets", href: "/admin/support-tickets", icon: Inbox, built: true },
-  { label: "Audit Logs", href: "/admin/audit-logs", icon: ScrollText, built: true },
-  { label: "Roles & Permissions", href: "/admin/roles-permissions", icon: Lock, built: true },
-  { label: "System Settings", href: "/admin/settings", icon: SettingsIcon, built: true },
-];
-
-const PROFILE_MENU = [
-  { label: "My Profile", href: "/admin/profile", built: true },
-  { label: "Account Settings", href: "/admin/account-settings", built: true },
-  { label: "Security & Login", href: "/admin/security-login", built: true },
-  { label: "Activity Log", href: "/admin/activity-log", built: true },
-  { label: "Help & Support", href: "/admin/help-support", built: true },
-  { label: "Logout", href: "/login", built: true },
-];
-
-function go(router: ReturnType<typeof useRouter>, item: { href: string; built: boolean; label: string }) {
-  if (item.built) {
-    router.push(item.href);
-  } else {
-    alert(`"${item.label}" page is not built yet. (404)`);
-  }
-}
-
 const inputStyle: React.CSSProperties = {
-  width: "100%",
-  background: BG3,
-  border: `1px solid ${BORDER}`,
-  borderRadius: 6,
-  padding: "10px 12px",
-  fontSize: 14,
-  color: "#fff",
-  fontFamily: BARLOW,
-  outline: "none",
-  boxSizing: "border-box",
+  width: "100%", background: BG3, border: `1px solid ${BORDER}`, borderRadius: 6,
+  padding: "10px 12px", fontSize: 14, color: "#fff", fontFamily: BARLOW,
+  outline: "none", boxSizing: "border-box",
+};
+
+const btnGold: React.CSSProperties = {
+  width: "100%", background: "transparent", border: `1px solid ${GOLD}`, color: GOLD,
+  borderRadius: 6, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer",
+  display: "flex", alignItems: "center", justifyContent: "center", gap: 7, marginBottom: 8,
+};
+
+const btnBorder: React.CSSProperties = {
+  width: "100%", background: "transparent", border: `1px solid ${BORDER}`, color: "#cfd3da",
+  borderRadius: 6, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer",
+  display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
 };
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
@@ -129,19 +57,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 
 function ToggleSwitch({ on, onClick }: { on: boolean; onClick: () => void }) {
   return (
-    <div
-      onClick={onClick}
-      style={{
-        width: 42,
-        height: 22,
-        borderRadius: 11,
-        background: on ? GOLD : "#3A4150",
-        cursor: "pointer",
-        position: "relative",
-        transition: "background 0.15s",
-        flexShrink: 0,
-      }}
-    >
+    <div onClick={onClick} style={{ width: 42, height: 22, borderRadius: 11, background: on ? GOLD : "#3A4150", cursor: "pointer", position: "relative", transition: "background 0.15s", flexShrink: 0 }}>
       <div style={{ position: "absolute", top: 2, left: on ? 22 : 2, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.15s" }} />
     </div>
   );
@@ -169,830 +85,645 @@ function RailCard({ title, color, children }: { title: string; color: string; ch
   );
 }
 
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ background: BG2, border: `1px solid ${BORDER}`, borderRadius: 12, width: 460, maxWidth: "94vw", padding: 28, boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+          <h2 style={{ fontFamily: BEBAS, fontSize: 22, color: GOLD, margin: 0, letterSpacing: 1 }}>{title}</h2>
+          <div onClick={onClose} style={{ cursor: "pointer", color: TEXT_MUTED }}><X size={18} /></div>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 const DEVICE_ICON_MAP: Record<string, React.ElementType> = {
-  windows: Monitor,
-  mac: Laptop,
-  android: Smartphone,
-  ios: Smartphone,
-  tablet: Tablet,
+  windows: Monitor, mac: Laptop, android: Smartphone, ios: Smartphone, tablet: Tablet,
 };
 
 export default function AccountSettingsPage() {
   const router = useRouter();
-  const [collapsed, setCollapsed] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [notifPanelOpen, setNotifPanelOpen] = useState(false);
-  const [msgPanelOpen, setMsgPanelOpen] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const { refreshProfile, updateProfile: updateSharedProfile } = useAdminProfile();
+  const [saved,           setSaved]           = useState(false);
+  const [saving,          setSaving]          = useState(false);
+  const [loading,         setLoading]         = useState(true);
+  const [avatarSrc,       setAvatarSrc]       = useState("https://i.pravatar.cc/200?img=12");
+  const [signatureSrc,    setSignatureSrc]    = useState<string | null>(null);
+  const [backupCodesCount,setBackupCodesCount]= useState(8);
+  const [saveError,       setSaveError]       = useState("");
+  const [showUploadSig,   setShowUploadSig]   = useState(false);
+  const [showDeviceDetail,setShowDeviceDetail]= useState<any>(null);
+  const [showDownloadData,setShowDownloadData]= useState(false);
+  const [showExportHistory,setShowExportHistory]= useState(false);
+  const [firstName,       setFirstName]       = useState("Arun");
+  const [lastName,        setLastName]        = useState("Kumar");
+  const [displayName,     setDisplayName]     = useState("Arun Kumar");
+  const [designation,     setDesignation]     = useState("Super Administrator");
+  const [department,      setDepartment]      = useState("Administration");
+  const [employeeId,      setEmployeeId]      = useState("SS-ADM-001");
+  const [email,           setEmail]           = useState("admin@silverscreens.in");
+  const [mobile,          setMobile]          = useState("+91 98765 43210");
+  const [memberSince,     setMemberSince]     = useState("—");
+  const [lastLogin,       setLastLogin]       = useState("—");
+  const [theme,           setTheme]           = useState("Dark");
+  const [language,        setLanguage]        = useState("English");
+  const [timezone,        setTimezone]        = useState("(GMT+05:30) Asia/Kolkata");
+  const [dateFormat,      setDateFormat]      = useState("24 Jun 2026");
+  const [timeFormat,      setTimeFormat]      = useState("12 Hour (hh:mm AM/PM)");
+  const [deviceMenuOpen,  setDeviceMenuOpen]  = useState<string | null>(null);
 
-  const topbarNotifications = [
-    { id: 1, text: "New agency verification request submitted", time: "5 minutes ago", read: false },
-    { id: 2, text: "Payment gateway Stripe was disconnected", time: "32 minutes ago", read: false },
-    { id: 3, text: "Subscription plan renewed for Razorpay Studios", time: "1 hour ago", read: false },
-    { id: 4, text: "Weekly platform report is ready to download", time: "Yesterday", read: true },
-  ];
-  const topbarMessages = [
-    { id: 1, sender: "Priya Sharma (Verifier)", text: "Can you review the pending talent docs?", time: "10 minutes ago", read: false },
-    { id: 2, sender: "Arjun Mehta (Content Moderator)", text: "Flagged 3 casting calls for spam.", time: "1 hour ago", read: false },
-    { id: 3, sender: "Support Team", text: "Ticket #2245 has been escalated to you.", time: "2 hours ago", read: true },
-  ];
-
-  // ---- Profile Information ----
-  const [firstName, setFirstName] = useState("Arun");
-  const [lastName, setLastName] = useState("Kumar");
-  const [displayName, setDisplayName] = useState("Arun Kumar");
-  const [designation, setDesignation] = useState("Super Administrator");
-  const [department, setDepartment] = useState("Administration");
-  const [employeeId] = useState("SS-ADM-001");
-  const [email, setEmail] = useState("admin@silverscreens.com");
-  const [mobile, setMobile] = useState("+91 98765 43210");
-
-  // ---- Login Credentials ----
-  const [username] = useState("superadmin");
-  const [password] = useState("••••••••••••••");
-  const [showPassword, setShowPassword] = useState(false);
-
-  // ---- Two-Factor Auth ----
-  const [twoFaEnabled, setTwoFaEnabled] = useState(true);
-  const [backupCodesRemaining] = useState(8);
-
-  // ---- Personal Preferences ----
-  const [theme, setTheme] = useState("Dark");
-  const [language, setLanguage] = useState("English");
-  const [timezone, setTimezone] = useState("(GMT+05:30) Asia/Kolkata");
-  const [dateFormat, setDateFormat] = useState("24 Jun 2026");
-  const [timeFormat, setTimeFormat] = useState("12 Hour (hh:mm AM/PM)");
-
-  // ---- Session Management ----
   const [sessions, setSessions] = useState([
-    { id: "s1", device: "Windows PC", icon: "windows", browser: "Chrome 126", location: "Chennai, India", ip: "103.21.244.0", lastActive: "Now", status: "This Device", current: true },
-    { id: "s2", device: "MacBook Pro", icon: "mac", browser: "Safari 17", location: "Chennai, India", ip: "103.21.244.0", lastActive: "2 Hours Ago", status: "Active", current: false },
-    { id: "s3", device: "Android Mobile", icon: "android", browser: "Chrome Mobile", location: "Bengaluru, India", ip: "2405:db00::8a2e:370", lastActive: "Yesterday 09:15 AM", status: "Active", current: false },
-    { id: "s4", device: "iPhone 14", icon: "ios", browser: "Safari iOS", location: "Mumbai, India", ip: "117.211.45.33", lastActive: "2 Days Ago 07:45 PM", status: "Active", current: false },
+    { id: "s1", device: "Windows PC",    icon: "windows", browser: "Chrome 126",    location: "Chennai, India",   ip: "103.21.244.0",        lastActive: "Now",                 status: "This Device", current: true  },
+    { id: "s2", device: "MacBook Pro",   icon: "mac",     browser: "Safari 17",     location: "Chennai, India",   ip: "103.21.244.0",        lastActive: "2 Hours Ago",         status: "Active",      current: false },
+    { id: "s3", device: "Android Mobile",icon: "android", browser: "Chrome Mobile", location: "Bengaluru, India", ip: "2405:db00::8a2e:370", lastActive: "Yesterday 09:15 AM",  status: "Active",      current: false },
+    { id: "s4", device: "iPhone 14",     icon: "ios",     browser: "Safari iOS",    location: "Mumbai, India",    ip: "117.211.45.33",       lastActive: "2 Days Ago 07:45 PM", status: "Active",      current: false },
   ]);
 
-  const terminateSession = (id: string) => {
-    if (confirm("Terminate this session? The device will be signed out immediately.")) {
-      setSessions((s) => s.filter((sess) => sess.id !== id));
-    }
-  };
-
-  const terminateAllOthers = () => {
-    if (confirm("Terminate all other sessions? Only this device will remain signed in.")) {
-      setSessions((s) => s.filter((sess) => sess.current));
-    }
-  };
-
-  // ---- Connected Devices ----
   const [devices, setDevices] = useState([
-    { id: "d1", name: "Windows PC", icon: "windows", os: "Windows 11 Pro", browser: "Chrome 126", current: true },
-    { id: "d2", name: "iPhone 14", icon: "ios", os: "iOS 17.5", browser: "Safari", current: false },
-    { id: "d3", name: "MacBook Pro", icon: "mac", os: "macOS Sonoma 14.5", browser: "Safari 17", current: false },
-    { id: "d4", name: "Android Tablet", icon: "android", os: "Android 14", browser: "Chrome", current: false },
+    { id: "d1", name: "Windows PC",     icon: "windows", os: "Windows 11 Pro",    browser: "Chrome 126", current: true  },
+    { id: "d2", name: "iPhone 14",      icon: "ios",     os: "iOS 17.5",          browser: "Safari",     current: false },
+    { id: "d3", name: "MacBook Pro",    icon: "mac",     os: "macOS Sonoma 14.5", browser: "Safari 17",  current: false },
+    { id: "d4", name: "Android Tablet", icon: "android", os: "Android 14",        browser: "Chrome",     current: false },
   ]);
-  const [deviceMenuOpen, setDeviceMenuOpen] = useState<string | null>(null);
 
-  const removeDevice = (id: string) => {
-    if (confirm("Remove this device? It will need to sign in again to access the platform.")) {
-      setDevices((d) => d.filter((dev) => dev.id !== id));
+  const [notifPrefs, setNotifPrefs] = useState({ emailAlerts: true, securityAlerts: true, loginAlerts: true, maintenanceUpdates: true, weeklyReports: true });
+
+  function toggleNotifPref(key: keyof typeof notifPrefs) {
+    setNotifPrefs(function(p) { return { ...p, [key]: !p[key] }; });
+  }
+
+  function terminateSession(id: string) {
+    if (window.confirm("Terminate this session? The device will be signed out immediately.")) {
+      setSessions(function(s) { return s.filter(function(sess) { return sess.id !== id; }); });
     }
-  };
+  }
 
-  const removeAllDevices = () => {
-    if (confirm("Remove all trusted devices except this one?")) {
-      setDevices((d) => d.filter((dev) => dev.current));
+  function terminateAllOthers() {
+    if (window.confirm("Terminate all other sessions? Only this device will remain signed in.")) {
+      setSessions(function(s) { return s.filter(function(sess) { return sess.current; }); });
     }
-  };
+  }
 
-  // ---- Notification Preferences ----
-  const [notifPrefs, setNotifPrefs] = useState({
-    emailAlerts: true,
-    securityAlerts: true,
-    loginAlerts: true,
-    maintenanceUpdates: true,
-    weeklyReports: true,
-  });
-  const toggleNotifPref = (key: keyof typeof notifPrefs) => setNotifPrefs((p) => ({ ...p, [key]: !p[key] }));
-
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2200);
-  };
-
-  const handleCancel = () => {
-    if (confirm("Discard unsaved changes?")) {
-      alert("Changes discarded (demo action).");
+  function removeDevice(id: string) {
+    if (window.confirm("Remove this device? It will need to sign in again.")) {
+      setDevices(function(d) { return d.filter(function(dev) { return dev.id !== id; }); });
     }
-  };
+  }
 
-  const sidebarWidth = collapsed ? 52 : 220;
+  function removeAllDevices() {
+    if (window.confirm("Remove all trusted devices except this one?")) {
+      setDevices(function(d) { return d.filter(function(dev) { return dev.current; }); });
+    }
+  }
+
+  const loadProfile = useCallback(async function() {
+    setLoading(true);
+    try {
+      const stored = localStorage.getItem("ss_user");
+      if (!stored) { setLoading(false); return; }
+      const parsed = JSON.parse(stored);
+      const uid = parsed?.userId || parsed?.id || parsed?.user?.id;
+      if (!uid) { setLoading(false); return; }
+      const { data: sessData } = await supabase.auth.getSession();
+      const freshToken = sessData?.session?.access_token;
+      const authHeaders = freshToken ? { Authorization: "Bearer " + freshToken } : {};
+      const { createClient: cc } = await import("@supabase/supabase-js");
+      const db = cc(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { global: { headers: authHeaders } });
+      const { data, error } = await db.from("profiles").select("id, name, email, phone, profile_number, two_fa_enabled, created_at, last_login_at, avatar_url").eq("id", uid).single();
+      if (error || !data) { setLoading(false); return; }
+      const nameParts = (data.name || "").trim().split(" ");
+      setFirstName(nameParts[0] || "Admin");
+      setLastName(nameParts.slice(1).join(" ") || "");
+      setDisplayName(data.name || nameParts[0]);
+      setEmail(data.email || "");
+      setMobile(data.phone || "");
+      if (data.profile_number) setEmployeeId(data.profile_number);
+      if (data.avatar_url) setAvatarSrc(data.avatar_url);
+      if (data.created_at) setMemberSince(new Date(data.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }));
+      if (data.last_login_at) setLastLogin(new Date(data.last_login_at).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }));
+    } catch (e) { console.error("Profile load error:", e); }
+    setLoading(false);
+  }, []);
+
+  useEffect(function() { loadProfile(); }, [loadProfile]);
+
+  async function handleSave() {
+    setSaving(true); setSaveError("");
+    try {
+      const stored = localStorage.getItem("ss_user");
+      if (!stored) { setSaveError("Not logged in. Please refresh."); setSaving(false); return; }
+      const parsed = JSON.parse(stored);
+      const uid = parsed?.userId || parsed?.id || parsed?.user?.id;
+      if (!uid) { setSaveError("Could not find your user ID. Please log out and back in."); setSaving(false); return; }
+      const { data: sessData2 } = await supabase.auth.getSession();
+      const freshToken2 = sessData2?.session?.access_token;
+      const authHeaders2 = freshToken2 ? { Authorization: "Bearer " + freshToken2 } : {};
+      const { createClient: cc2 } = await import("@supabase/supabase-js");
+      const db2 = cc2(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { global: { headers: authHeaders2 } });
+      const fullName = (firstName + " " + lastName).trim();
+      setDisplayName(fullName);
+      const updates: Record<string, any> = { name: fullName, email, phone: mobile, updated_at: new Date().toISOString() };
+      if (avatarSrc.startsWith("data:")) {
+        try {
+          const res = await fetch(avatarSrc);
+          const blob = await res.blob();
+          const ext  = blob.type.includes("png") ? "png" : "jpg";
+          const path = "avatars/" + uid + "." + ext;
+          const { error: upErr } = await db2.storage.from("assets").upload(path, blob, { upsert: true, contentType: blob.type });
+          if (!upErr) {
+            const { data: urlData } = db2.storage.from("assets").getPublicUrl(path);
+            if (urlData?.publicUrl) { const newUrl = urlData.publicUrl + "?t=" + Date.now(); updates.avatar_url = newUrl; setAvatarSrc(newUrl); }
+          }
+        } catch (photoErr) { console.error("Photo error:", photoErr); }
+      }
+      const { error } = await db2.from("profiles").update(updates).eq("id", uid);
+      if (error) { setSaveError("Failed to save: " + error.message); setSaving(false); return; }
+      setSaving(false); setSaved(true);
+      updateSharedProfile({ firstName, lastName, name: fullName, email, phone: mobile, avatarUrl: updates.avatar_url || avatarSrc });
+      setTimeout(function() { setSaved(false); }, 2200);
+    } catch (err: any) { setSaveError("Unexpected error: " + err.message); setSaving(false); }
+  }
+
+  function handleCancel() {
+    if (window.confirm("Discard unsaved changes and reload from server?")) { loadProfile(); }
+  }
+
+  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { window.alert("File too large. Maximum size is 5MB."); return; }
+    const reader = new FileReader();
+    reader.onload = function(ev) { if (ev.target?.result) setAvatarSrc(ev.target.result as string); };
+    reader.readAsDataURL(file);
+  }
+
+  function handleSigChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { window.alert("File too large. Maximum size is 2MB."); return; }
+    const reader = new FileReader();
+    reader.onload = function(ev) { if (ev.target?.result) { setSignatureSrc(ev.target.result as string); setShowUploadSig(false); } };
+    reader.readAsDataURL(file);
+  }
 
   return (
-    <div style={{ minHeight: "100vh", background: BG, fontFamily: BARLOW, color: "#E6E8EC" }}>
-      {/* ---------------- TOPNAV ---------------- */}
-      <div
-        style={{
-          height: 68,
-          background: BG2,
-          borderBottom: `1px solid ${BORDER}`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 24px",
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-            <span style={{ fontFamily: BEBAS, fontSize: 26, letterSpacing: 1, color: "#fff" }}>SILVER</span>
-            <span style={{ fontFamily: BEBAS, fontSize: 26, letterSpacing: 1, color: RED, borderBottom: `2px solid ${RED}`, paddingBottom: 1 }}>SCREENS</span>
-          </div>
-          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, padding: "4px 10px", borderRadius: 5, background: RED, color: "#fff" }}>
-            ADMIN
-          </span>
-        </div>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", background: BG, fontFamily: BARLOW, color: "#E6E8EC" }}>
+      <AdminTopnav />
+      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+        <AdminSidebar />
+        <div style={{ flex: 1, overflowY: "auto", padding: "24px 28px 40px" }}>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <div style={{ position: "relative" }}>
-            <button
-              onClick={() => {
-                setMsgPanelOpen((o) => !o);
-                setNotifPanelOpen(false);
-                setProfileOpen(false);
-              }}
-              style={{ background: "transparent", border: "none", color: "#cfd3da", cursor: "pointer", position: "relative" }}
-              aria-label="Messages"
-            >
-              <MessageSquare size={20} />
-              <span style={{ position: "absolute", top: -6, right: -6, background: RED, color: "#fff", fontSize: 9, fontWeight: 700, borderRadius: 8, padding: "1px 5px" }}>
-                {topbarMessages.filter((m) => !m.read).length}
-              </span>
-            </button>
-            {msgPanelOpen && (
-              <div style={{ position: "absolute", right: 0, top: 38, width: 320, background: BG3, border: `1px solid ${BORDER}`, borderRadius: 8, overflow: "hidden", boxShadow: "0 8px 24px rgba(0,0,0,0.4)", zIndex: 40 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderBottom: `1px solid ${BORDER}` }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>Messages</span>
-                  <span onClick={() => { setMsgPanelOpen(false); alert('"All Messages" page is not built yet. (404)'); }} style={{ fontSize: 12, color: GOLD, cursor: "pointer" }}>
-                    View All
-                  </span>
-                </div>
-                {topbarMessages.map((m) => (
-                  <div
-                    key={m.id}
-                    onClick={() => { setMsgPanelOpen(false); alert(`Open conversation with "${m.sender}" (demo action).`); }}
-                    style={{ padding: "11px 14px", borderBottom: `1px solid ${BORDER}`, cursor: "pointer", background: m.read ? "transparent" : "rgba(212,166,74,0.06)" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = BG4)}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = m.read ? "transparent" : "rgba(212,166,74,0.06)")}
-                  >
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>{m.sender}</div>
-                    <div style={{ fontSize: 12, color: TEXT_MUTED, marginTop: 2 }}>{m.text}</div>
-                    <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 4 }}>{m.time}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div style={{ position: "relative" }}>
-            <button
-              onClick={() => {
-                setNotifPanelOpen((o) => !o);
-                setMsgPanelOpen(false);
-                setProfileOpen(false);
-              }}
-              style={{ background: "transparent", border: "none", color: "#cfd3da", cursor: "pointer", position: "relative" }}
-              aria-label="Notifications"
-            >
-              <Bell size={20} />
-              <span style={{ position: "absolute", top: -6, right: -6, background: RED, color: "#fff", fontSize: 9, fontWeight: 700, borderRadius: 8, padding: "1px 5px" }}>
-                {topbarNotifications.filter((n) => !n.read).length}
-              </span>
-            </button>
-            {notifPanelOpen && (
-              <div style={{ position: "absolute", right: 0, top: 38, width: 340, background: BG3, border: `1px solid ${BORDER}`, borderRadius: 8, overflow: "hidden", boxShadow: "0 8px 24px rgba(0,0,0,0.4)", zIndex: 40 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderBottom: `1px solid ${BORDER}` }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>Notifications</span>
-                  <span onClick={() => { setNotifPanelOpen(false); router.push("/admin/notifications"); }} style={{ fontSize: 12, color: GOLD, cursor: "pointer" }}>
-                    View All
-                  </span>
-                </div>
-                {topbarNotifications.map((n) => (
-                  <div
-                    key={n.id}
-                    onClick={() => { setNotifPanelOpen(false); alert(`Open notification: "${n.text}" (demo action).`); }}
-                    style={{ padding: "11px 14px", borderBottom: `1px solid ${BORDER}`, cursor: "pointer", background: n.read ? "transparent" : "rgba(212,166,74,0.06)" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = BG4)}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = n.read ? "transparent" : "rgba(212,166,74,0.06)")}
-                  >
-                    <div style={{ fontSize: 13, color: "#fff" }}>{n.text}</div>
-                    <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 4 }}>{n.time}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div style={{ position: "relative" }}>
-            <button
-              onClick={() => { setProfileOpen((p) => !p); setNotifPanelOpen(false); setMsgPanelOpen(false); }}
-              style={{ display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", cursor: "pointer", color: "#fff" }}
-            >
-              <img src="https://i.pravatar.cc/100?img=12" alt="Super Admin" style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", border: `1px solid ${GOLD}` }} />
-              <div style={{ textAlign: "left", lineHeight: 1.25 }}>
-                <div style={{ fontSize: 13, fontWeight: 700 }}>Super Admin</div>
-                <div style={{ fontSize: 11, color: TEXT_MUTED }}>Administrator</div>
-              </div>
-              <ChevronDown size={14} color={TEXT_MUTED} />
-            </button>
-
-            {profileOpen && (
-              <div style={{ position: "absolute", right: 0, top: 50, width: 220, background: BG3, border: `1px solid ${BORDER}`, borderRadius: 8, overflow: "hidden", boxShadow: "0 8px 24px rgba(0,0,0,0.4)", zIndex: 30 }}>
-                {PROFILE_MENU.map((m) => (
-                  <div
-                    key={m.label}
-                    onClick={() => { setProfileOpen(false); go(router, m); }}
-                    style={{ padding: "10px 14px", fontSize: 13, cursor: "pointer", color: m.label === "Logout" ? RED : "#E6E8EC", borderBottom: `1px solid ${BORDER}` }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = BG4)}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                  >
-                    {m.label}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div style={{ display: "flex" }}>
-        {/* ---------------- SIDEBAR ---------------- */}
-        <div
-          style={{
-            width: sidebarWidth,
-            minWidth: sidebarWidth,
-            background: BG2,
-            borderRight: `1px solid ${BORDER}`,
-            minHeight: "calc(100vh - 68px)",
-            display: "flex",
-            flexDirection: "column",
-            transition: "width 0.2s ease",
-            position: "sticky",
-            top: 68,
-            alignSelf: "flex-start",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: collapsed ? "center" : "flex-end", padding: "10px 14px 0" }}>
-            <button onClick={() => setCollapsed((c) => !c)} style={{ background: "transparent", border: "none", color: TEXT_MUTED, cursor: "pointer", display: "flex", alignItems: "center" }} aria-label="Toggle sidebar">
-              {collapsed ? <Menu size={16} /> : <ChevronLeft size={16} />}
-            </button>
-          </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: collapsed ? "12px 0" : "10px 16px 16px", justifyContent: collapsed ? "center" : "flex-start" }}>
-            <img src="https://i.pravatar.cc/100?img=12" alt="Super Admin" style={{ width: 38, height: 38, minWidth: 38, borderRadius: "50%", objectFit: "cover", border: `1px solid ${GOLD}` }} />
-            {!collapsed && (
-              <div style={{ lineHeight: 1.3 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>Super Admin</div>
-                <div style={{ fontSize: 12, color: RED, fontWeight: 600 }}>ADM000001</div>
-              </div>
-            )}
-          </div>
-
-          <div style={{ padding: "4px 8px 14px", flex: 1 }}>
-            {NAV_ITEMS.map((item) => {
-              const Icon = item.icon;
-              return (
-                <div
-                  key={item.label}
-                  onClick={() => go(router, item)}
-                  title={collapsed ? item.label : undefined}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: collapsed ? "10px 0" : "10px 12px",
-                    justifyContent: collapsed ? "center" : "flex-start",
-                    borderRadius: 6,
-                    cursor: "pointer",
-                    color: "#cfd3da",
-                    fontSize: 14,
-                    marginBottom: 2,
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = BG3)}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                >
-                  <Icon size={17} />
-                  {!collapsed && <span>{item.label}</span>}
-                </div>
-              );
-            })}
-          </div>
-
-          <div style={{ padding: "10px 8px", borderTop: `1px solid ${BORDER}` }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: collapsed ? "10px 0" : "9px 12px",
-                justifyContent: collapsed ? "center" : "space-between",
-                borderRadius: 6,
-                background: "rgba(212,166,74,0.12)",
-                border: `1px solid ${GOLD}`,
-                color: GOLD,
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: "pointer",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <User size={17} />
-                {!collapsed && <span>Account Settings</span>}
-              </div>
-              {!collapsed && <ChevronRight size={14} />}
+          {loading && (
+            <div style={{ position: "fixed", inset: 0, background: "rgba(13,17,23,0.85)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
+              <div style={{ width: 40, height: 40, border: `3px solid ${BORDER}`, borderTop: `3px solid ${GOLD}`, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+              <div style={{ fontFamily: BARLOW, fontSize: 15, color: TEXT_MUTED }}>Loading your profile...</div>
+              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* ---------------- MAIN CONTENT ---------------- */}
-        <div style={{ flex: 1, padding: "24px 28px", display: "flex", gap: 24 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
-              <div>
-                <h1 style={{ fontFamily: BEBAS, fontSize: 32, letterSpacing: 1, color: GOLD, margin: 0 }}>ACCOUNT SETTINGS</h1>
-                <p style={{ fontSize: 14, color: TEXT_MUTED, margin: "4px 0 0" }}>
-                  Manage your personal profile, login credentials, security preferences and notification settings.
-                </p>
-              </div>
-              <div style={{ display: "flex", gap: 10 }}>
-                <button
-                  onClick={handleCancel}
-                  style={{ background: "transparent", border: `1px solid ${BORDER}`, color: "#cfd3da", borderRadius: 6, padding: "10px 18px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSave}
-                  style={{ background: GOLD, color: BG, border: "none", borderRadius: 6, padding: "10px 18px", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}
-                >
-                  <Save size={15} />
-                  {saved ? "Saved!" : "Save Changes"}
-                </button>
-              </div>
-            </div>
+          <input id="photo-file-input" type="file" accept="image/jpeg,image/png,image/gif" style={{ display: "none" }} onChange={handlePhotoChange} />
+          <input id="sig-file-input"   type="file" accept="image/png,image/jpeg"           style={{ display: "none" }} onChange={handleSigChange} />
 
-            {/* Profile Information + Login Credentials */}
-            <div style={{ display: "flex", gap: 20, marginBottom: 20, alignItems: "stretch" }}>
-              <div style={{ flex: 1.6 }}>
-                <Card>
-                  <CardHeader icon={User} title="Profile Information" />
-                  <div style={{ display: "flex", gap: 22 }}>
-                    <div style={{ textAlign: "center", flexShrink: 0 }}>
-                      <img
-                        src="https://i.pravatar.cc/200?img=12"
-                        alt="Profile"
-                        style={{ width: 96, height: 96, borderRadius: "50%", objectFit: "cover", border: `2px solid ${GOLD}`, marginBottom: 10 }}
-                      />
-                      <button
-                        onClick={() => alert("Change Photo dialog would open here (demo action).")}
-                        style={{ background: "transparent", border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 6, padding: "8px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, margin: "0 auto" }}
-                      >
-                        <Camera size={13} />
-                        Change Photo
-                      </button>
-                      <div style={{ fontSize: 10, color: TEXT_MUTED, marginTop: 6 }}>JPG, PNG or GIF. Max 5MB</div>
-                    </div>
-                    <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 18px" }}>
-                      <Field label="First Name">
-                        <input style={inputStyle} value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-                      </Field>
-                      <Field label="Last Name">
-                        <input style={inputStyle} value={lastName} onChange={(e) => setLastName(e.target.value)} />
-                      </Field>
-                      <Field label="Display Name">
-                        <input style={inputStyle} value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-                      </Field>
-                      <Field label="Designation">
-                        <input style={inputStyle} value={designation} onChange={(e) => setDesignation(e.target.value)} />
-                      </Field>
-                      <Field label="Department">
-                        <input style={inputStyle} value={department} onChange={(e) => setDepartment(e.target.value)} />
-                      </Field>
-                      <Field label="Employee ID">
-                        <input style={{ ...inputStyle, color: TEXT_MUTED }} value={employeeId} readOnly />
-                      </Field>
-                      <Field label="Email Address">
-                        <input style={inputStyle} value={email} onChange={(e) => setEmail(e.target.value)} />
-                      </Field>
-                      <Field label="Mobile Number">
-                        <input style={inputStyle} value={mobile} onChange={(e) => setMobile(e.target.value)} />
-                      </Field>
-                    </div>
-                  </div>
-                </Card>
-              </div>
+          {showUploadSig && (
+            <Modal title="Upload Digital Signature" onClose={function() { setShowUploadSig(false); }}>
+              <div style={{ fontSize: 13, color: TEXT_MUTED, marginBottom: 18 }}>Upload your digital signature image. PNG or JPG only. Maximum 2MB.</div>
+              {signatureSrc && (
+                <div style={{ background: "#fff", borderRadius: 8, padding: "14px 20px", marginBottom: 16, textAlign: "center" }}>
+                  <img src={signatureSrc} alt="Signature" style={{ maxHeight: 80, maxWidth: "100%" }} />
+                  <div style={{ fontSize: 11, color: "#888", marginTop: 6 }}>Current signature</div>
+                </div>
+              )}
+              <label htmlFor="sig-file-input" style={{ ...btnGold, marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
+                <Upload size={14} />
+                {signatureSrc ? "Replace Signature" : "Choose Signature File"}
+              </label>
+              <button onClick={function() { setShowUploadSig(false); }} style={btnBorder}>Cancel</button>
+            </Modal>
+          )}
 
-              <div style={{ flex: 1 }}>
-                <Card>
-                  <CardHeader icon={Lock} title="Login Credentials" />
-                  <Field label="Username">
-                    <input style={{ ...inputStyle, color: TEXT_MUTED }} value={username} readOnly />
-                  </Field>
-                  <Field label="Password">
-                    <div style={{ position: "relative" }}>
-                      <input style={{ ...inputStyle, paddingRight: 38 }} type={showPassword ? "text" : "password"} value={password} readOnly />
-                      <div onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: 10, top: 11, cursor: "pointer", color: TEXT_MUTED }}>
-                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+          {showDeviceDetail && (
+            <Modal title="Device Details" onClose={function() { setShowDeviceDetail(null); }}>
+              {(function() {
+                const Icon = DEVICE_ICON_MAP[showDeviceDetail.icon] || Monitor;
+                return (
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20, padding: 14, background: BG3, borderRadius: 8 }}>
+                      <Icon size={32} color={GOLD} />
+                      <div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: "#fff" }}>{showDeviceDetail.name}</div>
+                        {showDeviceDetail.current && <div style={{ fontSize: 12, color: GREEN }}>Current Device</div>}
                       </div>
                     </div>
-                  </Field>
-                  <button
-                    onClick={() => alert("Change Password dialog would open here (demo action).")}
-                    style={{ width: "100%", background: "transparent", border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 6, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, marginBottom: 10 }}
-                  >
-                    <KeyRound size={14} />
-                    Change Password
-                  </button>
-                  <button
-                    onClick={() => alert("New recovery codes generated (demo action). Previous codes are now invalid.")}
-                    style={{ width: "100%", background: "transparent", border: `1px solid ${BORDER}`, color: "#cfd3da", borderRadius: 6, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}
-                  >
-                    <RefreshCw size={14} />
-                    Generate Recovery Codes
-                  </button>
-                </Card>
+                    {[
+                      { label: "Operating System", value: showDeviceDetail.os },
+                      { label: "Browser",           value: showDeviceDetail.browser },
+                      { label: "Status",            value: showDeviceDetail.current ? "Active — Current Device" : "Trusted Device" },
+                    ].map(function(row) {
+                      return (
+                        <div key={row.label} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${BORDER}`, fontSize: 14 }}>
+                          <span style={{ color: TEXT_MUTED }}>{row.label}</span>
+                          <span style={{ color: "#fff", fontWeight: 600 }}>{row.value}</span>
+                        </div>
+                      );
+                    })}
+                    <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+                      <button onClick={function() { setShowDeviceDetail(null); }} style={{ flex: 1, background: "transparent", border: `1px solid ${BORDER}`, color: "#cfd3da", borderRadius: 6, padding: "10px", fontSize: 14, cursor: "pointer" }}>Close</button>
+                      {!showDeviceDetail.current && (
+                        <button onClick={function() { setShowDeviceDetail(null); removeDevice(showDeviceDetail.id); }} style={{ flex: 1, background: "transparent", border: `1px solid ${RED}`, color: RED, borderRadius: 6, padding: "10px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Remove Device</button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+            </Modal>
+          )}
+
+          {showDownloadData && (
+            <Modal title="Download My Data" onClose={function() { setShowDownloadData(false); }}>
+              <div style={{ fontSize: 13, color: TEXT_MUTED, marginBottom: 18 }}>Your account data export will include profile information, activity history, login history, and notification preferences.</div>
+              <div style={{ background: BG3, borderRadius: 8, padding: 14, marginBottom: 18, fontSize: 13, color: "#cfd3da" }}>
+                <div style={{ marginBottom: 6 }}><strong style={{ color: "#fff" }}>Export Format:</strong> JSON &amp; CSV</div>
+                <div style={{ marginBottom: 6 }}><strong style={{ color: "#fff" }}>Sent To:</strong> {email}</div>
+                <div><strong style={{ color: "#fff" }}>Processing Time:</strong> Up to 24 hours</div>
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={function() { setShowDownloadData(false); }} style={{ flex: 1, background: "transparent", border: `1px solid ${BORDER}`, color: "#cfd3da", borderRadius: 6, padding: "10px", fontSize: 14, cursor: "pointer" }}>Cancel</button>
+                <button onClick={function() { setShowDownloadData(false); window.alert("Your data export has been initiated. A download link will be sent to " + email + " within 24 hours."); }} style={{ flex: 1, background: GOLD, border: "none", color: BG, borderRadius: 6, padding: "10px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Request Export</button>
+              </div>
+            </Modal>
+          )}
+
+          {showExportHistory && (
+            <Modal title="Export Login History" onClose={function() { setShowExportHistory(false); }}>
+              <div style={{ fontSize: 13, color: TEXT_MUTED, marginBottom: 18 }}>Select the date range for your login history export.</div>
+              <Field label="From Date"><input type="date" style={{ ...inputStyle, colorScheme: "dark" as any }} /></Field>
+              <Field label="To Date"><input type="date" style={{ ...inputStyle, colorScheme: "dark" as any }} /></Field>
+              <Field label="Format">
+                <select style={inputStyle}><option>CSV</option><option>PDF</option></select>
+              </Field>
+              <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+                <button onClick={function() { setShowExportHistory(false); }} style={{ flex: 1, background: "transparent", border: `1px solid ${BORDER}`, color: "#cfd3da", borderRadius: 6, padding: "10px", fontSize: 14, cursor: "pointer" }}>Cancel</button>
+                <button onClick={function() { setShowExportHistory(false); window.alert("Login history export initiated. You will receive an email with the download link."); }} style={{ flex: 1, background: GOLD, border: "none", color: BG, borderRadius: 6, padding: "10px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Export</button>
+              </div>
+            </Modal>
+          )}
+
+          {/* Page Header */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5, fontSize: 13, color: "rgba(255,255,255,0.4)" }}>
+                <span onClick={function() { router.push("/admin/dashboard"); }} style={{ cursor: "pointer" }}>Home</span>
+                <ChevronRight size={12} />
+                <span style={{ color: "rgba(255,255,255,0.7)" }}>Account Settings</span>
+              </div>
+              <h1 style={{ fontFamily: BEBAS, fontSize: 32, letterSpacing: 1, color: GOLD, margin: 0 }}>ACCOUNT SETTINGS</h1>
+              <p style={{ fontSize: 14, color: TEXT_MUTED, margin: "4px 0 0" }}>Manage your personal profile, login credentials, security preferences and notification settings.</p>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+              {saveError && <div style={{ fontSize: 12, color: RED, maxWidth: 280, textAlign: "right" }}>{saveError}</div>}
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={handleCancel} style={{ background: "transparent", border: `1px solid ${BORDER}`, color: "#cfd3da", borderRadius: 6, padding: "10px 18px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+                <button onClick={handleSave} disabled={saving} style={{ background: saved ? GREEN : GOLD, color: BG, border: "none", borderRadius: 6, padding: "10px 18px", fontSize: 14, fontWeight: 700, cursor: saving ? "wait" : "pointer", display: "flex", alignItems: "center", gap: 8, opacity: saving ? 0.7 : 1 }}>
+                  <Save size={15} />
+                  {saving ? "Saving..." : saved ? "Saved!" : "Save Changes"}
+                </button>
               </div>
             </div>
+          </div>
 
-            {/* Two-Factor Authentication + Session Management */}
-            <div style={{ display: "flex", gap: 20, marginBottom: 20, alignItems: "flex-start" }}>
-              <div style={{ flex: 1 }}>
-                <Card>
-                  <CardHeader icon={Shield} title="Two-Factor Authentication" />
-                  <div style={{ background: "rgba(34,197,94,0.08)", border: `1px solid ${GREEN}`, borderRadius: 8, padding: 14, marginBottom: 12 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 7, color: GREEN, fontWeight: 700, fontSize: 13, marginBottom: 4 }}>
-                      <ShieldCheck size={15} />
-                      Enabled
+          {/* Main content + rail */}
+          <div style={{ display: "flex", gap: 24 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+
+              {/* Profile + Security */}
+              <div style={{ display: "flex", gap: 20, marginBottom: 20, alignItems: "stretch" }}>
+                <div style={{ flex: 1.6 }}>
+                  <Card>
+                    <CardHeader icon={User} title="Profile Information" />
+                    <div style={{ display: "flex", gap: 22 }}>
+                      <div style={{ textAlign: "center", flexShrink: 0 }}>
+                        <img src={avatarSrc} alt="Profile" style={{ width: 96, height: 96, borderRadius: "50%", objectFit: "cover", border: `2px solid ${GOLD}`, marginBottom: 10 }} />
+                        <label htmlFor="photo-file-input" style={{ background: "transparent", border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 6, padding: "8px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, margin: "0 auto" }}>
+                          <Camera size={13} />Change Photo
+                        </label>
+                        <div style={{ fontSize: 10, color: TEXT_MUTED, marginTop: 6 }}>JPG, PNG or GIF. Max 5MB</div>
+                      </div>
+                      <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 18px" }}>
+                        <Field label="First Name"><input style={inputStyle} value={firstName} onChange={function(e) { setFirstName(e.target.value); }} /></Field>
+                        <Field label="Last Name"><input style={inputStyle} value={lastName} onChange={function(e) { setLastName(e.target.value); }} /></Field>
+                        <Field label="Display Name"><input style={inputStyle} value={displayName} onChange={function(e) { setDisplayName(e.target.value); }} /></Field>
+                        <Field label="Designation"><input style={inputStyle} value={designation} onChange={function(e) { setDesignation(e.target.value); }} /></Field>
+                        <Field label="Department"><input style={inputStyle} value={department} onChange={function(e) { setDepartment(e.target.value); }} /></Field>
+                        <Field label="Employee ID"><input style={{ ...inputStyle, color: TEXT_MUTED }} value={employeeId} readOnly /></Field>
+                        <Field label="Email Address"><input style={inputStyle} value={email} onChange={function(e) { setEmail(e.target.value); }} /></Field>
+                        <Field label="Mobile Number"><input style={inputStyle} value={mobile} onChange={function(e) { setMobile(e.target.value); }} /></Field>
+                      </div>
                     </div>
-                    <div style={{ fontSize: 12, color: "#cfd3da" }}>Authentication App</div>
-                    <div style={{ fontSize: 12, color: TEXT_MUTED }}>Backup Codes Remaining: {backupCodesRemaining}</div>
-                  </div>
-                  <button
-                    onClick={() => alert("Manage 2FA Configuration dialog would open here (demo action).")}
-                    style={{ width: "100%", background: "transparent", border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 6, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: 8 }}
-                  >
-                    Configure
-                  </button>
-                  <button
-                    onClick={() => alert("Backup codes regenerated (demo action).")}
-                    style={{ width: "100%", background: "transparent", border: `1px solid ${BORDER}`, color: "#cfd3da", borderRadius: 6, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}
-                  >
-                    <RefreshCw size={13} />
-                    Regenerate Codes
-                  </button>
-                </Card>
-
-                <div style={{ height: 20 }} />
-
-                <Card>
-                  <CardHeader icon={SettingsIcon} title="Personal Preferences" />
-                  <Field label="Theme">
-                    <select style={inputStyle} value={theme} onChange={(e) => setTheme(e.target.value)}>
-                      <option>Dark</option>
-                      <option>Light</option>
-                      <option>System Default</option>
-                    </select>
-                  </Field>
-                  <Field label="Language">
-                    <select style={inputStyle} value={language} onChange={(e) => setLanguage(e.target.value)}>
-                      <option>English</option>
-                      <option>Hindi</option>
-                      <option>Tamil</option>
-                    </select>
-                  </Field>
-                  <Field label="Time Zone">
-                    <select style={inputStyle} value={timezone} onChange={(e) => setTimezone(e.target.value)}>
-                      <option>(GMT+05:30) Asia/Kolkata</option>
-                      <option>(GMT+00:00) UTC</option>
-                      <option>(GMT-05:00) America/New_York</option>
-                    </select>
-                  </Field>
-                  <Field label="Date Format">
-                    <select style={inputStyle} value={dateFormat} onChange={(e) => setDateFormat(e.target.value)}>
-                      <option>24 Jun 2026</option>
-                      <option>06/24/2026</option>
-                      <option>2026-06-24</option>
-                    </select>
-                  </Field>
-                  <Field label="Time Format">
-                    <select style={inputStyle} value={timeFormat} onChange={(e) => setTimeFormat(e.target.value)}>
-                      <option>12 Hour (hh:mm AM/PM)</option>
-                      <option>24 Hour</option>
-                    </select>
-                  </Field>
-                </Card>
+                  </Card>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Card>
+                    <CardHeader icon={Shield} title="Security &amp; Login" />
+                    <div style={{ fontSize: 13, color: TEXT_MUTED, marginBottom: 18, lineHeight: 1.7 }}>Password, two-factor authentication, trusted devices, login alerts and security settings are managed on the dedicated Security &amp; Login page.</div>
+                    {[
+                      { icon: KeyRound,    label: "Change Password",           sub: "Last changed 7 days ago" },
+                      { icon: ShieldCheck, label: "Two-Factor Authentication", sub: "Enabled — Authentication App" },
+                      { icon: Smartphone,  label: "Trusted Devices",           sub: sessions.length + " devices connected" },
+                      { icon: RefreshCw,   label: "Backup Codes",              sub: backupCodesCount + " codes remaining" },
+                    ].map(function(item) {
+                      const Icon = item.icon;
+                      return (
+                        <div key={item.label} onClick={function() { router.push("/admin/security-login"); }}
+                          style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0", borderBottom: `1px solid ${BORDER}`, cursor: "pointer" }}
+                          onMouseEnter={function(e) { (e.currentTarget as HTMLDivElement).style.background = BG3; }}
+                          onMouseLeave={function(e) { (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}>
+                          <div style={{ width: 34, height: 34, borderRadius: "50%", background: GOLD + "18", border: "1px solid " + GOLD + "44", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <Icon size={15} color={GOLD} />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 14, color: "#fff", fontWeight: 600 }}>{item.label}</div>
+                            <div style={{ fontSize: 12, color: TEXT_MUTED, marginTop: 2 }}>{item.sub}</div>
+                          </div>
+                          <ChevronRight size={14} color={TEXT_MUTED} />
+                        </div>
+                      );
+                    })}
+                    <button onClick={function() { router.push("/admin/security-login"); }}
+                      style={{ width: "100%", marginTop: 16, background: GOLD + "18", border: "1px solid " + GOLD, color: GOLD, borderRadius: 6, padding: "11px 14px", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                      <Shield size={14} />Go to Security &amp; Login
+                    </button>
+                  </Card>
+                </div>
               </div>
 
-              <div style={{ flex: 1.4 }}>
-                <Card>
-                  <CardHeader icon={Monitor} title="Session Management" />
-                  <div style={{ fontSize: 12, color: TEXT_MUTED, marginTop: -10, marginBottom: 14 }}>Manage your active sessions across devices.</div>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1.2fr 1fr 0.9fr 0.9fr", padding: "0 0 8px", borderBottom: `1px solid ${BORDER}` }}>
-                    <div style={{ fontSize: 10, color: TEXT_MUTED, fontWeight: 600 }}>DEVICE</div>
-                    <div style={{ fontSize: 10, color: TEXT_MUTED, fontWeight: 600 }}>BROWSER / APP</div>
-                    <div style={{ fontSize: 10, color: TEXT_MUTED, fontWeight: 600 }}>LOCATION</div>
-                    <div style={{ fontSize: 10, color: TEXT_MUTED, fontWeight: 600 }}>LAST ACTIVE</div>
-                    <div style={{ fontSize: 10, color: TEXT_MUTED, fontWeight: 600 }}>STATUS</div>
-                    <div style={{ fontSize: 10, color: TEXT_MUTED, fontWeight: 600, textAlign: "right" }}>ACTION</div>
-                  </div>
-
-                  {sessions.map((s) => {
-                    const Icon = DEVICE_ICON_MAP[s.icon] || Monitor;
-                    return (
-                      <div key={s.id} style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1.2fr 1fr 0.9fr 0.9fr", alignItems: "center", padding: "11px 0", borderBottom: `1px solid ${BORDER}` }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <Icon size={15} color={TEXT_MUTED} />
+              {/* Preferences + Sessions */}
+              <div style={{ display: "flex", gap: 20, marginBottom: 20, alignItems: "flex-start" }}>
+                <div style={{ flex: 1 }}>
+                  <Card>
+                    <CardHeader icon={SettingsIcon} title="Personal Preferences" />
+                    <Field label="Theme">
+                      <select style={inputStyle} value={theme} onChange={function(e) { setTheme(e.target.value); }}>
+                        <option>Dark</option><option>Light</option><option>System Default</option>
+                      </select>
+                    </Field>
+                    <Field label="Language">
+                      <select style={inputStyle} value={language} onChange={function(e) { setLanguage(e.target.value); }}>
+                        <option>English</option><option>Hindi</option><option>Tamil</option>
+                      </select>
+                    </Field>
+                    <Field label="Time Zone">
+                      <select style={inputStyle} value={timezone} onChange={function(e) { setTimezone(e.target.value); }}>
+                        <option>(GMT+05:30) Asia/Kolkata</option><option>(GMT+00:00) UTC</option><option>(GMT-05:00) America/New_York</option>
+                      </select>
+                    </Field>
+                    <Field label="Date Format">
+                      <select style={inputStyle} value={dateFormat} onChange={function(e) { setDateFormat(e.target.value); }}>
+                        <option>24 Jun 2026</option><option>06/24/2026</option><option>2026-06-24</option>
+                      </select>
+                    </Field>
+                    <Field label="Time Format">
+                      <select style={inputStyle} value={timeFormat} onChange={function(e) { setTimeFormat(e.target.value); }}>
+                        <option>12 Hour (hh:mm AM/PM)</option><option>24 Hour</option>
+                      </select>
+                    </Field>
+                  </Card>
+                </div>
+                <div style={{ flex: 1.4 }}>
+                  <Card>
+                    <CardHeader icon={Monitor} title="Session Management" />
+                    <div style={{ fontSize: 12, color: TEXT_MUTED, marginTop: -10, marginBottom: 14 }}>Manage your active sessions across devices.</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1.2fr 1fr 0.9fr 0.9fr", padding: "0 0 8px", borderBottom: `1px solid ${BORDER}` }}>
+                      {["DEVICE", "BROWSER / APP", "LOCATION", "LAST ACTIVE", "STATUS", "ACTION"].map(function(h, i) {
+                        return <div key={h} style={{ fontSize: 10, color: TEXT_MUTED, fontWeight: 600, textAlign: i === 5 ? "right" as const : "left" as const }}>{h}</div>;
+                      })}
+                    </div>
+                    {sessions.map(function(s) {
+                      const Icon = DEVICE_ICON_MAP[s.icon] || Monitor;
+                      return (
+                        <div key={s.id} style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1.2fr 1fr 0.9fr 0.9fr", alignItems: "center", padding: "11px 0", borderBottom: `1px solid ${BORDER}` }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <Icon size={15} color={TEXT_MUTED} />
+                            <div>
+                              <div style={{ fontSize: 12, color: "#fff" }}>{s.device}</div>
+                              {s.current && <div style={{ fontSize: 10, color: GOLD }}>Current</div>}
+                            </div>
+                          </div>
+                          <div style={{ fontSize: 12, color: "#cfd3da" }}>{s.browser}</div>
                           <div>
-                            <div style={{ fontSize: 12, color: "#fff" }}>{s.device}</div>
-                            {s.current && <div style={{ fontSize: 10, color: GOLD }}>Current</div>}
+                            <div style={{ fontSize: 12, color: "#cfd3da" }}>{s.location}</div>
+                            <div style={{ fontSize: 10, color: TEXT_MUTED }}>{s.ip}</div>
+                          </div>
+                          <div style={{ fontSize: 11, color: TEXT_MUTED }}>{s.lastActive}</div>
+                          <div>
+                            <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 4, background: s.current ? `${BLUE}22` : `${GREEN}22`, color: s.current ? BLUE : GREEN }}>{s.status}</span>
+                          </div>
+                          <div style={{ textAlign: "right" as const }}>
+                            {s.current ? <span style={{ fontSize: 12, color: TEXT_MUTED }}>—</span> : <span onClick={function() { terminateSession(s.id); }} style={{ fontSize: 12, color: RED, cursor: "pointer" }}>Terminate</span>}
                           </div>
                         </div>
-                        <div style={{ fontSize: 12, color: "#cfd3da" }}>{s.browser}</div>
-                        <div>
-                          <div style={{ fontSize: 12, color: "#cfd3da" }}>{s.location}</div>
-                          <div style={{ fontSize: 10, color: TEXT_MUTED }}>{s.ip}</div>
-                        </div>
-                        <div style={{ fontSize: 11, color: TEXT_MUTED }}>{s.lastActive}</div>
-                        <div>
-                          <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 4, background: s.current ? `${BLUE}22` : `${GREEN}22`, color: s.current ? BLUE : GREEN }}>
-                            {s.status}
-                          </span>
-                        </div>
-                        <div style={{ textAlign: "right" }}>
-                          {s.current ? (
-                            <span style={{ fontSize: 12, color: TEXT_MUTED }}>—</span>
-                          ) : (
-                            <span onClick={() => terminateSession(s.id)} style={{ fontSize: 12, color: RED, cursor: "pointer" }}>
-                              Terminate
-                            </span>
+                      );
+                    })}
+                    <button onClick={terminateAllOthers} style={{ width: "100%", marginTop: 16, background: "transparent", border: `1px solid ${RED}`, color: RED, borderRadius: 6, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
+                      <AlertOctagon size={14} />Terminate All Other Sessions
+                    </button>
+                  </Card>
+                  <div style={{ height: 20 }} />
+                  <Card>
+                    <CardHeader icon={PenTool} title="Digital Signature" />
+                    <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
+                      <div style={{ background: "#fff", borderRadius: 8, padding: "18px 24px", flexShrink: 0, minWidth: 140, textAlign: "center" as const }}>
+                        {signatureSrc
+                          ? <img src={signatureSrc} alt="Signature" style={{ maxHeight: 60, maxWidth: 120 }} />
+                          : <span style={{ fontFamily: "cursive", fontSize: 26, color: "#222" }}>{firstName} {lastName}</span>
+                        }
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 10 }}>Upload your digital signature. Used for approvals, reports and certificates.</div>
+                        <button onClick={function() { setShowUploadSig(true); }} style={{ background: "transparent", border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 6, padding: "9px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 7 }}>
+                          <Upload size={14} />Upload Signature
+                        </button>
+                        <div style={{ fontSize: 10, color: TEXT_MUTED, marginTop: 6 }}>PNG or JPG. Max 2MB</div>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+              </div>
+
+              {/* Connected Devices */}
+              <Card>
+                <CardHeader icon={Smartphone} title="Connected Devices" />
+                <div style={{ fontSize: 12, color: TEXT_MUTED, marginTop: -10, marginBottom: 14 }}>Devices you trust and use to access your account.</div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 18 }}>
+                  {devices.map(function(d) {
+                    const Icon = DEVICE_ICON_MAP[d.icon] || Monitor;
+                    return (
+                      <div key={d.id} style={{ border: `1px solid ${BORDER}`, borderRadius: 8, padding: 14, position: "relative" }}>
+                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
+                          <Icon size={20} color={GOLD} />
+                          <MoreVertical size={15} color={TEXT_MUTED} style={{ cursor: "pointer" }} onClick={function() { setDeviceMenuOpen(deviceMenuOpen === d.id ? null : d.id); }} />
+                          {deviceMenuOpen === d.id && (
+                            <div style={{ position: "absolute", right: 8, top: 36, background: BG3, border: `1px solid ${BORDER}`, borderRadius: 6, width: 140, zIndex: 10, boxShadow: "0 8px 20px rgba(0,0,0,0.4)" }}>
+                              <div onClick={function() { setDeviceMenuOpen(null); setShowDeviceDetail(d); }} style={{ padding: "9px 12px", fontSize: 12, color: "#cfd3da", cursor: "pointer" }}
+                                onMouseEnter={function(e) { e.currentTarget.style.background = BG4; }}
+                                onMouseLeave={function(e) { e.currentTarget.style.background = "transparent"; }}>View Details</div>
+                              {!d.current && (
+                                <div onClick={function() { setDeviceMenuOpen(null); removeDevice(d.id); }} style={{ padding: "9px 12px", fontSize: 12, color: RED, cursor: "pointer" }}
+                                  onMouseEnter={function(e) { e.currentTarget.style.background = BG4; }}
+                                  onMouseLeave={function(e) { e.currentTarget.style.background = "transparent"; }}>Remove Device</div>
+                              )}
+                            </div>
                           )}
                         </div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>{d.name}</div>
+                        {d.current && (
+                          <div style={{ fontSize: 11, color: GREEN, display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+                            <CheckCircle2 size={11} />Current Device
+                          </div>
+                        )}
+                        <div style={{ fontSize: 12, color: TEXT_MUTED, marginTop: 6 }}>{d.os}</div>
+                        <div style={{ fontSize: 12, color: TEXT_MUTED }}>{d.browser}</div>
                       </div>
                     );
                   })}
-
-                  <button
-                    onClick={terminateAllOthers}
-                    style={{ width: "100%", marginTop: 16, background: "transparent", border: `1px solid ${RED}`, color: RED, borderRadius: 6, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}
-                  >
-                    <AlertOctagon size={14} />
-                    Terminate All Other Sessions
+                </div>
+                <div style={{ textAlign: "center" as const }}>
+                  <button onClick={removeAllDevices} style={{ background: "transparent", border: `1px solid ${RED}`, color: RED, borderRadius: 6, padding: "10px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7 }}>
+                    <Trash2 size={14} />Remove All Devices
                   </button>
-                </Card>
+                </div>
+              </Card>
 
-                <div style={{ height: 20 }} />
-
-                <Card>
-                  <CardHeader icon={PenTool} title="Digital Signature" />
-                  <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
-                    <div style={{ background: "#fff", borderRadius: 8, padding: "18px 24px", flexShrink: 0 }}>
-                      <span style={{ fontFamily: "cursive", fontSize: 26, color: "#222" }}>Arun Kumar</span>
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 10 }}>
-                        Upload your digital signature. Used for approvals, reports and certificates.
-                      </div>
-                      <button
-                        onClick={() => alert("Upload Signature dialog would open here (demo action).")}
-                        style={{ background: "transparent", border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 6, padding: "9px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 7 }}
-                      >
-                        <Upload size={14} />
-                        Upload Signature
-                      </button>
-                      <div style={{ fontSize: 10, color: TEXT_MUTED, marginTop: 6 }}>PNG or JPG. Max 2MB</div>
-                    </div>
-                  </div>
-                </Card>
-              </div>
             </div>
 
-            {/* Connected Devices */}
-            <Card>
-              <CardHeader icon={Smartphone} title="Connected Devices" />
-              <div style={{ fontSize: 12, color: TEXT_MUTED, marginTop: -10, marginBottom: 14 }}>Devices you trust and use to access your account.</div>
+            {/* Right Rail */}
+            <div style={{ width: 300, minWidth: 300, display: "flex", flexDirection: "column", gap: 20 }}>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 18 }}>
-                {devices.map((d) => {
-                  const Icon = DEVICE_ICON_MAP[d.icon] || Monitor;
+              <RailCard title="ACCOUNT SUMMARY" color={GOLD}>
+                <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 6 }}>Profile Completion</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                  <div style={{ flex: 1, height: 7, background: BG4, borderRadius: 4, overflow: "hidden" }}>
+                    <div style={{ width: "100%", height: "100%", background: GREEN }} />
+                  </div>
+                  <span style={{ fontSize: 12, color: GREEN, fontWeight: 700 }}>100%</span>
+                </div>
+                {[
+                  { label: "Last Login",   value: lastLogin },
+                  { label: "Role",         value: designation },
+                  { label: "Employee ID",  value: employeeId },
+                  { label: "Member Since", value: memberSince },
+                ].map(function(r) {
                   return (
-                    <div key={d.id} style={{ border: `1px solid ${BORDER}`, borderRadius: 8, padding: 14, position: "relative" }}>
-                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
-                        <Icon size={20} color={GOLD} />
-                        <MoreVertical size={15} color={TEXT_MUTED} style={{ cursor: "pointer" }} onClick={() => setDeviceMenuOpen(deviceMenuOpen === d.id ? null : d.id)} />
-                        {deviceMenuOpen === d.id && (
-                          <div style={{ position: "absolute", right: 8, top: 36, background: BG3, border: `1px solid ${BORDER}`, borderRadius: 6, width: 140, zIndex: 10, boxShadow: "0 8px 20px rgba(0,0,0,0.4)" }}>
-                            <div
-                              onClick={() => { setDeviceMenuOpen(null); alert(`Viewing details for ${d.name} (demo action).`); }}
-                              style={{ padding: "9px 12px", fontSize: 12, color: "#cfd3da", cursor: "pointer" }}
-                              onMouseEnter={(e) => (e.currentTarget.style.background = BG4)}
-                              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                            >
-                              View Details
-                            </div>
-                            {!d.current && (
-                              <div
-                                onClick={() => { setDeviceMenuOpen(null); removeDevice(d.id); }}
-                                style={{ padding: "9px 12px", fontSize: 12, color: RED, cursor: "pointer" }}
-                                onMouseEnter={(e) => (e.currentTarget.style.background = BG4)}
-                                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                              >
-                                Remove Device
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>{d.name}</div>
-                      {d.current && (
-                        <div style={{ fontSize: 11, color: GREEN, display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
-                          <CheckCircle2 size={11} />
-                          Current Device
-                        </div>
-                      )}
-                      <div style={{ fontSize: 12, color: TEXT_MUTED, marginTop: 6 }}>{d.os}</div>
-                      <div style={{ fontSize: 12, color: TEXT_MUTED }}>{d.browser}</div>
+                    <div key={r.label} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 13 }}>
+                      <span style={{ color: "#cfd3da" }}>{r.label}</span>
+                      <span style={{ color: "#fff" }}>{r.value}</span>
                     </div>
                   );
                 })}
-              </div>
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 13 }}>
+                  <span style={{ color: "#cfd3da" }}>Status</span>
+                  <span style={{ color: GREEN, display: "flex", alignItems: "center", gap: 5 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: GREEN }} />Active
+                  </span>
+                </div>
+              </RailCard>
 
-              <div style={{ textAlign: "center" }}>
-                <button
-                  onClick={removeAllDevices}
-                  style={{ background: "transparent", border: `1px solid ${RED}`, color: RED, borderRadius: 6, padding: "10px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7 }}
-                >
-                  <Trash2 size={14} />
-                  Remove All Devices
-                </button>
-              </div>
-            </Card>
-          </div>
+              <RailCard title="SECURITY STATUS" color={GOLD}>
+                {[
+                  { label: "Password Updated",          value: "7 Days Ago",                          color: TEXT_MUTED },
+                  { label: "Two-Factor Authentication", value: "Enabled",                             color: GREEN      },
+                  { label: "Recovery Codes",            value: backupCodesCount + " Available",       color: TEXT_MUTED },
+                  { label: "Trusted Devices",           value: devices.length + " Devices",           color: TEXT_MUTED },
+                ].map(function(r) {
+                  return (
+                    <div key={r.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#cfd3da" }}>
+                        <CheckCircle2 size={14} color={GREEN} />
+                        {r.label}
+                      </div>
+                      <span style={{ fontSize: 12, color: r.color }}>{r.value}</span>
+                    </div>
+                  );
+                })}
+              </RailCard>
 
-          {/* ---------------- RIGHT RAIL ---------------- */}
-          <div style={{ width: 300, minWidth: 300, display: "flex", flexDirection: "column", gap: 20 }}>
-            <RailCard title="ACCOUNT SUMMARY" color={GOLD}>
-              <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 6 }}>Profile Completion</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-                <div style={{ flex: 1, height: 7, background: BG4, borderRadius: 4, overflow: "hidden" }}>
-                  <div style={{ width: "100%", height: "100%", background: GREEN }} />
+              <RailCard title="RECENT LOGIN HISTORY" color={GOLD}>
+                {[
+                  { when: lastLogin !== "—" ? lastLogin : "Today", browser: "Chrome on Windows", location: "Chennai, India"   },
+                  { when: "Yesterday, 09:15 AM",                   browser: "Edge on Windows",   location: "Chennai, India"   },
+                  { when: "2 Days Ago, 07:45 PM",                  browser: "Android Mobile",    location: "Bengaluru, India" },
+                ].map(function(h, i) {
+                  return (
+                    <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "9px 0", borderBottom: `1px solid ${BORDER}` }}>
+                      <Clock size={14} color={TEXT_MUTED} style={{ marginTop: 2 }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 12, color: "#fff" }}>{h.when}</div>
+                        <div style={{ fontSize: 11, color: TEXT_MUTED }}>{h.browser}</div>
+                      </div>
+                      <div style={{ fontSize: 11, color: TEXT_MUTED, textAlign: "right" as const }}>{h.location}</div>
+                    </div>
+                  );
+                })}
+                <div style={{ textAlign: "center" as const, marginTop: 10 }}>
+                  <span onClick={function() { router.push("/admin/audit"); }} style={{ fontSize: 12, color: GOLD, cursor: "pointer" }}>View All Login History</span>
                 </div>
-                <span style={{ fontSize: 12, color: GREEN, fontWeight: 700 }}>100%</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 13 }}>
-                <span style={{ color: "#cfd3da" }}>Last Login</span>
-                <span style={{ color: "#fff" }}>Today, 24 Jun 2026 · 08:14 AM</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 13 }}>
-                <span style={{ color: "#cfd3da" }}>Role</span>
-                <span style={{ color: "#fff" }}>Super Administrator</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 13 }}>
-                <span style={{ color: "#cfd3da" }}>Status</span>
-                <span style={{ color: GREEN, display: "flex", alignItems: "center", gap: 5 }}>
-                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: GREEN }} />
-                  Active
-                </span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 13 }}>
-                <span style={{ color: "#cfd3da" }}>Member Since</span>
-                <span style={{ color: "#fff" }}>12 Mar 2023</span>
-              </div>
-            </RailCard>
+              </RailCard>
 
-            <RailCard title="SECURITY STATUS" color={GOLD}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#cfd3da" }}>
-                  <CheckCircle2 size={14} color={GREEN} />
-                  Password Updated
-                </div>
-                <span style={{ fontSize: 12, color: TEXT_MUTED }}>7 Days Ago</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#cfd3da" }}>
-                  <CheckCircle2 size={14} color={GREEN} />
-                  Two-Factor Authentication
-                </div>
-                <span style={{ fontSize: 12, color: GREEN }}>Enabled</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#cfd3da" }}>
-                  <CheckCircle2 size={14} color={GREEN} />
-                  Recovery Codes
-                </div>
-                <span style={{ fontSize: 12, color: TEXT_MUTED }}>{backupCodesRemaining} Available</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#cfd3da" }}>
-                  <CheckCircle2 size={14} color={GREEN} />
-                  Trusted Devices
-                </div>
-                <span style={{ fontSize: 12, color: TEXT_MUTED }}>{devices.length} Devices</span>
-              </div>
-            </RailCard>
+              <RailCard title="NOTIFICATION PREFERENCES" color={GOLD}>
+                {[
+                  { key: "emailAlerts",        label: "Email Alerts"        },
+                  { key: "securityAlerts",     label: "Security Alerts"     },
+                  { key: "loginAlerts",        label: "Login Alerts"        },
+                  { key: "maintenanceUpdates", label: "Maintenance Updates" },
+                  { key: "weeklyReports",      label: "Weekly Reports"      },
+                ].map(function(p) {
+                  return (
+                    <div key={p.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 0" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#cfd3da" }}>
+                        <CheckCircle2 size={13} color={GREEN} />
+                        {p.label}
+                      </div>
+                      <ToggleSwitch on={(notifPrefs as any)[p.key]} onClick={function() { toggleNotifPref(p.key as keyof typeof notifPrefs); }} />
+                    </div>
+                  );
+                })}
+              </RailCard>
 
-            <RailCard title="RECENT LOGIN HISTORY" color={GOLD}>
-              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: -36, marginBottom: 12 }} />
-              {[
-                { when: "Today, 08:14 AM", browser: "Chrome on Windows", location: "Chennai, India" },
-                { when: "Yesterday, 09:15 AM", browser: "Edge on Windows", location: "Chennai, India" },
-                { when: "2 Days Ago, 07:45 PM", browser: "Android Mobile", location: "Bengaluru, India" },
-              ].map((h, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "9px 0", borderBottom: `1px solid ${BORDER}` }}>
-                  <Clock size={14} color={TEXT_MUTED} style={{ marginTop: 2 }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12, color: "#fff" }}>{h.when}</div>
-                    <div style={{ fontSize: 11, color: TEXT_MUTED }}>{h.browser}</div>
+              <RailCard title="QUICK ACTIONS" color={GOLD}>
+                {[
+                  { icon: Download,   label: "Download My Data",     action: function() { setShowDownloadData(true); }    },
+                  { icon: FileSearch, label: "Export Login History",  action: function() { setShowExportHistory(true); }   },
+                  { icon: ScrollText, label: "View Audit Logs",       action: function() { router.push("/admin/audit"); }  },
+                  { icon: Key,        label: "Manage API Tokens",     action: function() { router.push("/admin/settings"); }},
+                  { icon: Bell,       label: "Notification Settings", action: function() { router.push("/admin/notifications"); }},
+                ].map(function(item) {
+                  const Icon = item.icon;
+                  return (
+                    <div key={item.label} onClick={item.action}
+                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", cursor: "pointer", borderBottom: `1px solid ${BORDER}`, color: "#cfd3da" }}
+                      onMouseEnter={function(e) { e.currentTarget.style.color = "#fff"; }}
+                      onMouseLeave={function(e) { e.currentTarget.style.color = "#cfd3da"; }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
+                        <Icon size={15} color={TEXT_MUTED} />
+                        {item.label}
+                      </div>
+                      <ChevronRight size={13} color={TEXT_MUTED} />
+                    </div>
+                  );
+                })}
+                <div onClick={function() { if (window.confirm("Deactivate your account? You will be signed out and will need another admin to reactivate it.")) { window.alert("Account deactivation request submitted. A senior administrator will process it within 24 hours."); } }}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", cursor: "pointer", color: RED }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
+                    <Zap size={15} color={RED} />Deactivate Account
                   </div>
-                  <div style={{ fontSize: 11, color: TEXT_MUTED, textAlign: "right" }}>{h.location}</div>
+                  <ChevronRight size={13} color={RED} />
                 </div>
-              ))}
-              <div style={{ textAlign: "center", marginTop: 10 }}>
-                <span onClick={() => router.push("/admin/activity-log")} style={{ fontSize: 12, color: GOLD, cursor: "pointer" }}>
-                  View All Login History
-                </span>
-              </div>
-            </RailCard>
+              </RailCard>
 
-            <RailCard title="NOTIFICATION PREFERENCES" color={GOLD}>
-              {[
-                { key: "emailAlerts", label: "Email Alerts" },
-                { key: "securityAlerts", label: "Security Alerts" },
-                { key: "loginAlerts", label: "Login Alerts" },
-                { key: "maintenanceUpdates", label: "Maintenance Updates" },
-                { key: "weeklyReports", label: "Weekly Reports" },
-              ].map((p) => (
-                <div key={p.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 0" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#cfd3da" }}>
-                    <CheckCircle2 size={13} color={GREEN} />
-                    {p.label}
-                  </div>
-                  <ToggleSwitch on={(notifPrefs as any)[p.key]} onClick={() => toggleNotifPref(p.key as keyof typeof notifPrefs)} />
-                </div>
-              ))}
-            </RailCard>
-
-            <RailCard title="QUICK ACTIONS" color={GOLD}>
-              <div onClick={() => alert("Your data export has started. You'll receive a download link by email (demo action).")} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", cursor: "pointer", borderBottom: `1px solid ${BORDER}`, color: "#cfd3da" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
-                  <Download size={15} color={TEXT_MUTED} />
-                  Download My Data
-                </div>
-                <ChevronRight size={13} color={TEXT_MUTED} />
-              </div>
-              <div onClick={() => alert("Login history export started (demo action).")} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", cursor: "pointer", borderBottom: `1px solid ${BORDER}`, color: "#cfd3da" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
-                  <FileSearch size={15} color={TEXT_MUTED} />
-                  Export Login History
-                </div>
-                <ChevronRight size={13} color={TEXT_MUTED} />
-              </div>
-              <div onClick={() => router.push("/admin/activity-log")} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", cursor: "pointer", borderBottom: `1px solid ${BORDER}`, color: "#cfd3da" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
-                  <ScrollText size={15} color={TEXT_MUTED} />
-                  View Audit Logs
-                </div>
-                <ChevronRight size={13} color={TEXT_MUTED} />
-              </div>
-              <div onClick={() => alert('"Manage API Tokens" page is not built yet. (404)')} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", cursor: "pointer", borderBottom: `1px solid ${BORDER}`, color: "#cfd3da" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
-                  <Key size={15} color={TEXT_MUTED} />
-                  Manage API Tokens
-                </div>
-                <ChevronRight size={13} color={TEXT_MUTED} />
-              </div>
-              <div
-                onClick={() => {
-                  if (confirm("Deactivate your account? You will be signed out and will need another admin to reactivate it.")) {
-                    alert("Account deactivation requested (demo action).");
-                  }
-                }}
-                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", cursor: "pointer", color: RED }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
-                  <Zap size={15} color={RED} />
-                  Deactivate Account
-                </div>
-                <ChevronRight size={13} color={RED} />
-              </div>
-            </RailCard>
+            </div>
           </div>
         </div>
-      </div>
-
-      <div style={{ textAlign: "center", padding: "18px 0 28px", fontSize: 12, color: TEXT_MUTED, borderTop: `1px solid ${BORDER}` }}>
-        © 2026 SilverScreens. All rights reserved.
       </div>
     </div>
   );

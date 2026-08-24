@@ -26,7 +26,8 @@ export async function GET(req: NextRequest) {
     const skip       = (page - 1) * limit
 
     // ─── Build where clause ───────────────────────────────────
-    const where: Record<string, unknown> = {}
+    // Only show approved profiles — pending, under_review and rejected are never visible
+    const where: Record<string, unknown> = { verification_status: 'approved' }
 
     if (gender)     where.gender           = gender
     if (experience) where.experience_level = experience
@@ -67,6 +68,16 @@ export async function GET(req: NextRequest) {
     // Language filter — languages is stored as array
     if (language) {
       where.languages = { has: language }
+    }
+
+    // Skills filter — skills is stored as array
+    const skillsParam = searchParams.get('skills') || ''
+    if (skillsParam) {
+      const skillsList = skillsParam.split(',').map(s => s.trim()).filter(Boolean)
+      if (skillsList.length > 0) {
+        // Match talents that have ANY of the selected skills
+        where.skills = { hasSome: skillsList }
+      }
     }
 
     // Keyword search across name, category, role, about_me
@@ -112,6 +123,7 @@ export async function GET(req: NextRequest) {
           profile_completion:  true,
           profile_views:       true,
           about_me:            true,
+          skills:              true,
           rnr_eligible:        true,
           profiles: {
             select: {

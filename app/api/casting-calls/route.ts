@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
 
@@ -10,17 +10,59 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
 
-    const keyword    = searchParams.get('keyword')    || ''
-    const category   = searchParams.get('category')   || ''
-    const role       = searchParams.get('role')        || ''
-    const gender     = searchParams.get('gender')      || ''
-    const location   = searchParams.get('location')   || ''
-    const experience = searchParams.get('experience') || ''
-    const page       = parseInt(searchParams.get('page') || '1')
-    const limit      = parseInt(searchParams.get('limit') || '12')
-    const skip       = (page - 1) * limit
+    const keyword       = searchParams.get('keyword')        || ''
+    const category      = searchParams.get('category')       || ''
+    const role          = searchParams.get('role')            || ''
+    const gender        = searchParams.get('gender')          || ''
+    const location      = searchParams.get('location')       || ''
+    const experience    = searchParams.get('experience')     || ''
+    const agencyUserId  = searchParams.get('agency_user_id') || ''
+    const page          = parseInt(searchParams.get('page')  || '1')
+    const limit         = parseInt(searchParams.get('limit') || '12')
+    const skip          = (page - 1) * limit
 
-    const where: Record<string, unknown> = { status: 'active' }
+    // When admin views a specific agency's profile, filter by that agency
+    let agencyProfileId: string | null = null
+    if (agencyUserId) {
+      const agencyProfile = await prisma.agency_profiles.findUnique({
+        where:  { user_id: agencyUserId },
+        select: { id: true },
+      })
+      agencyProfileId = agencyProfile?.id ?? null
+    }
+    // When logged-in agency views their own dashboard, auto-filter by their profile
+    if (!agencyProfileId) {
+      const token = req.headers.get('authorization')?.replace('Bearer ', '')
+      if (token) {
+        const { data: { user } } = await supabaseAdmin.auth.getUser(token)
+        if (user) {
+          const profile = await prisma.profiles.findUnique({
+            where:  { id: user.id },
+            select: { role: true },
+          })
+          if (profile?.role === 'agency') {
+            const agencyProfile = await prisma.agency_profiles.findUnique({
+              where:  { user_id: user.id },
+              select: { id: true },
+            })
+            if (agencyProfile?.id) {
+              agencyProfileId = agencyProfile.id
+            } else {
+              // Agency logged in but no profile yet — return empty, not all castings
+              return successResponse({
+                casting_calls: [],
+                pagination: { page, limit, total: 0, total_pages: 0, has_more: false },
+              })
+            }
+          }
+        }
+      }
+    }
+
+    // If filtering by agency, show all statuses; otherwise only active
+    const where: Record<string, unknown> = agencyProfileId
+      ? { agency_id: agencyProfileId }
+      : { status: 'active' }
 
     if (keyword) {
       where.OR = [
@@ -81,7 +123,7 @@ export async function POST(req: NextRequest) {
     const token = req.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return errorResponse('Authentication required', 401)
 
-    const { data: { user }, error } = await supabase.auth.getUser(token)
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
     if (error || !user) return errorResponse('Invalid session', 401)
 
     // 2. Verify agency role
@@ -271,18 +313,26 @@ export async function POST(req: NextRequest) {
     })
 
     // 7. Log creation
-    await prisma.audit_logs.create({
-      data: {
+    try {
+      await supabaseAdmin.from('audit_logs').insert({
         user_id:     user.id,
         action:      is_draft ? 'CASTING_CALL_SAVED_DRAFT' : 'CASTING_CALL_PUBLISHED',
         entity_type: 'casting_calls',
         entity_id:   castingCall.id,
-        new_values:  { title: resolvedTitle, project_type: resolvedProjectType, role_name: resolvedRoleName, status: castingCall.status },
-      },
-    })
+      })
+    } catch { /* audit_logs may not exist yet */ }
+
+    // 8. Auto-trigger casting alert notifications to matching aspirants
+    //    Only when published (not draft) — fire-and-forget, don't block response
+    if (castingCall.status === 'active') {
+      const alertUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/notifications/casting-alert?casting_call_id=${castingCall.id}`
+      fetch(alertUrl, {
+        headers: { 'x-internal-trigger': process.env.INTERNAL_API_SECRET || 'silverscreens-internal' }
+      }).catch(err => console.error('[CASTING ALERT TRIGGER ERROR]', err))
+    }
 
     return successResponse({
-      message:      is_draft ? 'Casting call saved as draft' : 'Casting call published successfully',
+      message:      is_draft ? 'Casting call saved as draft' : 'Casting call published successfully — matching aspirants will be notified.',
       casting_call: castingCall,
     }, 201)
   } catch (error: unknown) {

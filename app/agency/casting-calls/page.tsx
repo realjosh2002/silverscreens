@@ -1,14 +1,16 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
+
   LayoutDashboard, Megaphone, PlusCircle, ClipboardList,
   UserSearch, Star, CalendarCheck, MessageSquare, Bell,
   Bookmark, ChevronDown, ChevronLeft, ChevronRight, Menu,
   MoreVertical, Filter, Search, MapPin,
 } from 'lucide-react';
+import AgencyVerificationBanner from '@/components/layout/AgencyVerificationBanner';
 
 const RED    = '#C8202A';
 const GOLD   = '#D4A64A';
@@ -21,6 +23,15 @@ const BG4    = '#1C2030';
 const BEBAS  = "'Bebas Neue', sans-serif";
 const BARLOW = "'Barlow Condensed', sans-serif";
 
+function getIsApproved(): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
+    const ps = u?.profileStatus ?? 'pending';
+    return ps === 'approved' || ps === 'active';
+  } catch { return true; }
+}
+
 const NAV_PRIMARY = [
   { icon: LayoutDashboard, label: 'Dashboard',              href: '/agency/dashboard' },
   { icon: PlusCircle,      label: 'Create Casting Call',    href: '/agency/create-casting' },
@@ -30,8 +41,8 @@ const NAV_PRIMARY = [
   { icon: Star,            label: 'Shortlisted Talents',    href: '/agency/shortlisted' },
   { icon: CalendarCheck,   label: 'Audition Management',    href: '/agency/auditions' },
   { icon: Bookmark,        label: 'Saved Talents',          href: '/agency/saved-talents' },
-  { icon: MessageSquare,   label: 'Messages',  badge: 12,   href: '/agency/messages' },
-  { icon: Bell,            label: 'Notifications', badge: 3,href: '/agency/notifications' },
+  { icon: MessageSquare,   label: 'Messages',  href: '/agency/messages' },
+  { icon: Bell,            label: 'Notifications', href: '/agency/notifications' },
 ];
 
 const STATUS_TABS = [
@@ -100,6 +111,7 @@ export default function AgencyCastingCallsListPage() {
   const router = useRouter();
 
   const [sidebarOpen,    setSidebarOpen]    = useState(false);
+  const [isApproved,     setIsApproved]     = useState(true);
   const [profileOpen,    setProfileOpen]    = useState(false);
   const [activeTab,      setActiveTab]      = useState('All');
   const [searchQuery,    setSearchQuery]    = useState('');
@@ -114,7 +126,7 @@ export default function AgencyCastingCallsListPage() {
   const [agencyType,     setAgencyType]     = useState('Production House');
 
   /* ── Live data ── */
-  const [allRows,    setAllRows]    = useState<CastingCallRow[]>(CASTING_CALLS);
+  const [allRows,    setAllRows]    = useState<CastingCallRow[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [msgCount,   setMsgCount]   = useState(0);
   const [notifCount, setNotifCount] = useState(0);
@@ -141,7 +153,7 @@ export default function AgencyCastingCallsListPage() {
       .then(data => {
         if (!data) return;
         const list = data.data?.casting_calls ?? data.castingCalls ?? data.data ?? data;
-        if (!Array.isArray(list) || list.length === 0) return;
+        if (!Array.isArray(list)) return;
         // Use agency name from ss_user (already in state by now)
         const name = agencyName;
         const initials = agencyInitials;
@@ -155,14 +167,14 @@ export default function AgencyCastingCallsListPage() {
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data) return;
-        const p = data.profile ?? data;
-        if (p.companyName || p.name) {
-          const name = p.companyName ?? p.name;
+        const p = data.data?.profile ?? data.profile ?? data;
+        if (p.company_name || p.companyName || p.name) {
+          const name = p.company_name ?? p.companyName ?? p.name;
           setAgencyName(name);
           setAgencyInitials(name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase());
         }
-        if (p.profileNumber) setAgencyId(p.profileNumber);
-        if (p.companyType)   setAgencyType(p.companyType);
+        if (p.profile_number ?? p.profileNumber) setAgencyId(p.profile_number ?? p.profileNumber);
+        if (p.company_type   ?? p.companyType)   setAgencyType(p.company_type ?? p.companyType);
       })
       .catch(() => {});
 
@@ -236,9 +248,9 @@ export default function AgencyCastingCallsListPage() {
       <header style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, padding: '0 24px', height: 60, background: BG2, borderBottom: '1px solid rgba(255,255,255,0.06)', zIndex: 100 }}>
         <SilverScreensLogo size="md" href="/" showTagline={false} />
         <div style={{ flex: 1 }} />
-        <button onClick={() => router.push('/agency/create-casting')} style={{ display: 'flex', alignItems: 'center', gap: 7, background: RED, color: '#fff', border: 'none', borderRadius: 8, padding: '0 18px', height: 36, fontSize: 15, fontWeight: 700, fontFamily: BARLOW, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-          Post a Casting <span style={{ fontSize: 16, fontWeight: 400 }}>+</span>
-        </button>
+        <button onClick={() => { if (!getIsApproved()) return; router.push('/agency/create-casting'); }} title={!getIsApproved() ? 'Available after agency verification' : undefined} style={{ display: 'flex', alignItems: 'center', gap: 7, background: getIsApproved() ? RED : 'rgba(200,32,42,0.3)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 18px', height: 36, fontSize: 15, fontWeight: 700, fontFamily: BARLOW, cursor: getIsApproved() ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap', opacity: getIsApproved() ? 1 : 0.5 }}>
+        Post a Casting <span style={{ fontSize: 16, fontWeight: 400 }}>+</span>
+      </button>
         <div onClick={() => router.push('/agency/messages')} style={{ position: 'relative', cursor: 'pointer' }}>
           <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <MessageSquare size={15} color="rgba(255,255,255,0.7)" />
@@ -269,21 +281,15 @@ export default function AgencyCastingCallsListPage() {
                   <span style={{ fontSize: 14, fontWeight: 700, color: GOLD }}>{agencyId}</span>
                 </div>
 
-                {[
-                  { label: 'Reports & Analytics', href: '/agency/reports' },
-                  { label: 'Subscription & Billing', href: '/pricing' },
-                  { label: 'Company Profile', href: '/agency-profile' },
-                  { label: 'Documents', href: '/agency/documents' },
-                  { label: 'Calendar', href: '/agency/calendar' },
-                  { label: 'Settings', href: '/agency/settings' },
-                  { label: 'Support', href: '/contact' },
-                  { label: 'Logout', href: '/login' },
-                ].map(({ label, href }) => (
-                  <div key={label} onClick={() => { if (label === 'Logout') { localStorage.removeItem('ss_user'); window.location.replace('/login'); } else { router.push(href); setProfileOpen(false); } }} style={{ padding: '10px 16px', fontSize: 15, cursor: 'pointer', color: label === 'Logout' ? '#ff6b6b' : '#F5F5F5', borderTop: label === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >{label}</div>
-                ))}
+                {(()=>{
+                  const isApproved=(()=>{try{const u=JSON.parse(localStorage.getItem('ss_user')||'{}');const ps=u?.profileStatus??'pending';return ps==='approved'||ps==='active';}catch{return true;}})();
+                  const menuItems=isApproved
+                    ?[{label:'Reports & Analytics',href:'/agency/reports'},{label:'Subscription & Billing',href:'/pricing'},{label:'Company Profile',href:'/agency-profile'},{label:'Documents',href:'/agency/documents'},{label:'Calendar',href:'/agency/calendar'},{label:'Settings',href:'/agency/settings'},{label:'Support',href:'/agency/support'},{label:'Logout',href:'/login'}]
+                    :[{label:'Company Profile',href:'/create-company-profile'},{label:'Logout',href:'/login'}];
+                  return menuItems.map(({label,href})=>(
+                    <div key={label} onClick={()=>{if(label==='Logout'){localStorage.removeItem('ss_user');window.location.replace('/login');}else{router.push(href);setProfileOpen(false);}}} style={{padding:'10px 16px',fontSize:15,cursor:'pointer',color:label==='Logout'?'#ff6b6b':'#F5F5F5',borderTop:label==='Logout'?'1px solid rgba(255,255,255,0.07)':'none'}} onMouseEnter={e=>(e.currentTarget.style.background='rgba(255,255,255,0.05)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>{label}</div>
+                  ));
+                })()}
               </div>
             </>
           )}
@@ -311,7 +317,9 @@ export default function AgencyCastingCallsListPage() {
             </div>
           )}
           <nav style={{ flex: 1, padding: sidebarOpen ? '8px 6px' : '8px 4px', overflowY: 'auto', scrollbarWidth: 'none' }}>
-            {NAV_PRIMARY.map(({ icon: Icon, label, active, badge, href }) => (
+            {NAV_PRIMARY.map(({ icon: Icon, label, active, href }) => {
+                const badge = label === 'Messages' ? (msgCount > 0 ? msgCount : undefined) : label === 'Notifications' ? (notifCount > 0 ? notifCount : undefined) : undefined;
+                return (
               <div key={label} onClick={() => router.push(href)} title={!sidebarOpen ? label : undefined}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'space-between' : 'center', padding: sidebarOpen ? '8px 10px' : '10px 0', marginBottom: 2, borderRadius: 6, cursor: 'pointer', background: active ? 'rgba(200,32,42,0.12)' : 'transparent', borderLeft: sidebarOpen && active ? `3px solid ${RED}` : sidebarOpen ? '3px solid transparent' : 'none', position: 'relative' }}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
@@ -324,7 +332,8 @@ export default function AgencyCastingCallsListPage() {
                 {sidebarOpen && badge && <div style={{ background: RED, color: '#fff', borderRadius: 10, fontSize: 14, fontWeight: 700, padding: '1px 6px', minWidth: 18, textAlign: 'center' }}>{badge}</div>}
                 {!sidebarOpen && badge && <div style={{ position: 'absolute', top: 6, right: 4, background: RED, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: '#fff' }}>{badge}</div>}
               </div>
-            ))}
+                );
+              })}
           </nav>
           {sidebarOpen && (
             <div style={{ margin: '8px 10px 14px', borderRadius: 12, background: 'linear-gradient(135deg,#1a1205,#2a1e0a)', border: '1px solid rgba(212,166,74,0.25)', padding: '14px 12px', textAlign: 'center', flexShrink: 0 }}>
@@ -339,6 +348,9 @@ export default function AgencyCastingCallsListPage() {
         {/* ── MAIN CONTENT ── */}
         <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '20px 24px 32px', display: 'flex', flexDirection: 'column', gap: 18 }}>
 
+
+          {/* Verification banner */}
+          <AgencyVerificationBanner />
           {/* Page header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
@@ -453,7 +465,7 @@ export default function AgencyCastingCallsListPage() {
                       {[
                         { label: 'View Details',       action: () => router.push(`/agency/casting-calls/${c.id}`) },
                         { label: 'Edit Casting Call',   action: () => router.push(`/agency/create-casting?edit=${c.id}`) },
-                        { label: 'View Applications',   action: () => router.push('/agency/applications') },
+                        { label: 'View Applications',   action: () => router.push(`/agency/applications?casting_call_id=${c.id}`) },
                         { label: 'Close Casting Call',  action: () => updateStatus(c.id, 'Closed'), danger: true, disabled: c.status === 'Closed' },
                       ].map(item => (
                         <div key={item.label} onClick={() => { if (item.disabled) return; item.action(); setOpenActionMenu(null); }}

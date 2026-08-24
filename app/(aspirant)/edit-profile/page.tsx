@@ -1,8 +1,8 @@
-'use client'
+﻿'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo'
 import {
   LayoutDashboard, FileText, MessageSquare, Mic2, Bookmark, Star, Bell,
@@ -14,7 +14,7 @@ const B    = "'Bebas Neue', sans-serif"
 const RED  = '#C8202A'
 const GOLD = '#D4A64A'
 
-// ── PRD Field Options ──
+// â”€â”€ PRD Field Options â”€â”€
 const TITLES        = ['Mr.', 'Mrs.', 'Ms.', 'Dr.', 'Prof.']
 const GENDERS       = ['Male', 'Female', 'Others']
 const HEIGHTS       = ['4\'6"', '4\'7"', '4\'8"', '4\'9"', '4\'10"', '4\'11"', '5\'0"', '5\'1"', '5\'2"', '5\'3"', '5\'4"', '5\'5"', '5\'6"', '5\'7"', '5\'8"', '5\'9"', '5\'10"', '5\'11"', '6\'0"', '6\'1"', '6\'2"', '6\'3"', '6\'4"+']
@@ -27,35 +27,55 @@ const CHEST_SIZES   = Array.from({length: 21}, (_, i) => `${30 + i}"`)
 const WAIST_SIZES   = Array.from({length: 21}, (_, i) => `${24 + i}"`)
 const HIP_SIZES     = Array.from({length: 21}, (_, i) => `${30 + i}"`)
 const SHOE_SIZES    = ['UK 4', 'UK 5', 'UK 6', 'UK 7', 'UK 8', 'UK 9', 'UK 10', 'UK 11', 'UK 12']
-const COUNTRIES = ['India', 'USA', 'UK', 'Australia', 'Canada', 'UAE', 'Other']
-
-// Read admin-configured locations from localStorage
+// Reads active locations from the database (primary) with localStorage as fallback.
 function useLocationConfig() {
-  const [countries, setCountries] = useState<string[]>(COUNTRIES)
+  const [countries, setCountries] = useState<string[]>([])
   const [stateMap,  setStateMap]  = useState<Record<string, string[]>>({})
   const [cityMap,   setCityMap]   = useState<Record<string, string[]>>({})
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('ss_location_config')
-      if (!raw) return
-      const data = JSON.parse(raw)
-      const activeCountries = data.filter((c: any) => c.active).map((c: any) => c.name)
-      const sm: Record<string, string[]> = {}
-      const cm: Record<string, string[]> = {}
-      data.filter((c: any) => c.active).forEach((c: any) => {
-        sm[c.name] = c.states.filter((s: any) => s.active).map((s: any) => s.name)
-        c.states.filter((s: any) => s.active).forEach((s: any) => {
-          cm[s.name] = s.cities.filter((ci: any) => ci.active).map((ci: any) => ci.name)
+    const applyResult = (c: string[], sm: Record<string, string[]>, cm: Record<string, string[]>) => {
+      setCountries(c); setStateMap(sm); setCityMap(cm)
+    }
+
+    const tryLocalStorage = () => {
+      try {
+        const raw = localStorage.getItem('ss_location_config')
+        if (!raw) return false
+        const config = JSON.parse(raw)
+        const c: string[] = [], sm: Record<string, string[]> = {}, cm: Record<string, string[]> = {}
+        config.forEach((country: any) => {
+          if (!country.active) return
+          c.push(country.name)
+          const states: string[] = []
+          ;(country.states ?? []).forEach((s: any) => {
+            if (!s.active) return
+            states.push(s.name)
+            const cities = (s.cities ?? []).filter((ci: any) => ci.active).map((ci: any) => ci.name)
+            if (cities.length) cm[s.name] = cities
+          })
+          if (states.length) sm[country.name] = states
         })
+        if (c.length > 0) { applyResult(c, sm, cm); return true }
+        return false
+      } catch { return false }
+    }
+
+    // Try database first
+    fetch('/api/locations/public')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.data?.countries?.length) {
+          applyResult(data.data.countries, data.data.stateMap, data.data.cityMap)
+        } else {
+          tryLocalStorage()
+        }
       })
-      setCountries(activeCountries)
-      setStateMap(sm)
-      setCityMap(cm)
-    } catch {}
+      .catch(() => tryLocalStorage())
   }, [])
 
-  return { countries, stateMap, cityMap }
+  const loadCities = (_c: string, _s: string) => {}
+  return { countries, stateMap, cityMap, loadCities }
 }
 const LANGUAGES     = ['Hindi', 'English', 'Tamil', 'Telugu', 'Kannada', 'Malayalam', 'Bengali', 'Marathi', 'Gujarati', 'Punjabi', 'Urdu', 'Odia', 'Other']
 const EXPERIENCE_LEVELS = ['Fresher', '1 - 2 Years', '2 - 5 Years', '5 - 10 Years', '10+ Years']
@@ -63,7 +83,7 @@ const PROJECT_TYPES = ['Film', 'Web Series', 'TV Series', 'Ad Film', 'Short Film
 const AVAILABLE_FOR = ['Feature Films', 'Short Films', 'Web Series', 'TV Serials', 'TV Commercials', 'Music Videos', 'Modelling', 'Theatre', 'Documentaries', 'Reality Shows', 'Item Numbers', 'Voice Over', 'Print Media', 'Brand Endorsements']
 const MAX_ROLES     = 5
 
-// ── Departments & Roles (from lib/roles.ts — inlined for self-containment) ──
+// â”€â”€ Departments & Roles (from lib/roles.ts — inlined for self-containment) â”€â”€
 const DEPARTMENTS_AND_ROLES = [
   { department: 'Acting',           roles: ['Hero', 'Heroine', 'Villain', 'Comedian', 'Character Artist', 'Supporting Roles', 'Child Artist'] },
   { department: 'Direction',        roles: ['Director', 'Assistant Director'] },
@@ -103,7 +123,7 @@ const DEPARTMENTS_AND_ROLES = [
   { department: 'Distributor',      roles: ['Distributors'] },
 ]
 
-// ── RingsNRoses cross-platform mapping ──
+// â”€â”€ RingsNRoses cross-platform mapping â”€â”€
 // Only departments/roles relevant to weddings & events
 const RNR_DEPARTMENTS = ['Hair & Make Up', 'Singing', 'Dancing', 'Costume']
 
@@ -132,11 +152,11 @@ const STEPS = [
 const SIDEBAR_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard',            href: '/dashboard'      },
   { icon: FileText,        label: 'My Applications',      href: '/my-applications'},
-  { icon: MessageSquare,   label: 'Messages',             href: '/messages',       badge: 2 },
+  { icon: MessageSquare,   label: 'Messages',             href: '/messages',       },
   { icon: Mic2,            label: 'Auditions',            href: '/auditions'      },
   { icon: Bookmark,        label: 'Saved Castings',       href: '/saved-castings' },
   { icon: Star,            label: 'Recommended Castings', href: '/recommended'    },
-  { icon: Bell,            label: 'Notifications',        href: '/notifications',  badge: 3 },
+  { icon: Bell,            label: 'Notifications',        href: '/notifications',  },
 ];
 
 const inp: React.CSSProperties = {
@@ -166,7 +186,7 @@ const lbl: React.CSSProperties = {
 }
 
 
-// ── Custom dark-themed dropdown — replaces native <select> ──
+// â”€â”€ Custom dark-themed dropdown — replaces native <select> â”€â”€
 function Select({
   value, onChange, options, placeholder,
 }: {
@@ -188,7 +208,7 @@ function Select({
 
   return (
     <div ref={ref} style={{ position: 'relative' as const }}>
-      {/* Trigger */}
+      {/*Trigger*/}
       <div
         onClick={() => setOpen(v => !v)}
         style={{
@@ -210,7 +230,7 @@ function Select({
           color: '#A8B0BD', fontSize: 10, pointerEvents: 'none' as const,
         }}>▼</span>
       </div>
-      {/* Dropdown list */}
+      {/*Dropdown list*/}
       {open && (
         <div style={{
           position: 'absolute' as const, top: 'calc(100% + 2px)', left: 0, right: 0,
@@ -218,8 +238,8 @@ function Select({
           borderRadius: 6, zIndex: 999, maxHeight: 220, overflowY: 'auto' as const,
           boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
         }}>
-          {options.map(opt => (
-            <div key={opt} onClick={() => { onChange(opt); setOpen(false) }}
+          {options.map((opt, i) => (
+            <div key={`${opt}-${i}`} onClick={() => { onChange(opt); setOpen(false) }}
               style={{
                 padding: '9px 12px', cursor: 'pointer',
                 fontFamily: "'Barlow Condensed', sans-serif", fontSize: 14,
@@ -286,7 +306,7 @@ function MultiSelect({ options, selected, onChange }: { options: string[]; selec
   )
 }
 
-// ── Department + Role selector — Option D chip layout ──
+// â”€â”€ Department + Role selector — Option D chip layout â”€â”€
 interface SelectedRole { department: string; role: string }
 
 function DepartmentRoleSelector({
@@ -348,7 +368,7 @@ function DepartmentRoleSelector({
 
   return (
     <div>
-      {/* Header row */}
+      {/*Header row*/}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <span style={{ fontFamily: M, fontSize: 15, color: '#A8B0BD', letterSpacing: 0.2 }}>
           Tap a department, then pick your roles.{' '}
@@ -360,7 +380,7 @@ function DepartmentRoleSelector({
         }}>{totalRoles} / {MAX_ROLES} selected</span>
       </div>
 
-      {/* Search bar */}
+      {/*Search bar*/}
       <div style={{ position: 'relative' as const, marginBottom: 12 }}>
         <span style={{ position: 'absolute' as const, left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: '#6A7080' }}>🔍</span>
         <input
@@ -387,14 +407,14 @@ function DepartmentRoleSelector({
         )}
       </div>
 
-      {/* Max warning */}
+      {/*Max warning*/}
       {totalRoles >= MAX_ROLES && (
         <div style={{ marginBottom: 10, padding: '7px 12px', background: 'rgba(200,32,42,0.08)', border: '1px solid rgba(200,32,42,0.2)', borderRadius: 6, fontFamily: M, fontSize: 14, color: RED }}>
           ⚠️ Maximum {MAX_ROLES} roles reached. Remove a role below to add another.
         </div>
       )}
 
-      {/* Department chips */}
+      {/*Department chips*/}
       <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 7, marginBottom: 14 }}>
         {filteredDepts.length === 0 && (
           <span style={{ fontFamily: M, fontSize: 14, color: '#6A7080' }}>No departments match "{search}"</span>
@@ -419,7 +439,7 @@ function DepartmentRoleSelector({
         })}
       </div>
 
-      {/* Role chips panel */}
+      {/*Role chips panel*/}
       {activeDept && (
         <div style={{
           padding: '12px 14px', marginBottom: 14,
@@ -444,7 +464,7 @@ function DepartmentRoleSelector({
         </div>
       )}
 
-      {/* Selected roles strip */}
+      {/*Selected roles strip*/}
       {selectedRoles.length > 0 && (
         <div style={{
           padding: '10px 12px',
@@ -477,7 +497,7 @@ function DepartmentRoleSelector({
   )
 }
 
-// ── RingsNRoses Cross-Platform Prompt ──
+// â”€â”€ RingsNRoses Cross-Platform Prompt â”€â”€
 function RingsNRosesPrompt({ selectedRoles, onDismiss }: { selectedRoles: SelectedRole[]; onDismiss: () => void }) {
   const matched = selectedRoles.some(r => RNR_ELIGIBLE_ROLES.includes(r.role))
   if (!matched) return null
@@ -485,7 +505,7 @@ function RingsNRosesPrompt({ selectedRoles, onDismiss }: { selectedRoles: Select
   return (
     <div style={{ marginTop: 16, padding: '16px', background: 'linear-gradient(135deg, rgba(212,166,74,0.08), rgba(200,32,42,0.06))', border: '1px solid rgba(212,166,74,0.3)', borderRadius: 10 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-        <div style={{ fontSize: 28, flexShrink: 0 }}>💍</div>
+        <div style={{ fontSize: 28, flexShrink: 0 }}>👍</div>
         <div style={{ flex: 1 }}>
           <div style={{ fontFamily: B, fontSize: 15, letterSpacing: 1, color: '#D4A64A', marginBottom: 4 }}>YOUR PROFILE MATCHES RINGSNROSES!</div>
           <div style={{ fontFamily: M, fontSize: 14, color: '#A8B0BD', lineHeight: 1.6, marginBottom: 12 }}>
@@ -494,7 +514,7 @@ function RingsNRosesPrompt({ selectedRoles, onDismiss }: { selectedRoles: Select
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
             <button onClick={() => window.open('https://www.ringsnroses.com/vendor/signup', '_blank')}
               style={{ padding: '7px 16px', background: '#D4A64A', border: 'none', borderRadius: 6, color: '#0a0a0a', fontFamily: B, fontSize: 14, letterSpacing: 1, cursor: 'pointer' }}>
-              💍 CREATE VENDOR PROFILE
+              👍 CREATE VENDOR PROFILE
             </button>
             <button onClick={() => window.open('https://www.ringsnroses.com', '_blank')}
               style={{ padding: '7px 14px', background: 'transparent', border: '1px solid rgba(212,166,74,0.4)', borderRadius: 6, color: '#D4A64A', fontFamily: M, fontSize: 14, cursor: 'pointer' }}>
@@ -511,11 +531,40 @@ function RingsNRosesPrompt({ selectedRoles, onDismiss }: { selectedRoles: Select
   )
 }
 
+const profileMenuLinks = [
+  { icon: '💤', label: 'My Profile', href: '/my-profile' },
+  { icon: '⚙️', label: 'Settings', href: '/settings' },
+  { icon: '🚪', label: 'Logout', href: '/login' },
+]
+
 export default function CreateProfilePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [activeSection, setActiveSection] = useState(1)
+
+  // â”€â”€ Jump to section from ?section= query param â”€â”€
+  useEffect(() => {
+    const sectionMap: Record<string, number> = {
+      'basic':    1,
+      'physical': 2,
+      'roles':    3,
+      'media':    4,
+      'review':   5,
+    }
+    const param = searchParams.get('section')
+    if (param && sectionMap[param]) setActiveSection(sectionMap[param])
+  }, [searchParams])
   const [showDropdown,  setShowDropdown]  = useState(false)
   const [sidebarOpen,   setSidebarOpen]   = useState(false)
+  const [notifCount,    setNotifCount]    = useState(0)
+  const [msgCount,      setMsgCount]      = useState(0)
+
+  // Inject live badge counts into sidebar items
+  const navItems = SIDEBAR_ITEMS.map(item => {
+    if (item.label === 'Messages')      return { ...item, badge: msgCount     || undefined }
+    if (item.label === 'Notifications') return { ...item, badge: notifCount   || undefined }
+    return item
+  })
   const [userName,      setUserName]      = useState('My Account')
   const [avatarUrl,     setAvatarUrl]     = useState('')
 
@@ -526,13 +575,42 @@ export default function CreateProfilePage() {
       if (u.profilePhoto) setAvatarUrl(u.profilePhoto)
     } catch {}
   }, [])
+
+  // Fetch live badge counts
+  useEffect(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
+      const token = u.token
+      if (!token) return
+      const h = { Authorization: `Bearer ${token}` }
+      fetch('/api/notifications', { headers: h })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return
+          const count = data.data?.unread_count ?? data.unread_count
+          if (count != null) { setNotifCount(count); return }
+          const list = data.data?.notifications ?? data.notifications ?? []
+          if (Array.isArray(list)) setNotifCount(list.filter((n: any) => !n.is_read).length)
+        }).catch(() => {})
+      fetch('/api/messages/conversations', { headers: h })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return
+          const list = data.data?.conversations ?? data.conversations ?? []
+          if (Array.isArray(list)) setMsgCount(list.filter((c: any) => c.unreadCount > 0).length)
+        }).catch(() => {})
+    } catch {}
+  }, [])
+
   const SB_W = sidebarOpen ? 220 : 56
   const [languages, setLanguages] = useState<string[]>([])
   const [availableFor, setAvailableFor] = useState<string[]>([])
   const [bio, setBio] = useState('')
   const [selectedRoles, setSelectedRoles] = useState<SelectedRole[]>([])
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([])
   const [showRnRPrompt, setShowRnRPrompt] = useState(true)
   const [galleryPhotos, setGalleryPhotos] = useState<string[]>([])
+  const [galleryMediaIds, setGalleryMediaIds] = useState<(string|null)[]>([]) // tracks DB IDs for deletion
   const [showreelUrl, setShowreelUrl] = useState('')
   const [otherVideos, setOtherVideos] = useState<string[]>([])
   const profilePhotoRef = useRef<HTMLInputElement>(null)
@@ -545,7 +623,7 @@ export default function CreateProfilePage() {
   const [pendingDraft, setPendingDraft] = useState<any>(null)
   const [validationError, setValidationError] = useState('')
   const [isEditMode, setIsEditMode] = useState(false)
-  const { countries: locationCountries, stateMap, cityMap } = useLocationConfig()
+  const { countries: locationCountries, stateMap, cityMap, loadCities } = useLocationConfig()
 
   // On load: detect saved draft and PROMPT user instead of auto-restoring
   useEffect(() => {
@@ -561,10 +639,9 @@ export default function CreateProfilePage() {
       }
       // Edit mode — auto-restore without prompt
       if (draft?.editMode) {
-        setIsEditMode(true)
-        applyDraft(draft)
-        return
-      }
+  	setIsEditMode(true)
+  	applyDraft(draft)
+	}
       // Normal draft restore prompt
       const hasContent = draft?.form?.firstName || draft?.form?.email || draft?.selectedRoles?.length > 0
       if (draft?.form && !draft.published && hasContent) {
@@ -582,6 +659,7 @@ export default function CreateProfilePage() {
     if (draft?.bio)           setBio(draft.bio)
     if (draft?.activeSection) setActiveSection(draft.activeSection)
     if (draft?.credits)       setCredits(draft.credits)
+    if (draft?.selectedSkills) setSelectedSkills(draft.selectedSkills)
     setDraftRestored(true)
     setTimeout(() => setDraftRestored(false), 4000)
   }
@@ -617,10 +695,10 @@ export default function CreateProfilePage() {
       } catch {}
 
       const res = await fetch('/api/profile/aspirant', { headers: { Authorization: `Bearer ${token}` } })
-      if (!res.ok) return
-      const data = await res.json()
-      const p = data.data?.profile ?? data.profile ?? data
-      if (!p?.first_name) return
+	if (!res.ok) return
+	const data = await res.json()
+	const p = data.data?.profile ?? data.profile ?? data
+	if (!p?.first_name) return
       setIsEditMode(true)
 
       setForm(prev => ({
@@ -658,11 +736,16 @@ export default function CreateProfilePage() {
       if (p.about_me)             setBio(p.about_me)
       if (p.category && p.role)   setSelectedRoles([{ department: p.category, role: p.role }])
       if (p.social_links?.credits?.length) setCredits(p.social_links.credits)
+      if (Array.isArray(p.skills) && p.skills.length) setSelectedSkills(p.skills)
 
       if (Array.isArray(p.aspirant_media)) {
         const photos = p.aspirant_media.filter((m: any) => m.type === 'image').map((m: any) => m.url)
+        const photoIds = p.aspirant_media.filter((m: any) => m.type === 'image').map((m: any) => m.id)
         const primaryPhoto = p.aspirant_media.find((m: any) => m.is_primary && m.type === 'image')
+        // Track media IDs by URL
+        photos.forEach((url: string, i: number) => { if (photoIds[i]) mediaIdMap.current[url] = photoIds[i] })
         if (photos.length) setGalleryPhotos(photos)
+        if (photoIds.length) setGalleryMediaIds(photoIds)
         if (primaryPhoto) setForm(prev => ({ ...prev, profilePhoto: primaryPhoto.url }))
         const videos = p.aspirant_media.filter((m: any) => m.type === 'video').map((m: any) => m.url)
         if (videos.length) setShowreelUrl(videos[0])
@@ -684,7 +767,7 @@ export default function CreateProfilePage() {
     setPendingDraft(null)
   }
 
-  // ── Auto-save category to ss_user the moment roles are selected ──
+  // â”€â”€ Auto-save category to ss_user the moment roles are selected â”€â”€
   // This ensures the pricing page can show RingsNRoses eligibility
   // even if the user navigates there before clicking PUBLISH PROFILE.
   useEffect(() => {
@@ -710,7 +793,7 @@ export default function CreateProfilePage() {
     } catch {}
   }, [selectedRoles])
 
-  // ── Validate required fields per section before advancing ──
+  // â”€â”€ Validate required fields per section before advancing â”€â”€
   const validateSection = (section: number): boolean => {
     setValidationError('')
     if (section === 1) {
@@ -756,14 +839,47 @@ export default function CreateProfilePage() {
     experienceLevel: '',
   })
 
-  const [credits, setCredits] = useState<{ type: string; year: string; role: string; title: string; description: string }[]>([])
-  const addCredit = () => setCredits(p => [...p, { type: 'Film', year: '', role: '', title: '', description: '' }])
+  const [credits, setCredits] = useState<{ type: string; year: string; role: string; characterName: string; title: string; director: string; productionHouse: string; platform: string; platformOther: string; language: string; languageOther: string; description: string; trailerLink: string; imdbLink: string }[]>([])
+  const addCredit = () => setCredits(p => [...p, { type: 'Film', year: '', role: '', characterName: '', title: '', director: '', productionHouse: '', platform: '', platformOther: '', language: '', languageOther: '', description: '', trailerLink: '', imdbLink: '' }])
   const removeCredit = (i: number) => setCredits(p => p.filter((_, idx) => idx !== i))
   const updateCredit = (i: number, key: string, val: string) => setCredits(p => p.map((c, idx) => idx === i ? { ...c, [key]: val } : c))
 
-  const completion = Math.min(100, Math.round(
-    [form.firstName, form.lastName, form.dob, form.city, form.profilePhoto, bio, selectedRoles.length > 0].filter(Boolean).length / 7 * 100
-  ))
+  // Matches the API's calculateCompletion — same fields & weights
+  const completion = (() => {
+    const fields: { val: unknown; weight: number }[] = [
+      { val: form.firstName,     weight: 5 },
+      { val: form.lastName,      weight: 5 },
+      { val: form.gender,        weight: 5 },
+      { val: form.dob,           weight: 5 },
+      { val: form.addressLine1,  weight: 5 },
+      { val: form.city,          weight: 5 },
+      { val: form.state,         weight: 5 },
+      { val: form.country,       weight: 5 },
+      { val: form.height,        weight: 5 },
+      { val: form.weight,        weight: 5 },
+      { val: form.hairColor,     weight: 3 },
+      { val: form.eyeColor,      weight: 3 },
+      { val: form.bodyType,      weight: 3 },
+      { val: languages,          weight: 5 },
+      { val: availableFor,       weight: 5 },
+      { val: bio,                weight: 8 },
+      { val: selectedRoles[0]?.department, weight: 8 },
+      { val: form.profilePhoto,  weight: 8 },
+      { val: showreelUrl,        weight: 5 },
+      { val: form.experienceLevel, weight: 5 },
+      { val: credits.length > 0 ? credits : null, weight: 2 },
+      { val: selectedSkills,     weight: 5 },
+    ]
+    let total = 0, earned = 0
+    for (const f of fields) {
+      total += f.weight
+      const v = f.val
+      const has = v !== null && v !== undefined && v !== '' &&
+        !(Array.isArray(v) && v.length === 0)
+      if (has) earned += f.weight
+    }
+    return Math.round((earned / total) * 100)
+  })()
 
   const g = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const val = e.target.value
@@ -779,6 +895,37 @@ export default function CreateProfilePage() {
         localStorage.setItem('ss_user', JSON.stringify({ ...existing, name: newName, verifiedAt: existing.verifiedAt || new Date().toISOString() }))
       } catch {}
     }
+  }
+
+  const deleteMedia = async (mediaId: string | null) => {
+    if (!mediaId) return
+    try {
+      const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
+      const token = u.token
+      if (!token) return
+      await fetch(`/api/profile/aspirant/media?media_id=${mediaId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    } catch {}
+  }
+
+  const uploadFileWithId = async (file: File, type: string, isPrimary = false): Promise<{ url: string; id?: string } | null> => {
+    try {
+      const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
+      const token = u.token
+      if (!token) return null
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('type', type)
+      fd.append('is_primary', String(isPrimary))
+      const res = await fetch('/api/upload', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd })
+      if (!res.ok) return null
+      const data = await res.json()
+      const url = data.data?.url ?? data.url ?? null
+      const id  = data.data?.media_id ?? data.media_id ?? null
+      return url ? { url, id } : null
+    } catch { return null }
   }
 
   const uploadFile = async (file: File, type: string, isPrimary = false): Promise<string | null> => {
@@ -806,22 +953,19 @@ export default function CreateProfilePage() {
     if (url) setForm(p => ({ ...p, profilePhoto: url }))
   }
 
+  const mediaIdMap = useRef<Record<string, string>>({}) // url -> media_id
+
   const handleGallery = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     if (!files.length) return
-    // Show previews immediately
     const previews = files.map(f => URL.createObjectURL(f))
     setGalleryPhotos(p => [...p, ...previews].slice(0, 10))
-    // Upload each file
     for (let i = 0; i < files.length; i++) {
-      const url = await uploadFile(files[i], 'photo', false)
-      if (url) {
-        setGalleryPhotos(p => {
-          const updated = [...p]
-          const idx = updated.indexOf(previews[i])
-          if (idx !== -1) updated[idx] = url
-          return updated
-        })
+      const result = await uploadFileWithId(files[i], 'photo', false)
+      if (result?.url) {
+        const preview = previews[i]
+        if (result.id) mediaIdMap.current[result.url] = result.id
+        setGalleryPhotos(p => p.map(u => u === preview ? result.url : u))
       }
     }
   }
@@ -876,11 +1020,11 @@ export default function CreateProfilePage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column' as const, height: '100vh', overflow: 'hidden', background: '#050505', fontFamily: M, color: '#F5F5F5' }}>
 
-      {/* ═══ FULL-WIDTH HEADER — logo far left, user right (matches dashboard) ═══ */}
+      {/*• • • FULL-WIDTH HEADER — logo far left, user right (matches dashboard) • • •*/}
       <div style={{ height: 60, flexShrink: 0, background: '#0B0F14', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', padding: '0 24px', gap: 16, zIndex: 50 }}>
         <SilverScreensLogo size="md" href="/" showTagline={false} />
         <div style={{ flex: 1 }} />
-        {/* User dropdown */}
+        {/*User dropdown*/}
         <div style={{ position: 'relative' as const }}>
           <div onClick={() => setShowDropdown(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '6px 10px', background: 'rgba(255,255,255,0.04)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)' }}>
             <div style={{ width: 30, height: 30, borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
@@ -918,10 +1062,10 @@ export default function CreateProfilePage() {
         </div>
       </div>
 
-      {/* ═══ BODY — sidebar + content ═══ */}
+      {/*• • • BODY — sidebar + content • • •*/}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
-        {/* ═══ STANDARD SIDEBAR — matches all other aspirant pages ═══ */}
+        {/*• • • STANDARD SIDEBAR — matches all other aspirant pages • • •*/}
         <aside style={{ width: SB_W, flexShrink: 0, background: '#0B0F14', borderRight: '1px solid rgba(255,255,255,0.07)', display: 'flex', flexDirection: 'column' as const, overflowY: 'auto' as const, overflowX: 'hidden', transition: 'width 0.2s ease' }}>
           <div style={{ display: 'flex', justifyContent: sidebarOpen ? 'flex-end' : 'center', padding: sidebarOpen ? '10px 12px 0' : '10px 0 0', flexShrink: 0 }}>
             <button onClick={() => setSidebarOpen(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', width: 30, height: 30, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}
@@ -968,22 +1112,22 @@ export default function CreateProfilePage() {
           )}
         </aside>
 
-        {/* ═══ MAIN ═══ */}
+        {/*• • • MAIN • • •*/}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, overflow: 'hidden' }}>
 
-          {/* Content */}
+          {/*Content*/}
           <div style={{ display: 'flex', gap: 20, padding: '20px 24px', flex: 1, overflowY: 'auto' as const }}>
 
-            {/* Form */}
+            {/*Form*/}
             <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' as const, gap: 16 }}>
 
-              {/* Page heading */}
+              {/*Page heading*/}
               <div>
                 <div style={{ fontFamily: B, fontSize: 26, letterSpacing: 1, color: '#F5F5F5' }}>{isEditMode ? 'EDIT YOUR PROFILE' : 'CREATE YOUR PROFILE'}</div>
                 <div style={{ fontFamily: M, fontSize: 15, color: '#6A7080', marginTop: 3 }}>{isEditMode ? 'Update your details — changes will be sent for admin review' : 'Complete your profile to start applying for castings'}</div>
               </div>
 
-              {/* Edit mode notice */}
+              {/*Edit mode notice*/}
               {isEditMode && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'rgba(212,166,74,0.07)', border: '1px solid rgba(212,166,74,0.25)', borderRadius: 10 }}>
                   <span style={{ fontSize: 18, flexShrink: 0 }}>✏️</span>
@@ -995,7 +1139,7 @@ export default function CreateProfilePage() {
                 </div>
               )}
 
-              {/* Draft prompt — shown when a previous draft is detected */}
+              {/*Draft prompt — shown when a previous draft is detected*/}
               {showDraftPrompt && (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '14px 18px', background: 'rgba(212,166,74,0.07)', border: '1px solid rgba(212,166,74,0.25)', borderRadius: 10, flexWrap: 'wrap' as const }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1014,7 +1158,7 @@ export default function CreateProfilePage() {
                 </div>
               )}
 
-              {/* Draft restored confirmation */}
+              {/*Draft restored confirmation*/}
               {draftRestored && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 8 }}>
                   <span style={{ fontSize: 16 }}>✅</span>
@@ -1022,7 +1166,7 @@ export default function CreateProfilePage() {
                 </div>
               )}
 
-              {/* Progress */}
+              {/*Progress*/}
               <div style={{ background: '#0B0F14', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '16px 20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
                   <div>
@@ -1053,10 +1197,10 @@ export default function CreateProfilePage() {
                 </div>
               </div>
 
-              {/* ── SECTION 1: Basic Info ── */}
+              {/*SECTION 1: Basic Info*/}
               {activeSection === 1 && (
                 <div style={{ background: '#0B0F14', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '20px' }}>
-                  <SecHead num={1} icon="👤" title="Basic Information" sub="Personal details for your profile" />
+                  <SecHead num={1} icon="💤" title="Basic Information" sub="Personal details for your profile" />
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
                     <F label="Title" required><Select value={form.title} onChange={v => { setForm(p => ({...p, title: v})); setValidationError('') }} options={TITLES} placeholder='-- Select Title --' /></F>
                     <F label="First Name" required><input type="text" placeholder="First name" value={form.firstName} onChange={g('firstName')} style={inp} onFocus={focus} onBlur={blur} /></F>
@@ -1068,7 +1212,7 @@ export default function CreateProfilePage() {
                     <F label="Country" required><Select value={form.country} onChange={v => { setForm(p => ({...p, country: v, state: '', city: ''})); setValidationError('') }} options={locationCountries} placeholder='-- Select Country --' /></F>
                     <F label="State" required>
                       {stateMap[form.country]?.length > 0
-                        ? <Select value={form.state} onChange={v => { setForm(p => ({...p, state: v, city: ''})); setValidationError('') }} options={stateMap[form.country]} placeholder='-- Select State --' />
+                        ? <Select value={form.state} onChange={v => { setForm(p => ({...p, state: v, city: ''})); setValidationError(''); loadCities(form.country, v) }} options={stateMap[form.country]} placeholder='-- Select State --' />
                         : <input type="text" placeholder="e.g. Maharashtra" value={form.state} onChange={g('state')} style={inp} onFocus={focus} onBlur={blur} />
                       }
                     </F>
@@ -1087,7 +1231,7 @@ export default function CreateProfilePage() {
                 </div>
               )}
 
-              {/* ── SECTION 2: Physical Details ── */}
+              {/*SECTION 2: Physical Details*/}
               {activeSection === 2 && (
                 <div style={{ background: '#0B0F14', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '20px' }}>
                   <SecHead num={2} icon="📏" title="Physical Details" sub="Your physical measurements and appearance" />
@@ -1107,13 +1251,13 @@ export default function CreateProfilePage() {
                 </div>
               )}
 
-              {/* ── SECTION 3: Departments & Roles ── */}
+              {/*SECTION 3: Departments & Roles*/}
               {activeSection === 3 && (
                 <div style={{ background: '#0B0F14', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '20px' }}>
                   <SecHead num={3} icon="🎬" title="Departments & Roles" sub="Select the departments and roles that best represent your skills (max 5 roles)" />
                   <DepartmentRoleSelector selectedRoles={selectedRoles} onChange={setSelectedRoles} />
 
-                  {/* About Me */}
+                  {/*About Me*/}
                   <div style={{ marginTop: 20 }}>
                     <F label="About Me" required>
                       <textarea
@@ -1126,7 +1270,33 @@ export default function CreateProfilePage() {
                     </F>
                   </div>
 
-                  {/* Experience & Credits */}
+                  {/*Skills*/}
+                  <div style={{ marginTop: 20 }}>
+                    <div style={{ fontFamily: M, fontSize: 15, fontWeight: 700, color: '#F5F5F5', marginBottom: 4 }}>Skills</div>
+                    <div style={{ fontFamily: M, fontSize: 13, color: '#6A7080', marginBottom: 10 }}>Select skills that best describe your abilities. These help agencies find you in searches.</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {['Acting', 'Dialogue Delivery', 'Dancing', 'Action', 'Singing', 'Modelling', 'Yoga', 'Fighting', 'Mimicry', 'Horse Riding', 'Direction', 'Photography', 'Videography', 'Editing', 'Choreography', 'Make Up', 'Hair Styling', 'Costume Design', 'Script Writing', 'Voice Over', 'Anchoring', 'News Reading', 'Animation', 'VFX', 'Sound Design', 'Music Composition', 'Stunt', 'Production Management', 'Casting', 'Art Direction', 'Set Design', 'Cinematography', 'Dubbing', 'Influencing', 'Fashion Modelling'].map(skill => {
+                        const selected = selectedSkills.includes(skill)
+                        return (
+                          <div key={skill} onClick={() => setSelectedSkills(prev => prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill])}
+                            style={{ padding: '6px 14px', borderRadius: 20, border: `1px solid ${selected ? '#C8202A' : 'rgba(255,255,255,0.12)'}`, background: selected ? 'rgba(200,32,42,0.15)' : 'transparent', color: selected ? '#F5F5F5' : '#6A7080', fontSize: 14, fontFamily: M, cursor: 'pointer', transition: 'all 0.15s', userSelect: 'none' as const }}
+                            onMouseEnter={e => { if (!selected) { (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(200,32,42,0.4)'; (e.currentTarget as HTMLDivElement).style.color = '#A8B0BD'; } }}
+                            onMouseLeave={e => { if (!selected) { (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,255,255,0.12)'; (e.currentTarget as HTMLDivElement).style.color = '#6A7080'; } }}
+                          >
+                            {skill}
+                          </div>
+                        )
+                      })}
+                    </div>
+                    {selectedSkills.length > 0 && (
+                      <div style={{ marginTop: 8, fontSize: 13, color: '#C8202A', fontFamily: M }}>
+                        {selectedSkills.length} skill{selectedSkills.length > 1 ? 's' : ''} selected
+                        <span onClick={() => setSelectedSkills([])} style={{ marginLeft: 8, cursor: 'pointer', color: '#6A7080', textDecoration: 'underline' }}>Clear all</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/*Experience & Credits*/}
                   <div style={{ marginTop: 20 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                       <div style={{ fontFamily: M, fontSize: 15, fontWeight: 700, color: '#F5F5F5' }}>Experience & Credits</div>
@@ -1138,49 +1308,55 @@ export default function CreateProfilePage() {
                       </div>
                     )}
                     {credits.map((c, i) => (
-                      <div key={i} style={{ marginBottom: 10, padding: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto', gap: 10, marginBottom: 8 }}>
+                      <div key={i} style={{ marginBottom: 10, padding: 14, background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+                          <div><div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>Production Name</div><input type="text" placeholder="e.g. Leo 2" value={c.title} onChange={e => updateCredit(i, 'title', e.target.value)} style={{ ...inp, padding: '8px 10px' }} /></div>
+                          <div><div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>Role</div><input type="text" placeholder="e.g. Lead Actor" value={c.role} onChange={e => updateCredit(i, 'role', e.target.value)} style={{ ...inp, padding: '8px 10px' }} /></div>
+                          <div><div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>Character Name</div><input type="text" placeholder="e.g. Parthiban" value={c.characterName} onChange={e => updateCredit(i, 'characterName', e.target.value)} style={{ ...inp, padding: '8px 10px' }} /></div>
+                          <div><div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>Project Type</div><Select value={c.type} onChange={v => updateCredit(i, 'type', v)} options={PROJECT_TYPES} placeholder='-- Select --' /></div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+                          <div><div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>Director</div><input type="text" placeholder="e.g. Lokesh Kanagaraj" value={c.director} onChange={e => updateCredit(i, 'director', e.target.value)} style={{ ...inp, padding: '8px 10px' }} /></div>
+                          <div><div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>Production House</div><input type="text" placeholder="e.g. Lyca Productions" value={c.productionHouse} onChange={e => updateCredit(i, 'productionHouse', e.target.value)} style={{ ...inp, padding: '8px 10px' }} /></div>
+                          <div><div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>Release Year</div><Select value={c.year} onChange={v => updateCredit(i, 'year', v)} options={Array.from({length: new Date().getFullYear() - 1989}, (_, k) => String(new Date().getFullYear() - k))} placeholder='-- Year --' /></div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
                           <div>
-                            <div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>Project Type</div>
-                            <Select value={c.type} onChange={v => updateCredit(i, 'type', v)} options={PROJECT_TYPES} placeholder='-- Select Type --' />
+                            <div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>Platform</div>
+                            <Select value={c.platform} onChange={v => updateCredit(i, 'platform', v)} options={[...AVAILABLE_FOR, 'Other']} placeholder='-- Select Platform --' />
+                            {c.platform === 'Other' && <input type="text" placeholder="Specify platform" value={c.platformOther} onChange={e => updateCredit(i, 'platformOther', e.target.value)} style={{ ...inp, padding: '8px 10px', marginTop: 6 }} />}
                           </div>
                           <div>
-                            <div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>Year</div>
-                            <input type="number" min="1990" max={new Date().getFullYear()} placeholder="2024" value={c.year} onChange={e => updateCredit(i, 'year', e.target.value)} style={{ ...inp, padding: '8px 10px' }} />
-                          </div>
-                          <div>
-                            <div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>Role</div>
-                            <input type="text" placeholder="e.g. Lead, Supporting" value={c.role} onChange={e => updateCredit(i, 'role', e.target.value)} style={{ ...inp, padding: '8px 10px' }} />
-                          </div>
-                          <div>
-                            <div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>Project Title</div>
-                            <input type="text" placeholder="e.g. Leo 2" value={c.title} onChange={e => updateCredit(i, 'title', e.target.value)} style={{ ...inp, padding: '8px 10px' }} />
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 2 }}>
-                            <button onClick={() => removeCredit(i)} style={{ background: 'rgba(200,32,42,0.15)', border: '1px solid rgba(200,32,42,0.3)', borderRadius: 6, padding: '8px 10px', color: RED, cursor: 'pointer', fontFamily: M, fontSize: 14 }}>✕</button>
+                            <div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>Language</div>
+                            <Select value={c.language} onChange={v => updateCredit(i, 'language', v)} options={[...LANGUAGES, 'Other']} placeholder='-- Select Language --' />
+                            {c.language === 'Other' && <input type="text" placeholder="Specify language" value={c.languageOther} onChange={e => updateCredit(i, 'languageOther', e.target.value)} style={{ ...inp, padding: '8px 10px', marginTop: 6 }} />}
                           </div>
                         </div>
-                        <div>
-                          <div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>About the Project (optional)</div>
-                          <textarea placeholder="Describe your role, the project, director, production house..." value={c.description} onChange={e => updateCredit(i, 'description', e.target.value)} rows={2} style={{ ...inp, resize: 'vertical' as const, cursor: 'text', padding: '8px 10px' }} />
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                          <div><div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>Trailer Link</div><input type="text" placeholder="https://youtube.com/..." value={c.trailerLink} onChange={e => updateCredit(i, 'trailerLink', e.target.value)} style={{ ...inp, padding: '8px 10px' }} /></div>
+                          <div><div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>IMDb Link</div><input type="text" placeholder="https://imdb.com/title/..." value={c.imdbLink} onChange={e => updateCredit(i, 'imdbLink', e.target.value)} style={{ ...inp, padding: '8px 10px' }} /></div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'flex-end' }}>
+                          <div><div style={{ fontFamily: M, fontSize: 12, color: '#6A7080', marginBottom: 4 }}>Description (optional)</div><textarea placeholder="Brief description of your role and the project..." value={c.description} onChange={e => updateCredit(i, 'description', e.target.value)} rows={2} style={{ ...inp, resize: 'vertical' as const, cursor: 'text', padding: '8px 10px' }} /></div>
+                          <button onClick={() => removeCredit(i)} style={{ background: 'rgba(200,32,42,0.15)', border: '1px solid rgba(200,32,42,0.3)', borderRadius: 6, padding: '8px 10px', color: RED, cursor: 'pointer', fontFamily: M, fontSize: 14, marginBottom: 2 }}>✕ Remove</button>
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  {/* RingsNRoses cross-platform prompt */}
+                  {/*RingsNRoses cross-platform prompt*/}
                   {showRnRPrompt && selectedRoles.length > 0 && (
                     <RingsNRosesPrompt selectedRoles={selectedRoles} onDismiss={() => setShowRnRPrompt(false)} />
                   )}
                 </div>
               )}
 
-              {/* ── SECTION 4: Media ── */}
+              {/*SECTION 4: Media*/}
               {activeSection === 4 && (
                 <div style={{ background: '#0B0F14', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '20px' }}>
                   <SecHead num={4} icon="🖼️" title="Media & Portfolio" sub="Add photos, videos and showreels to highlight your talent" />
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                    {/* Profile Photo */}
+                    {/*Profile Photo*/}
                     <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 16 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                         <div>
@@ -1190,25 +1366,60 @@ export default function CreateProfilePage() {
                         {form.profilePhoto && <span style={{ color: '#22c55e', fontSize: 16 }}>✓</span>}
                       </div>
                       <div onClick={() => profilePhotoRef.current?.click()} style={{ height: 130, borderRadius: 6, overflow: 'hidden', background: 'rgba(255,255,255,0.03)', border: `2px dashed ${form.profilePhoto ? '#22c55e' : 'rgba(255,255,255,0.1)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                        {form.profilePhoto ? <img src={form.profilePhoto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : <div style={{ textAlign: 'center' as const, color: '#6A7080' }}><div style={{ fontSize: 28, marginBottom: 6 }}>📷</div><div style={{ fontFamily: M, fontSize: 14 }}>Click to upload</div><div style={{ fontFamily: M, fontSize: 14, marginTop: 2 }}>JPG, PNG up to 5MB</div></div>}
+                        {form.profilePhoto ? <img src={form.profilePhoto} style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} alt="" /> : <div style={{ textAlign: 'center' as const, color: '#6A7080' }}><div style={{ fontSize: 28, marginBottom: 6 }}>📷</div><div style={{ fontFamily: M, fontSize: 14 }}>Click to upload</div><div style={{ fontFamily: M, fontSize: 14, marginTop: 2 }}>JPG, PNG up to 5MB</div></div>}
                       </div>
-                      <input ref={profilePhotoRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleProfilePhoto} />
-                    </div>
-                    {/* Gallery Photos */}
-                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 16 }}>
-                      <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: '#F5F5F5', marginBottom: 4 }}>Gallery Photos <span style={{ color: '#6A7080', fontWeight: 400 }}>{galleryPhotos.length}/10</span></div>
-                      <div style={{ fontFamily: M, fontSize: 14, color: '#6A7080', marginBottom: 10 }}>Add at least 3 photos (no watermarks)</div>
-                      {galleryPhotos.length > 0 && (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 8 }}>
-                          {galleryPhotos.map((p, i) => <img key={i} src={p} style={{ width: '100%', height: 60, objectFit: 'cover', borderRadius: 4 }} alt="" />)}
+                      {form.profilePhoto && (
+                        <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                          <button onClick={() => profilePhotoRef.current?.click()} style={{ flex: 1, padding: '6px 0', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 5, color: '#A8B0BD', fontFamily: M, fontSize: 13, cursor: 'pointer' }}>📞 Replace</button>
+                          <button onClick={(e) => { e.stopPropagation(); setForm(p => ({ ...p, profilePhoto: '' })) }} style={{ flex: 1, padding: '6px 0', background: 'rgba(200,32,42,0.1)', border: '1px solid rgba(200,32,42,0.25)', borderRadius: 5, color: RED, fontFamily: M, fontSize: 13, cursor: 'pointer' }}>✕ Remove</button>
                         </div>
                       )}
-                      <div onClick={() => galleryRef.current?.click()} style={{ height: galleryPhotos.length > 0 ? 50 : 130, borderRadius: 6, background: 'rgba(255,255,255,0.03)', border: '2px dashed rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', gap: 8 }}>
-                        <span style={{ fontSize: 20 }}>➕</span><span style={{ fontFamily: M, fontSize: 14, color: '#6A7080' }}>Add photos</span>
+                      <input ref={profilePhotoRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleProfilePhoto} />
+                    </div>
+                    {/*Gallery Photos*/}
+                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 16 }}>
+                      <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: '#F5F5F5', marginBottom: 4 }}>Gallery Photos <span style={{ color: '#6A7080', fontWeight: 400 }}>{galleryPhotos.length}/10</span></div>
+                      <div style={{ fontFamily: M, fontSize: 14, color: '#6A7080', marginBottom: 8 }}>Add at least 3 photos — no watermarks or contact numbers</div>
+                      <div style={{ background: 'rgba(212,166,74,0.06)', border: '1px solid rgba(212,166,74,0.2)', borderRadius: 6, padding: '8px 12px', marginBottom: 10 }}>
+                        <div style={{ fontFamily: M, fontSize: 13, color: GOLD, fontWeight: 700, marginBottom: 6 }}>📡 Recommended photo types (up to 10)</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 12px' }}>
+                          {['Headshot', 'Mid Shot', 'Full Length', 'Traditional', 'Western', 'Ethnic', 'Casual', 'Formal', 'Smile', 'Serious'].map((cat, idx) => (
+                            <div key={cat} style={{ fontFamily: M, fontSize: 13, color: 'rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', gap: 6, padding: '1px 0' }}>
+                              <span style={{ color: GOLD, fontSize: 11 }}>{idx + 1}.</span> {cat}
+                              {galleryPhotos[idx] && <span style={{ color: '#22c55e', fontSize: 12, marginLeft: 'auto' }}>✓</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      {galleryPhotos.length > 0 && (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4, marginBottom: 8 }}>
+                          {galleryPhotos.map((p, i) => (
+                            <div key={i} style={{ position: 'relative' as const }}>
+                              <img src={p} style={{ width: '100%', height: 52, objectFit: 'cover', borderRadius: 4 }} alt="" />
+                              <div style={{ position: 'absolute' as const, bottom: 2, left: 2, right: 2, fontFamily: M, fontSize: 10, color: '#fff', background: 'rgba(0,0,0,0.6)', borderRadius: 2, padding: '1px 3px', textAlign: 'center' as const, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                                {['Headshot','Mid Shot','Full Length','Traditional','Western','Ethnic','Casual','Formal','Smile','Serious'][i] || `Photo ${i+1}`}
+                              </div>
+                              <button
+                                onClick={() => {
+                                  const url = galleryPhotos[i]
+                                  const mediaId = mediaIdMap.current[url] ?? galleryMediaIds[i] ?? null
+                                  deleteMedia(mediaId)
+                                  setGalleryPhotos(prev => prev.filter((_, idx) => idx !== i))
+                                  setGalleryMediaIds(prev => prev.filter((_, idx) => idx !== i))
+                                  if (url) delete mediaIdMap.current[url]
+                                }}
+                                style={{ position: 'absolute' as const, top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', background: 'rgba(200,32,42,0.85)', border: 'none', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: 0 }}
+                              >✕</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div onClick={() => galleryRef.current?.click()} style={{ height: 44, borderRadius: 6, background: 'rgba(255,255,255,0.03)', border: '2px dashed rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', gap: 8 }}>
+                        <span style={{ fontSize: 18 }}>+</span><span style={{ fontFamily: M, fontSize: 14, color: '#6A7080' }}>Add photos ({galleryPhotos.length}/10)</span>
                       </div>
                       <input ref={galleryRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleGallery} />
                     </div>
-                    {/* Showreel */}
+                    {/*Showreel*/}
                     <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 16 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                         <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: '#F5F5F5' }}>Showreel Video</div>
@@ -1221,13 +1432,19 @@ export default function CreateProfilePage() {
                         <span style={{ fontFamily: M, fontSize: 14, color: '#6A7080' }}>OR</span>
                         <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
                       </div>
-                      <div onClick={() => showreelRef.current?.click()} style={{ height: 60, borderRadius: 6, background: 'rgba(255,255,255,0.03)', border: '2px dashed rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', gap: 8 }}>
+                      <div onClick={() => showreelRef.current?.click()} style={{ height: 60, borderRadius: 6, background: showreelUrl ? 'rgba(34,197,94,0.06)' : 'rgba(255,255,255,0.03)', border: `2px dashed ${showreelUrl ? '#22c55e' : 'rgba(255,255,255,0.1)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', gap: 8 }}>
                         <span style={{ fontSize: 18 }}>▶️</span>
-                        <span style={{ fontFamily: M, fontSize: 14, color: '#6A7080' }}>{showreelUrl && !showreelUrl.startsWith('http') ? '✓ Video uploaded' : 'Upload MP4 file'}</span>
+                        <span style={{ fontFamily: M, fontSize: 14, color: showreelUrl ? '#22c55e' : '#6A7080' }}>{showreelUrl ? '✓ Showreel added — click to replace' : 'Upload MP4 file'}</span>
                       </div>
+                      {showreelUrl && (
+                        <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                          <button onClick={() => showreelRef.current?.click()} style={{ flex: 1, padding: '6px 0', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 5, color: '#A8B0BD', fontFamily: M, fontSize: 13, cursor: 'pointer' }}>📞 Replace</button>
+                          <button onClick={(e) => { e.stopPropagation(); setShowreelUrl('') }} style={{ flex: 1, padding: '6px 0', background: 'rgba(200,32,42,0.1)', border: '1px solid rgba(200,32,42,0.25)', borderRadius: 5, color: RED, fontFamily: M, fontSize: 13, cursor: 'pointer' }}>✕ Remove</button>
+                        </div>
+                      )}
                       <input ref={showreelRef} type="file" accept="video/*" style={{ display: 'none' }} onChange={handleShowreel} />
                     </div>
-                    {/* Other Videos */}
+                    {/*Other Videos*/}
                     <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 16 }}>
                       <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: '#F5F5F5', marginBottom: 4 }}>Other Videos <span style={{ color: '#6A7080', fontWeight: 400 }}>{otherVideos.length}/5</span></div>
                       <div style={{ fontFamily: M, fontSize: 14, color: '#6A7080', marginBottom: 10 }}>Up to 5 videos, MP4 format, no watermarks</div>
@@ -1237,14 +1454,19 @@ export default function CreateProfilePage() {
                             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'rgba(255,255,255,0.04)', borderRadius: 4, marginBottom: 4 }}>
                               <span style={{ fontSize: 14 }}>🎥</span>
                               <span style={{ fontFamily: M, fontSize: 14, color: '#A8B0BD', flex: 1 }}>Video {i + 1}</span>
-                              <span style={{ color: '#22c55e', fontSize: 14 }}>✓</span>
+                              <button
+                                onClick={() => { const inp = document.createElement('input'); inp.type='file'; inp.accept='video/*'; inp.onchange = async (ev: any) => { const file = ev.target.files?.[0]; if (!file) return; const preview = URL.createObjectURL(file); setOtherVideos(p => { const u=[...p]; u[i]=preview; return u; }); const url = await uploadFile(file,'video',false); if(url) setOtherVideos(p=>{const u=[...p];u[i]=url;return u;}); }; inp.click(); }}
+                                style={{ padding: '3px 10px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 4, color: '#A8B0BD', fontFamily: M, fontSize: 12, cursor: 'pointer' }}>📞 Replace</button>
+                              <button
+                                onClick={() => setOtherVideos(p => p.filter((_, idx) => idx !== i))}
+                                style={{ padding: '3px 10px', background: 'rgba(200,32,42,0.1)', border: '1px solid rgba(200,32,42,0.25)', borderRadius: 4, color: RED, fontFamily: M, fontSize: 12, cursor: 'pointer' }}>✕ Remove</button>
                             </div>
                           ))}
                         </div>
                       )}
                       {otherVideos.length < 5 && (
                         <div onClick={() => otherVideosRef.current?.click()} style={{ height: otherVideos.length > 0 ? 50 : 100, borderRadius: 6, background: 'rgba(255,255,255,0.03)', border: '2px dashed rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', gap: 8 }}>
-                          <span style={{ fontSize: 20 }}>➕</span>
+                          <span style={{ fontSize: 20 }}>+</span>
                           <span style={{ fontFamily: M, fontSize: 14, color: '#6A7080' }}>Add video ({otherVideos.length}/5)</span>
                         </div>
                       )}
@@ -1254,7 +1476,7 @@ export default function CreateProfilePage() {
                 </div>
               )}
 
-              {/* ── SECTION 5: Review ── */}
+              {/*SECTION 5: Review*/}
               {activeSection === 5 && (
                 <div style={{ background: '#0B0F14', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '20px' }}>
                   <SecHead num={5} icon="✅" title="Review & Submit" sub="Review your profile before publishing" />
@@ -1264,13 +1486,13 @@ export default function CreateProfilePage() {
                       <img src={form.profilePhoto} style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${RED}` }} alt="" />
                       <div>
                         <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: '#F5F5F5' }}>{`${form.title} ${form.firstName} ${form.lastName}`.trim() || '—'}</div>
-                        <div style={{ fontFamily: M, fontSize: 14, color: '#A8B0BD', marginTop: 2 }}>Aspirant • {form.gender}</div>
+                        <div style={{ fontFamily: M, fontSize: 14, color: '#A8B0BD', marginTop: 2 }}>Aspirant ★ {form.gender}</div>
                       </div>
                       <span style={{ color: '#22c55e', fontSize: 18, marginLeft: 'auto' }}>✓ Photo Added</span>
                     </div>
                   )}
 
-                  {/* Personal Details */}
+                  {/*Personal Details*/}
                   <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: RED, letterSpacing: 2, textTransform: 'uppercase' as const, marginBottom: 8 }}>Personal Details</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
                     {[
@@ -1291,7 +1513,7 @@ export default function CreateProfilePage() {
                     ))}
                   </div>
 
-                  {/* Physical Details */}
+                  {/*Physical Details*/}
                   <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: RED, letterSpacing: 2, textTransform: 'uppercase' as const, marginBottom: 8 }}>Physical Details</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 16 }}>
                     {[
@@ -1306,7 +1528,7 @@ export default function CreateProfilePage() {
                     ))}
                   </div>
 
-                  {/* Departments & Roles */}
+                  {/*Departments & Roles*/}
                   <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: RED, letterSpacing: 2, textTransform: 'uppercase' as const, marginBottom: 8 }}>Departments & Roles</div>
                   <div style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 6, marginBottom: 16 }}>
                     {selectedRoles.length === 0 ? (
@@ -1327,7 +1549,7 @@ export default function CreateProfilePage() {
                     )}
                   </div>
 
-                  {/* Available For */}
+                  {/*Available For*/}
                   <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: RED, letterSpacing: 2, textTransform: 'uppercase' as const, marginBottom: 8 }}>Available For</div>
                   <div style={{ padding: '9px 12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 6, marginBottom: 16 }}>
                     <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4 }}>
@@ -1337,7 +1559,42 @@ export default function CreateProfilePage() {
                     </div>
                   </div>
 
-                  {/* Media */}
+                  {/*Skills*/}
+                  <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: RED, letterSpacing: 2, textTransform: 'uppercase' as const, marginBottom: 8 }}>Skills</div>
+                  <div style={{ padding: '9px 12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 6, marginBottom: 16 }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4 }}>
+                      {selectedSkills.length > 0 ? selectedSkills.map(s => (
+                        <span key={s} style={{ fontFamily: M, fontSize: 14, background: 'rgba(200,32,42,0.12)', border: '1px solid rgba(200,32,42,0.3)', color: RED, padding: '2px 9px', borderRadius: 10 }}>{s}</span>
+                      )) : <span style={{ fontFamily: M, fontSize: 14, color: '#6A7080' }}>— No skills selected</span>}
+                    </div>
+                  </div>
+
+                  {/*Experience & Credits*/}
+                  {credits.length > 0 && (<>
+                  <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: RED, letterSpacing: 2, textTransform: 'uppercase' as const, marginBottom: 8 }}>Experience & Credits</div>
+                  <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8, marginBottom: 16 }}>
+                    {credits.map((c, i) => (
+                      <div key={i} style={{ padding: '10px 14px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 6 }}>
+                        <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: '#F5F5F5', marginBottom: 3 }}>{c.title || '—'}</div>
+                        <div style={{ fontFamily: M, fontSize: 14, color: RED, marginBottom: 4 }}>{c.role}{c.characterName ? ` as ${c.characterName}` : ''}{c.productionHouse ? ` · ${c.productionHouse}` : ''}</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6, marginBottom: 4 }}>
+                          {c.type && <span style={{ fontFamily: M, fontSize: 13, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#A8B0BD', padding: '1px 8px', borderRadius: 4 }}>{c.type}</span>}
+                          {c.platform && c.platform !== 'Other' && <span style={{ fontFamily: M, fontSize: 13, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#A8B0BD', padding: '1px 8px', borderRadius: 4 }}>{c.platform}</span>}
+                          {c.platform === 'Other' && c.platformOther && <span style={{ fontFamily: M, fontSize: 13, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#A8B0BD', padding: '1px 8px', borderRadius: 4 }}>{c.platformOther}</span>}
+                          {c.language && c.language !== 'Other' && <span style={{ fontFamily: M, fontSize: 13, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#A8B0BD', padding: '1px 8px', borderRadius: 4 }}>{c.language}</span>}
+                          {c.language === 'Other' && c.languageOther && <span style={{ fontFamily: M, fontSize: 13, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#A8B0BD', padding: '1px 8px', borderRadius: 4 }}>{c.languageOther}</span>}
+                          {c.year && <span style={{ fontFamily: M, fontSize: 13, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#A8B0BD', padding: '1px 8px', borderRadius: 4 }}>{c.year}</span>}
+                        </div>
+                        {c.director && <div style={{ fontFamily: M, fontSize: 13, color: '#6A7080' }}>Dir. {c.director}</div>}
+                        <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+                          {c.trailerLink && <a href={c.trailerLink} target="_blank" rel="noreferrer" style={{ fontFamily: M, fontSize: 13, color: RED, textDecoration: 'none' }}>▶ Trailer</a>}
+                          {c.imdbLink && <a href={c.imdbLink} target="_blank" rel="noreferrer" style={{ fontFamily: M, fontSize: 13, color: GOLD, textDecoration: 'none' }}>IMDb →</a>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  </>)}
+                  {/*Media*/}
                   <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: RED, letterSpacing: 2, textTransform: 'uppercase' as const, marginBottom: 8 }}>Media</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 16 }}>
                     {[
@@ -1362,7 +1619,7 @@ export default function CreateProfilePage() {
                 </div>
               )}
 
-              {/* Validation error banner */}
+              {/*Validation error banner*/}
               {validationError && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', background: 'rgba(200,32,42,0.1)', border: '1px solid rgba(200,32,42,0.35)', borderRadius: 8, marginBottom: 4 }}>
                   <span style={{ fontSize: 16, flexShrink: 0 }}>⚠️</span>
@@ -1370,7 +1627,7 @@ export default function CreateProfilePage() {
                 </div>
               )}
 
-              {/* Bottom Actions */}
+              {/*Bottom Actions*/}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: '#0B0F14', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10 }}>
                 <div style={{ display: 'flex', gap: 10 }}>
                   {activeSection > 1 && (
@@ -1433,11 +1690,12 @@ export default function CreateProfilePage() {
                               availability:  availableFor,
                               is_available:  availableFor.length > 0,
                               experience_level: form.experienceLevel || undefined,
+                              skills: selectedSkills,
                               social_links: credits.length > 0 ? { credits } : undefined,
                             }),
                           })
                         }
-                        const draft = { form, languages, availableFor, selectedRoles, bio, activeSection, savedAt: new Date().toISOString(), userEmail: u.email }
+                        const draft = { form, languages, availableFor, selectedRoles, bio, selectedSkills, activeSection, savedAt: new Date().toISOString(), userEmail: u.email }
                         const existing = JSON.parse(localStorage.getItem('ss_user') || '{}')
                         localStorage.setItem('ss_user', JSON.stringify({
                           ...existing,
@@ -1463,21 +1721,21 @@ export default function CreateProfilePage() {
               </div>
             </div>
 
-            {/* Right Panel */}
+            {/*Right Panel*/}
             <div style={{ width: 260, flexShrink: 0, display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
-              {/* Profile Preview */}
+              {/*Profile Preview*/}
               <div style={{ background: '#0B0F14', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, overflow: 'hidden' }}>
                 <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span>👁️</span><span style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: '#F5F5F5' }}>Profile Preview</span></div>
                   <span style={{ fontFamily: M, fontSize: 14, color: '#6A7080', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: 10 }}>{completion}% Complete</span>
                 </div>
                 <div style={{ height: 180, background: form.profilePhoto ? 'transparent' : 'linear-gradient(160deg, #1a0a0a, #0B0F14)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                  {form.profilePhoto ? <img src={form.profilePhoto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : <span style={{ fontSize: 48, opacity: 0.2 }}>👤</span>}
+                  {form.profilePhoto ? <img src={form.profilePhoto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : <span style={{ fontSize: 48, opacity: 0.2 }}>💤</span>}
                 </div>
                 <div style={{ padding: '14px' }}>
                   <div style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: '#F5F5F5', marginBottom: 2 }}>{`${form.firstName} ${form.lastName}`.trim() || 'Your Name'} {(form.firstName || form.lastName) && <span style={{ color: '#22c55e', fontSize: 14 }}>✓</span>}</div>
                   <div style={{ fontFamily: M, fontSize: 14, color: '#A8B0BD', marginBottom: 6 }}>Aspirant</div>
-                  {/* Departments preview */}
+                  {/*Departments preview*/}
                   {selectedDepts.length > 0 && (
                     <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginBottom: 6 }}>
                       {selectedDepts.map(d => (
@@ -1485,15 +1743,15 @@ export default function CreateProfilePage() {
                       ))}
                     </div>
                   )}
-                  {form.height && <div style={{ fontFamily: M, fontSize: 14, color: '#6A7080', marginBottom: 3 }}>📏 {form.height} &nbsp; ⚖️ {form.weight}</div>}
+                  {form.height && <div style={{ fontFamily: M, fontSize: 14, color: '#6A7080', marginBottom: 3 }}>📏 {form.height} &nbsp; âš–️ {form.weight}</div>}
                   {form.city && <div style={{ fontFamily: M, fontSize: 14, color: '#6A7080', marginBottom: 3 }}>📍 {form.city}{form.state ? `, ${form.state}` : ''}</div>}
                   {languages.length > 0 && <div style={{ fontFamily: M, fontSize: 14, color: '#6A7080', marginBottom: 10 }}>🗣️ {languages.join(', ')}</div>}
                   <button style={{ width: '100%', padding: '7px', background: 'transparent', border: `1px solid ${RED}`, borderRadius: 5, color: RED, fontFamily: B, fontSize: 14, letterSpacing: 1, cursor: 'pointer' }}>VIEW FULL PREVIEW</button>
                 </div>
               </div>
-              {/* Tips */}
+              {/*Tips*/}
               <div style={{ background: '#0B0F14', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '14px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}><span>💡</span><span style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: '#F5F5F5' }}>Profile Tips</span></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}><span>📡</span><span style={{ fontFamily: M, fontSize: 14, fontWeight: 700, color: '#F5F5F5' }}>Profile Tips</span></div>
                 {[
                   { icon: '📸', t: 'Add a clear profile photo',  d: 'Profiles with real photos get 70% more views.'           },
                   { icon: '🎬', t: 'Upload a showreel',          d: 'A showreel increases your chances of getting noticed.'   },

@@ -615,7 +615,21 @@ function PricingInner() {
       }
     } catch {}
 
-    // Fetch live plans from API
+    // First: read admin-configured plans from localStorage (set by admin/pricing page)
+    try {
+      const raw = localStorage.getItem('ss_pricing_config')
+      if (raw) {
+        const cfg = JSON.parse(raw)
+        const aspirant = (cfg.aspirantPlans || []).filter((p: any) => p.active !== false)
+        const agency   = (cfg.agencyPlans   || []).filter((p: any) => p.active !== false)
+        if (aspirant.length > 0) setAspirantPlans(aspirant.sort((a: Plan, b: Plan) => a.months - b.months))
+        if (agency.length   > 0) setAgencyPlans(agency.sort((a: Plan, b: Plan) => a.months - b.months))
+        setPlansLoaded(true)
+        return // skip API call — admin config takes priority
+      }
+    } catch {}
+
+    // Fallback: fetch live plans from API
     fetch('/api/plans')
       .then(r => r.ok ? r.json() : null)
       .then(data => {

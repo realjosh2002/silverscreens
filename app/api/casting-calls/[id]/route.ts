@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
 
@@ -67,7 +67,7 @@ export async function PUT(
     const token = req.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return errorResponse('Authentication required', 401)
 
-    const { data: { user }, error } = await supabase.auth.getUser(token)
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
     if (error || !user) return errorResponse('Invalid session', 401)
 
     // ─── 2. Verify ownership ──────────────────────────────────
@@ -112,6 +112,7 @@ export async function PUT(
       'audition_time_from', 'audition_time_to', 'audition_location_type',
       'contact_name', 'contact_email', 'contact_mobile',
       'project_status', 'how_to_apply', 'has_sponsor', 'payment_terms',
+      'internal_notes',
     ]
 
     for (const field of fields) {
@@ -122,6 +123,53 @@ export async function PUT(
 
     if (body.last_application_date) {
       updateData.last_application_date = new Date(body.last_application_date)
+    }
+
+    // Convert date string fields to Date objects
+    const dateFields = ['shoot_start', 'shoot_end', 'audition_start', 'audition_end']
+    for (const f of dateFields) {
+      if (updateData[f] && typeof updateData[f] === 'string') {
+        updateData[f] = new Date(updateData[f] as string)
+      }
+      // If empty string sent, set to null
+      if (updateData[f] === '') updateData[f] = null
+    }
+
+    // Map frontend audition_mode values to DB enum values
+    if (updateData.audition_mode) {
+      const modeMap: Record<string, string> = {
+        'In-Person':  'offline',
+        'in-person':  'offline',
+        'In Person':  'offline',
+        'Virtual':    'online',
+        'virtual':    'online',
+        'Online':     'online',
+        'online':     'online',
+        'Self-Tape':  'both',
+        'self-tape':  'both',
+        'Self Tape':  'both',
+        'Both':       'both',
+        'both':       'both',
+        'offline':    'offline',
+      }
+      updateData.audition_mode = modeMap[updateData.audition_mode as string] ?? 'offline'
+    }
+
+    // Map frontend status values to DB enum values
+    if (updateData.status) {
+      const statusMap: Record<string, string> = {
+        'Open':    'active',
+        'open':    'active',
+        'Active':  'active',
+        'active':  'active',
+        'Draft':   'draft',
+        'draft':   'draft',
+        'Closed':  'closed',
+        'closed':  'closed',
+        'Expired': 'expired',
+        'expired': 'expired',
+      }
+      updateData.status = statusMap[updateData.status as string] ?? updateData.status
     }
 
     const updated = await prisma.casting_calls.update({
@@ -150,7 +198,7 @@ export async function PATCH(
     const token = req.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return errorResponse('Authentication required', 401)
 
-    const { data: { user }, error } = await supabase.auth.getUser(token)
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
     if (error || !user) return errorResponse('Invalid session', 401)
 
     const body = await req.json()
@@ -167,10 +215,48 @@ export async function PATCH(
       'audition_time_from', 'audition_time_to', 'audition_location_type',
       'contact_name', 'contact_email', 'contact_mobile',
       'project_status', 'how_to_apply', 'has_sponsor', 'payment_terms',
+      'internal_notes',
     ]
 
     for (const field of allowed) {
       if (body[field] !== undefined) updateData[field] = body[field]
+    }
+
+    // Map frontend audition_mode values to DB enum values
+    if (updateData.audition_mode) {
+      const modeMap: Record<string, string> = {
+        'In-Person':  'offline',
+        'in-person':  'offline',
+        'In Person':  'offline',
+        'Virtual':    'online',
+        'virtual':    'online',
+        'Online':     'online',
+        'online':     'online',
+        'Self-Tape':  'both',
+        'self-tape':  'both',
+        'Self Tape':  'both',
+        'Both':       'both',
+        'both':       'both',
+        'offline':    'offline',
+      }
+      updateData.audition_mode = modeMap[updateData.audition_mode as string] ?? 'offline'
+    }
+
+    // Map frontend status values to DB enum values
+    if (updateData.status) {
+      const statusMap: Record<string, string> = {
+        'Open':    'active',
+        'open':    'active',
+        'Active':  'active',
+        'active':  'active',
+        'Draft':   'draft',
+        'draft':   'draft',
+        'Closed':  'closed',
+        'closed':  'closed',
+        'Expired': 'expired',
+        'expired': 'expired',
+      }
+      updateData.status = statusMap[updateData.status as string] ?? updateData.status
     }
 
     const updated = await prisma.casting_calls.update({
@@ -197,7 +283,7 @@ export async function DELETE(
     const token = req.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return errorResponse('Authentication required', 401)
 
-    const { data: { user }, error } = await supabase.auth.getUser(token)
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
     if (error || !user) return errorResponse('Invalid session', 401)
 
     // ─── 2. Verify ownership ──────────────────────────────────
