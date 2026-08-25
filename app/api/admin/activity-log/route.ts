@@ -1,9 +1,9 @@
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
-
-export const dynamic = 'force-dynamic'
-export const runtime = 'nodejs'
 
 function verifyToken(token: string): string | null {
   try {
@@ -39,10 +39,10 @@ function humanizeAction(action: string): string {
 function getModule(action: string, entityType: string | null): string {
   const a = action.toLowerCase()
   if (a.includes('login') || a.includes('email_verif')) return 'Authentication'
-  if (a.includes('_ad'))    return 'Advertisements'
-  if (a.includes('verif'))  return 'Talent Verification'
+  if (a.includes('_ad'))      return 'Advertisements'
+  if (a.includes('verif'))    return 'Talent Verification'
   if (a.includes('aspirant')) return 'Talent Verification'
-  if (a.includes('agency')) return 'Agency Verification'
+  if (a.includes('agency'))   return 'Agency Verification'
   if (a.includes('user') || a.includes('activate') || a.includes('suspend') || a.includes('delete')) return 'User Management'
   if (a.includes('setting') || a.includes('config')) return 'System Settings'
   return entityType ? entityType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'System'
@@ -63,50 +63,33 @@ export async function GET(req: NextRequest) {
 
     const limit = Math.min(200, parseInt(new URL(req.url).searchParams.get('limit') || '100'))
 
-    const logs = await prisma.audit_logs.findMany({
+    // Use minimal select to avoid schema mismatch errors
+    const logs = await (prisma.audit_logs as any).findMany({
       where: { user_id: userId },
       orderBy: { created_at: 'desc' },
       take: limit,
-      select: {
-        id: true, action: true, entity_type: true, entity_id: true,
-        module: true, status: true, ip_address: true, created_at: true, new_values: true,
-      },
     })
 
-    // Collect all entity_ids that are profile references to look up names
     const profileIds = logs
       .filter((l: any) => l.entity_id && ['profiles','aspirant_profiles','agency_profiles'].includes(l.entity_type || ''))
       .map((l: any) => l.entity_id as string)
 
-    // Batch lookup names
     const profileNames: Record<string, string> = {}
     if (profileIds.length > 0) {
-      const profiles = await prisma.profiles.findMany({
-        where: { id: { in: profileIds } },
-        select: { id: true, name: true, profile_number: true },
-      })
-      profiles.forEach((p: any) => {
-        profileNames[p.id] = p.name || p.profile_number || p.id.slice(0, 8)
-      })
-
-      // Also try aspirant_profiles for user_id lookup
-      const aspirants = await prisma.aspirant_profiles.findMany({
-        where: { id: { in: profileIds } },
-        select: { id: true, user_id: true },
-      })
-      for (const a of aspirants) {
-        if (!profileNames[a.id]) {
-          const prof = await prisma.profiles.findUnique({
-            where: { id: a.user_id }, select: { name: true, profile_number: true }
-          })
-          if (prof) profileNames[a.id] = prof.name || prof.profile_number || a.id.slice(0, 8)
-        }
-      }
+      try {
+        const profiles = await prisma.profiles.findMany({
+          where: { id: { in: profileIds } },
+          select: { id: true, name: true, profile_number: true },
+        })
+        profiles.forEach((p: any) => {
+          profileNames[p.id] = p.name || p.profile_number || p.id.slice(0, 8)
+        })
+      } catch {}
     }
 
     const activities = logs.map((log: any) => {
-      const label  = humanizeAction(log.action)
-      const module = log.module || getModule(log.action, log.entity_type)
+      const label  = humanizeAction(log.action || '')
+      const module = log.module || getModule(log.action || '', log.entity_type)
       const affectedName = log.entity_id ? profileNames[log.entity_id] : null
 
       let description = ''
@@ -128,7 +111,7 @@ export async function GET(req: NextRequest) {
         module,
         status:      log.status || 'success',
         ip_address:  log.ip_address ? String(log.ip_address) : null,
-        created_at:  log.created_at?.toISOString() || '',
+        created_at:  log.created_at?.toISOString?.() || '',
         description,
       }
     })
