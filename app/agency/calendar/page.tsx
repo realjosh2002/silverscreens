@@ -41,7 +41,7 @@ type EventEntry = { type: string; title: string; time: string; location: string;
 const INITIAL_EVENTS: Record<string, EventEntry[]> = {};
 
 /* ── Nav ── */
-const NAV_ITEMS = [
+const NAV_ITEMS: { icon: any; label: string; href: string; badge?: number }[] = [
   { icon: LayoutDashboard, label: 'Dashboard',               href: '/agency/dashboard' },
   { icon: PlusCircle,      label: 'Create Casting Call',     href: '/agency/create-casting' },
   { icon: Megaphone,       label: 'Casting Calls List',      href: '/agency/casting-calls' },
