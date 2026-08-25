@@ -425,7 +425,7 @@ export default function DocumentsPage() {
                       </div>
                     )}
                     <div style={{ fontSize: 14, color:'rgba(255,255,255,0.3)', marginBottom:4 }}>Includes:</div>
-                    {f.includes.map(inc => (
+                    {f.includes.map((inc: string) => (
                       <div key={inc} style={{ display:'flex', alignItems:'center', gap:5, marginBottom:2 }}>
                         <div style={{ width:3, height:3, borderRadius:'50%', background:f.color, flexShrink:0 }} />
                         <span style={{ fontFamily:BARLOW, fontSize: 14, color:'rgba(255,255,255,0.5)' }}>{inc}</span>
