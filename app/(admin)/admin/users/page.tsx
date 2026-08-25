@@ -166,8 +166,8 @@ interface UserRow {
   id: string; name: string; email: string; phone: string; role: string;
   profile_number: string; email_verified: boolean; is_active: boolean;
   last_login_at: string; created_at: string;
-  aspirant_profiles?: { verification_status:string; profile_completion:number; trust_score:number; category:string } | { verification_status:string; profile_completion:number; trust_score:number; category:string }[] | null;
-  agency_profiles?: { company_name:string; verification_status:string; trust_score:number } | { company_name:string; verification_status:string; trust_score:number }[] | null;
+  aspirant_profiles?: { id?:string; verification_status:string; profile_completion:number; trust_score:number; category:string; profile_number?:string } | { id?:string; verification_status:string; profile_completion:number; trust_score:number; category:string; profile_number?:string }[] | null;
+  agency_profiles?: { id?:string; company_name:string; verification_status:string; trust_score:number; profile_number?:string } | { id?:string; company_name:string; verification_status:string; trust_score:number; profile_number?:string }[] | null;
   subscriptions?: { plan_name:string; ends_at:string }[];
 }
 interface Stats {
@@ -584,7 +584,7 @@ export default function AdminUsersPage() {
                           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                             <button onClick={() => {
                               if (user.role === 'agency') {
-                                const agencyProfileId = Array.isArray(user.agency_profiles) ? user.agency_profiles[0]?.id : (user.agency_profiles as any)?.id;
+                                const agencyProfileId = Array.isArray(user.agency_profiles) ? (user.agency_profiles[0] as any)?.id : (user.agency_profiles as any)?.id;
                                 router.push(`/admin/agency-profile-view?id=${agencyProfileId || user.id}`);
                               } else {
                                 router.push(`/admin/aspirant-profile?user_id=${user.id}`);
@@ -647,7 +647,7 @@ export default function AdminUsersPage() {
               { label:activeUser?.is_active?'Suspend User':'Activate User', icon:<Power size={14}/>, action:activeUser?.is_active?'suspend':'activate', danger:!activeUser?.is_active },
               { label:'Delete User',       icon:<X size={14}/>,          action:'delete', danger:true                                       },
             ].map(item => (
-              <div key={item.label} onClick={()=>{ setMenuUser(null); if(item.action==='audit') { router.push('/admin/audit'); } else if(item.action==='view_profile') { if(activeUser?.role==='agency'){ const agId=Array.isArray(activeUser.agency_profiles)?activeUser.agency_profiles[0]?.id:(activeUser.agency_profiles as any)?.id; router.push(`/admin/agency-profile-view?id=${agId||activeUser.id}`); } else { router.push(`/admin/aspirant-profile?user_id=${activeUser?.id}`); } } else { openModal(activeUser!,item.action); } }}
+              <div key={item.label} onClick={()=>{ setMenuUser(null); if(item.action==='audit') { router.push('/admin/audit'); } else if(item.action==='view_profile') { if(activeUser?.role==='agency'){ const agId=Array.isArray(activeUser.agency_profiles)?(activeUser.agency_profiles[0] as any)?.id:(activeUser.agency_profiles as any)?.id; router.push(`/admin/agency-profile-view?id=${agId||activeUser.id}`); } else { router.push(`/admin/aspirant-profile?user_id=${activeUser?.id}`); } } else { openModal(activeUser!,item.action); } }}
                 style={{ display:'flex', alignItems:'center', gap:10, padding:'11px 16px', cursor:'pointer', borderBottom:'1px solid rgba(255,255,255,0.05)', color:(item as any).danger?RED:'rgba(255,255,255,0.8)' }}
                 onMouseEnter={e=>(e.currentTarget.style.background='rgba(255,255,255,0.05)')}
                 onMouseLeave={e=>(e.currentTarget.style.background='transparent')}
