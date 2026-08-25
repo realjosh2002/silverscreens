@@ -72,7 +72,7 @@ function getAuth() {
     return { token: u.token ?? '', email: u.email ?? '' };
   } catch { return { token: '', email: '' }; }
 }
-function authHeaders() {
+function authHeaders(): Record<string, string> {
   const { token } = getAuth();
   return token ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
 }
@@ -1091,7 +1091,7 @@ function DocumentsSection({ setModal }: { setModal:(m:string)=>void }) {
     async function fetchDocs() {
       try {
         const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
-        const headers: Record<string, string> = u.token ? { Authorization: `Bearer ${u.token}` } : {};
+        const headers = u.token ? { Authorization: `Bearer ${u.token}` } : {};
         const res = await fetch('/api/agency/documents', { headers });
         if (!res.ok) return;
         const data = await res.json();
