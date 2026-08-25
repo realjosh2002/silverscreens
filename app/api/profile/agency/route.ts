@@ -202,7 +202,7 @@ export async function PUT(req: NextRequest) {
         action:      'AGENCY_PROFILE_UPDATED',
         entity_type: 'agency_profiles',
         entity_id:   updated.id,
-        new_values:  updateData,
+        new_values:  updateData as any,
       },
     })
 
