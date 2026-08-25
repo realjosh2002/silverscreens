@@ -110,18 +110,20 @@ export async function POST(
     }
 
     // ── Audit log ─────────────────────────────────────────────────
-    await supabaseAdmin.from('audit_logs').insert({
-      user_id:     admin.id,
-      action:      `AGENCY_${action.toUpperCase()}`,
-      entity_type: 'agency_profiles',
-      entity_id:   agencyId,
-      new_values:  {
-        status: newStatus,
-        agency: agency.company_name,
-        reason: reason ?? null,
-        note:   note ?? null,
-      },
-    }).catch(() => {})
+try {
+      await supabaseAdmin.from('audit_logs').insert({
+        user_id:     admin.id,
+        action:      `AGENCY_${action.toUpperCase()}`,
+        entity_type: 'agency_profiles',
+        entity_id:   agencyId,
+        new_values:  {
+          status: newStatus,
+          agency: agency.company_name,
+          reason: reason ?? null,
+          note:   note ?? null,
+        },
+      })
+    } catch {}
 
     return successResponse({
       message: `Agency ${action}d successfully.`,
