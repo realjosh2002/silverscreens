@@ -33,7 +33,6 @@ export async function GET(req: NextRequest) {
       .from('advertisements')
       .update({ impressions: (data.impressions ?? 0) + 1 })
       .eq('id', data.id)
-      .catch(() => {})
 
     return successResponse({ ad: { id: data.id, name: data.name, media_url: data.media_url, click_url: data.click_url } })
   } catch {
