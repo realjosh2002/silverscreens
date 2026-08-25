@@ -19,7 +19,7 @@ const BARLOW = '"Barlow Condensed", sans-serif';
 const BEBAS  = "'Bebas Neue', sans-serif";
 
 /* ─── Sidebar ────────────────────────────────────────────────── */
-const SIDEBAR_ITEMS = [
+const SIDEBAR_ITEMS: { icon: any; label: string; href: string; active?: boolean; badge?: number }[] = [
   { icon: LayoutDashboard, label: 'Dashboard',            href: '/dashboard'      },
   { icon: FileText,        label: 'My Applications',      href: '/my-applications'},
   { icon: MessageSquare,   label: 'Messages',             href: '/messages',       },
@@ -320,7 +320,7 @@ export default function AuditionsListPage() {
           </div>
 
           <nav style={{ flex: 1, padding: '10px 0' }}>
-            {SIDEBAR_ITEMS.map(({ icon: Icon, label, active, badge, href }) => (
+            {navItems.map(({ icon: Icon, label, active, badge, href }) => (
               <div key={label} title={!sidebarOpen ? label : undefined} style={{
                 display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'space-between' : 'center',
                 padding: sidebarOpen ? '9px 16px' : '10px 0', cursor: 'pointer',
