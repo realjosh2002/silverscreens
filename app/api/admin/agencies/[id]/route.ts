@@ -108,14 +108,16 @@ export async function GET(
       prisma.applications.count({ where: { agency_id: agencyId, status: "selected" } }).catch(() => 0),
     ])
 
-    const activityLogs = await supabaseAdmin
-      .from('audit_logs')
-      .select('id, action, new_values, created_at')
-      .eq('entity_id', agencyId)
-      .order('created_at', { ascending: false })
-      .limit(15)
-      .then(r => r.data ?? [])
-      .catch(() => [])
+    let activityLogs: any[] = []
+    try {
+      const { data: logData } = await supabaseAdmin
+        .from('audit_logs')
+        .select('id, action, new_values, created_at')
+        .eq('entity_id', agencyId)
+        .order('created_at', { ascending: false })
+        .limit(15)
+      activityLogs = logData ?? []
+    } catch {}
 
     const approvalLog = activityLogs.find((l: any) => l.action?.includes('APPROV'))
     const social = (agency.social_links as Record<string, string>) ?? {}
