@@ -132,7 +132,7 @@ export default function SavedTalentsPage() {
 
   const [loadingData,  setLoadingData]  = useState(true);
 
-  function getAuthHeaders(): Record<string, string> {
+  function getAuthHeaders() {
     try { const u = JSON.parse(localStorage.getItem('ss_user') || '{}'); const token = u.token ?? u.access_token ?? ''; return token ? { Authorization: `Bearer ${token}` } : {}; } catch { return {}; }
   }
 
@@ -151,7 +151,6 @@ export default function SavedTalentsPage() {
             saved_id: t.id,
             name:     t.name ?? 'Unknown',
             age:      t.age ?? 0,
-            img:      t.avatar ?? '',
             gender:   t.gender ?? '—',
             talentId: t.talentId ?? '—',
             type:     t.category ?? t.role ?? 'TALENT',
@@ -161,6 +160,7 @@ export default function SavedTalentsPage() {
             avatar:   t.avatar ?? '',
             img:      t.avatar ?? '',
             priority: false,
+            rating:   t.trust_score ?? 0,
             skills:   t.languages ?? [],
             lists:    [],
           })));
