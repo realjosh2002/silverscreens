@@ -67,7 +67,7 @@ async function getFreshHeaders(): Promise<Record<string, string>> {
 const FALLBACK_ASPIRANT = {
   id: '', name: '', verified: false, category: '', gender: '', age: 0,
   location: '', rating: 0, reviews: 0, views: '0',
-  img: '', photo: '', appStatus: 'Shortlisted',
+  img: '', photo: '', profileId: '', appStatus: 'Shortlisted',
   castingCall: '', ccType: '', ccProducer: '', ccStatus: 'Open', ccImg: '',
   role: '', appliedOn: '', appliedTime: '', appId: '',
 };
