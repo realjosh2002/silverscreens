@@ -454,8 +454,8 @@ export default function AdminUsersPage() {
             <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12, marginBottom:20 }}>
               {STAT_CARDS.map(s => (
                 <div key={s.label} onClick={s.onClick} style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:'16px', cursor:'pointer' }}
-                  onMouseEnter={e => { if(s.onClick) e.currentTarget.style.borderColor = s.color }}
-                  onMouseLeave={e => { if(s.onClick) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = s.color }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)' }}
                 >
                   <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
                     <div style={{ width:40, height:40, borderRadius:10, background:`${s.color}18`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>{s.icon}</div>
