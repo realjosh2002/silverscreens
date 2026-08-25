@@ -132,8 +132,8 @@ export default function SavedTalentsPage() {
 
   const [loadingData,  setLoadingData]  = useState(true);
 
-  function getAuthHeaders() {
-    try { const u = JSON.parse(localStorage.getItem('ss_user') || '{}'); const token = u.token ?? u.access_token ?? ''; return token ? { Authorization: `Bearer ${token}` } : {}; } catch { return {}; }
+  function getAuthHeaders(): Record<string, string> {
+    try { const key = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token')); const token = key ? JSON.parse(localStorage.getItem(key) || '{}')?.access_token || '' : ''; return token ? { Authorization: `Bearer ${token}` } : {}; } catch { return {}; }
   }
 
   useEffect(() => {
@@ -151,6 +151,7 @@ export default function SavedTalentsPage() {
             saved_id: t.id,
             name:     t.name ?? 'Unknown',
             age:      t.age ?? 0,
+            img:      t.avatar ?? '',
             gender:   t.gender ?? '—',
             talentId: t.talentId ?? '—',
             type:     t.category ?? t.role ?? 'TALENT',
