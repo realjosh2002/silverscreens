@@ -265,7 +265,7 @@ export default function AuditionsPage() {
           </div>
 
           <nav style={{ flex: 1, padding: '10px 0' }}>
-            {SIDEBAR_ITEMS.map(({ icon: Icon, label, active, badge, href }) => (
+            {navItems.map(({ icon: Icon, label, active, badge, href }) => (
               <div key={label} title={!sidebarOpen ? label : undefined} style={{
                 display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'space-between' : 'center',
                 padding: sidebarOpen ? '9px 16px' : '10px 0', cursor: 'pointer',
