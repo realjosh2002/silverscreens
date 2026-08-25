@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
         await prisma.notifications.create({
           data: {
             user_id:    recipientUserId,
-            type:       'message',
+            type:       'system_announcement',
             title:      'New Message',
             message:    `${senderProfile?.name ?? 'Someone'} sent you a message.`,
             action_url: `/messages`,
