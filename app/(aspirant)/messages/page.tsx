@@ -117,7 +117,7 @@ function apiToMsgGroups(messages: any[], currentUserId: string): MsgGroup[] {
       sender:    isOwn ? 'me' : 'them',
       text:      m.content ?? m.text ?? undefined,
       time:      d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-      delivered: m.is_read ?? m.delivered ?? m.status === 'delivered' ?? false,
+      delivered: m.is_read ?? m.delivered ?? (m.status === 'delivered'),
     });
   });
   return Object.entries(grouped).map(([date, items]) => ({ date, items }));
