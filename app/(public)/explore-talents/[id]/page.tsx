@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, Share2, MoreHorizontal, MapPin, Calendar, Ruler,
@@ -455,7 +455,7 @@ export default function TalentProfilePage() {
     } catch {}
   }, []);
 
-  const tabContent: Record<string, JSX.Element> = {
+  const tabContent: Record<string, React.ReactElement> = {
     Overview:         <OverviewTab />,
     Media:            <MediaTab />,
     Experience:       <ExperienceTab />,
