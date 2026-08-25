@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 // app/api/auth/verification-status/route.ts
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'

@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
 
+export const dynamic = 'force-dynamic'
+
 function verifyToken(token: string): string | null {
   try {
     const parts = token.split('.')

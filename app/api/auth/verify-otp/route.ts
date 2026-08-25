@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 // app/api/auth/verify-otp/route.ts
 import { NextRequest } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'

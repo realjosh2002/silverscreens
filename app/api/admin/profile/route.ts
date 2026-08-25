@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 // app/api/admin/profile/route.ts
 import { NextRequest } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'

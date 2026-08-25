@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest } from 'next/server'
 import crypto from 'crypto'
 import { supabaseAdmin as supabase } from '@/lib/supabase-admin'
