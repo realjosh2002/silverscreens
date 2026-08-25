@@ -22,6 +22,31 @@ function NavbarInner() {
   const [scrolled,     setScrolled]     = useState(false)
   const [mobileOpen,   setMobileOpen]   = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [user, setUser] = useState<{ name: string; role: string } | null>(null)
+
+  useEffect(() => {
+    try {
+      const key = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'))
+      if (key) {
+        const session = JSON.parse(localStorage.getItem(key) || '{}')
+        if (session?.access_token) {
+          const meta = session.user?.user_metadata
+          setUser({ name: meta?.name || 'My Account', role: meta?.role || 'aspirant' })
+        }
+      }
+    } catch {}
+  }, [])
+
+  const dashboardHref = user?.role === 'agency' ? '/agency/dashboard' : '/dashboard'
+
+  const handleLogout = async () => {
+    try {
+      const key = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'))
+      if (key) localStorage.removeItem(key)
+    } catch {}
+    setUser(null)
+    window.location.href = '/login'
+  }
   const dropdownTimer                   = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Public pages always show Login / Signup — never read auth state from localStorage.
