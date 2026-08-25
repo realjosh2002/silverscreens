@@ -64,7 +64,6 @@ export async function GET(req: NextRequest) {
           { participant_1_id: user.id },
           { participant_2_id: user.id },
         ],
-        is_archived: false,
       },
       orderBy: { last_message_at: 'desc' },
       include: {
