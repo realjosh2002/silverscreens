@@ -190,7 +190,7 @@ export async function DELETE(req: NextRequest) {
 
     const mediaRecord = await prisma.aspirant_media.findUnique({
       where:  { id: media_id },
-      select: { id: true, aspirant_id: true, file_path: true, type: true, is_primary: true },
+      select: { id: true, aspirant_id: true, url: true, type: true, is_primary: true },
     })
 
     if (!mediaRecord) return errorResponse('Media not found', 404)
@@ -202,7 +202,7 @@ export async function DELETE(req: NextRequest) {
     // ─── 3. Delete from Supabase Storage ──────────────────────
     const { error: deleteError } = await supabaseAdmin.storage
       .from('silverscreens-media')
-      .remove([mediaRecord.file_path])
+      .remove([mediaRecord.url.split('/storage/v1/object/public/silverscreens-media/')[1] || ''])
 
     if (deleteError) {
       console.error('[DELETE FROM STORAGE ERROR]', deleteError)
