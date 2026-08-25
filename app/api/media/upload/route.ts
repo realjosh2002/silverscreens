@@ -131,7 +131,6 @@ export async function POST(req: NextRequest) {
         aspirant_id:  aspirantProfile.id,
         type:         mediaType,
         url:          publicUrl,
-        file_path:    filePath,
         is_primary:   isPrimary && mediaType === 'image',
         order_index:  orderIndex,
       },
