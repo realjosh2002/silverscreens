@@ -2522,6 +2522,7 @@ function SecurityPanel({
   lockoutDuration: string;
   setLockoutDuration: (v: string) => void;
   activeSessionsPolicy: string;
+  setActiveSessionsPolicy?: (v: string) => void;
   rememberDevice: boolean;
   setRememberDevice: (v: boolean) => void;
   sessionTimeout: string;
