@@ -23,7 +23,7 @@ function getIsApproved(): boolean {
   } catch { return true; }
 }
 
-const NAV_PRIMARY = [
+const NAV_PRIMARY: { icon: any; label: string; href: string; active?: boolean; badge?: number }[] = [
   { icon: LayoutDashboard, label: 'Dashboard',              active: true, href: '/agency/dashboard' },
   { icon: PlusCircle,      label: 'Create Casting Call',                  href: '/agency/create-casting' },
   { icon: Megaphone,       label: 'Casting Calls List',                   href: '/agency/casting-calls' },
