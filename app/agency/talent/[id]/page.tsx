@@ -350,7 +350,7 @@ export default function AspirantProfilePage() {
     // Fetch full agency profile for type + ID
     try {
       const u2 = JSON.parse(localStorage.getItem('ss_user') || '{}');
-      const h2 = u2.token ? { Authorization: `Bearer ${u2.token}` } : {};
+      const h2: Record<string, string> = u2.token ? { Authorization: `Bearer ${u2.token}` } : {};
       fetch('/api/profile/agency', { headers: h2 })
         .then(r => r.ok ? r.json() : null)
         .then(data => {
