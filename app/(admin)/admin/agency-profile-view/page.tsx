@@ -185,7 +185,7 @@ function RejectModal({ onConfirm, onCancel, loading }: { onConfirm: (r: string) 
   )
 }
 
-export default function AgencyProfileViewPage() {
+function AgencyProfileViewPageInner() {
   const router      = useRouter()
   const params      = useSearchParams()
   const agencyId    = params.get('id') || ''
@@ -567,4 +567,8 @@ export default function AgencyProfileViewPage() {
       `}</style>
     </div>
   )
+}
+import { Suspense } from 'react'
+export default function AgencyProfileViewPage() {
+  return <Suspense fallback={null}><AgencyProfileViewPageInner /></Suspense>
 }
