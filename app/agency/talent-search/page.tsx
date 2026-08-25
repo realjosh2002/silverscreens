@@ -188,6 +188,7 @@ export default function TalentSearchPage() {
 
   /* ui state */
   const [profileOpen,  setProfileOpen]  = useState(false);
+  const [toastMsg,     setToastMsg]     = useState('');
   const [sidebarOpen,  setSidebarOpen]  = useState(false);
   const [viewMode,     setViewMode]     = useState<'list' | 'grid'>(() => { try { const v = localStorage.getItem('agency_default_view'); return v === 'Grid View' ? 'grid' : 'list'; } catch { return 'list'; } });
   const [sortBy,       setSortBy]       = useState('Most Relevant');
@@ -739,7 +740,7 @@ export default function TalentSearchPage() {
                         {a.photoUrl ? <ProtectedMedia type="image" src={a.photoUrl} alt={a.name} width="100%" height="100%" style={{ objectFit: 'cover' }} /> : a.photo}
                       </div>
                       {a.verified && <div style={{ position: 'absolute', bottom: 6, left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.75)', borderRadius: 10, padding: '2px 8px', fontSize: 14, fontFamily: BARLOW, fontWeight: 700, color: '#60a5fa', whiteSpace: 'nowrap' }}>Verified</div>}
-                      <div onClick={async (e) => { e.stopPropagation(); try { const h = getAuthHeaders(); const res = await fetch('/api/saved-talents', { method: 'POST', headers: { ...h, 'Content-Type': 'application/json' }, body: JSON.stringify({ aspirant_id: t.id }) }); if (res.status === 409) { alert('Already saved.'); return; } if (!res.ok) { alert('Failed to save.'); return; } router.push('/agency/saved-talents'); } catch { alert('Network error.'); } }} style={{ position: 'absolute', top: 6, right: 6, width: 22, height: 22, borderRadius: 4, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                      <div onClick={async (e) => { e.stopPropagation(); try { const h = getAuthHeaders(); const res = await fetch('/api/saved-talents', { method: 'POST', headers: { ...h, 'Content-Type': 'application/json' }, body: JSON.stringify({ aspirant_id: a.id }) }); if (res.status === 409) { setToastMsg('Already saved to talent pool.'); return; } if (!res.ok) { setToastMsg('Failed to save talent.'); return; } router.push('/agency/saved-talents'); } catch { setToastMsg('Network error. Please try again.'); } }} style={{ position: 'absolute', top: 6, right: 6, width: 22, height: 22, borderRadius: 4, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                         title="Save to Talent Pool"
                         onMouseEnter={e => (e.currentTarget.style.background = `${GOLD}40`)}
                         onMouseLeave={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.5)')}
@@ -893,6 +894,11 @@ export default function TalentSearchPage() {
           </div>
         </div>
       </div>
+    {toastMsg && (
+      <div onClick={() => setToastMsg('')} style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: '#1a1a2e', border: '1px solid rgba(212,166,74,0.4)', borderRadius: 10, padding: '12px 24px', color: '#F5F5F5', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 15, zIndex: 9999, cursor: 'pointer', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', whiteSpace: 'nowrap' }}>
+        {toastMsg}
+      </div>
+    )}
     </div>
   );
 }
