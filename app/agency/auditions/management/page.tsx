@@ -173,7 +173,7 @@ export default function AuditionManagementPage() {
 
   useEffect(() => {
     const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
-    const h = u.token ? { Authorization: `Bearer ${u.token}` } : {};
+    const h: Record<string, string> = u.token ? { Authorization: `Bearer ${u.token}` } : {};
     if (!u.token) { setLoading(false); return; }
 
     // Refresh token in background then re-fetch if needed
