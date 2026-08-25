@@ -28,8 +28,8 @@ export async function GET(req: NextRequest) {
 
       // Verify user is part of this conversation
       if (
-        conversation.aspirant_id !== user.id &&
-        conversation.agency_id   !== user.id
+        conversation.participant_1_id !== user.id &&
+        conversation.participant_2_id !== user.id
       ) {
         return errorResponse('Access denied', 403)
       }
@@ -61,8 +61,8 @@ export async function GET(req: NextRequest) {
     const conversations = await prisma.conversations.findMany({
       where: {
         OR: [
-          { aspirant_id: user.id },
-          { agency_id:   user.id },
+          { participant_1_id: user.id },
+          { participant_2_id: user.id },
         ],
         is_archived: false,
       },
@@ -84,9 +84,9 @@ export async function GET(req: NextRequest) {
     // Enrich with other party's profile info
     const enriched = await Promise.all(
       conversations.map(async (conv) => {
-        const otherUserId = conv.aspirant_id === user.id
-          ? conv.agency_id
-          : conv.aspirant_id
+        const otherUserId = conv.participant_1_id === user.id
+          ? conv.participant_2_id
+          : conv.participant_1_id
 
         const otherProfile = await prisma.profiles.findUnique({
           where:  { id: otherUserId },
@@ -169,7 +169,7 @@ export async function POST(req: NextRequest) {
 
       // Check if conversation already exists
       const existing = await prisma.conversations.findFirst({
-        where: { aspirant_id: aspirantId, agency_id: agencyId },
+        where: { participant_1_id: aspirantId, participant_2_id: agencyId },
       })
 
       if (existing) {
@@ -177,8 +177,8 @@ export async function POST(req: NextRequest) {
       } else {
         const newConv = await prisma.conversations.create({
           data: {
-            aspirant_id: aspirantId,
-            agency_id:   agencyId,
+            participant_1_id: aspirantId,
+            participant_2_id: agencyId,
           },
         })
         convId = newConv.id
@@ -191,7 +191,7 @@ export async function POST(req: NextRequest) {
 
       if (!conv) return errorResponse('Conversation not found', 404)
 
-      if (conv.aspirant_id !== user.id && conv.agency_id !== user.id) {
+      if (conv.participant_1_id !== user.id && conv.participant_2_id !== user.id) {
         return errorResponse('Access denied', 403)
       }
     }
@@ -219,9 +219,9 @@ export async function POST(req: NextRequest) {
       where: { id: convId },
     })
 
-    const recipientUserId = conversation?.aspirant_id === user.id
-      ? conversation?.agency_id
-      : conversation?.aspirant_id
+    const recipientUserId = conversation?.participant_1_id === user.id
+      ? conversation?.participant_2_id
+      : conversation?.participant_1_id
 
     if (recipientUserId) {
       const senderProfile = await prisma.profiles.findUnique({
