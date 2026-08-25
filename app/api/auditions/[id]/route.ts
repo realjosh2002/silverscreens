@@ -139,7 +139,7 @@ export async function PATCH(
                 aspirant_id:     aspirantId,
                 casting_call_id: castingCallId,
               },
-              data: { status: newApplicationStatus },
+              data: { status: newApplicationStatus as any },
             }).catch(e => console.error('[APPLICATION STATUS UPDATE ERROR]', e))
           }
         }
