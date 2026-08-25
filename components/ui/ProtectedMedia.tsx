@@ -143,7 +143,6 @@ export default function ProtectedMedia(props: ProtectedMediaProps) {
     objectFit: (style?.objectFit as React.CSSProperties['objectFit']) ?? 'cover',
     pointerEvents: 'none', // media itself is not interactive
     userSelect: 'none',
-    WebkitUserDrag: 'none' as any,
     ...style,
     // Override any positioning from style — container handles that
     position: undefined,
