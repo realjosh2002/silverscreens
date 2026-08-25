@@ -132,7 +132,7 @@ export async function GET(req: NextRequest) {
           .from('profiles')
           .select('id, name, email, role')
           .in('id', topUserIds)
-        const pMap: Record<string, { name: string; role: string }> = {}
+        const pMap: Record<string, { name: string; role: string; email?: string }> = {}
         for (const p of profileRows ?? []) pMap[p.id] = { name: p.name, role: p.role }
         topUsers = topUserIds.map(id => ({
           name:   pMap[id]?.name || 'User',
@@ -205,7 +205,7 @@ export async function GET(req: NextRequest) {
 
     // Enrich with profile names
     const userIds = [...new Set((logs ?? []).map(l => l.user_id).filter(Boolean))]
-    const pMap: Record<string, { name: string; role: string }> = {}
+    const pMap: Record<string, { name: string; role: string; email?: string }> = {}
     if (userIds.length > 0) {
       const { data: profiles } = await supabaseAdmin
         .from('profiles')
