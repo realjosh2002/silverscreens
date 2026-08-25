@@ -167,7 +167,7 @@ export default function DocumentsPage() {
     // Also fetch from API for accuracy
     try {
       const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
-      const headers = u.token ? { Authorization: `Bearer ${u.token}` } : {};
+      const headers: Record<string, string> = u.token ? { Authorization: `Bearer ${u.token}` } : {};
       fetch('/api/profile/agency', { headers })
         .then(r => r.ok ? r.json() : null)
         .then(d => {
