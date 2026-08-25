@@ -68,9 +68,9 @@ interface AppDetail {
   auditionDate: string; auditionTime: string; auditionFormat: string;
   auditionLocation: string; auditionNotes: string;
   /* extended aspirant profile */
-  dob: string; category: string; role: string;
+  dob: string; role: string;
   chest: string; hip: string; waist: string; shoe: string;
-  hairColor: string; eyeColor: string; complexion: string; bodyType: string;
+  hairColor: string; eyeColor: string; complexion: string;
   aboutMe: string; socialLinks: Record<string, string>;
   availabilityFor: string[];
   experienceCredits: { role: string; title: string; type: string; year: string; character: string; director: string; production: string; platform: string; language: string; description: string }[];
