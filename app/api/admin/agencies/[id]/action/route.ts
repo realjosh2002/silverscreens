@@ -140,5 +140,3 @@ try {
     )
   }
 }
-
-export function generateStaticParams() { return [] }
