@@ -754,7 +754,7 @@ export default function PublicCastingDetailPage() {
           img:              c.cover_image ?? c.coverImage ?? 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=160&h=120&fit=crop',
           urgent:           daysLeft <= 7,
           featured:         false,
-        } as typeof CASTINGS[0])
+        } as unknown as typeof CASTINGS[0])
       })
       .catch(() => {
         const numId = parseInt(rawId)
