@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 import { NextRequest } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
 
 function verifyToken(token: string): string | null {
@@ -53,38 +53,43 @@ export async function GET(req: NextRequest) {
     const token = req.headers.get('authorization')?.replace('Bearer ', '') || ''
     if (!token) return errorResponse('Authentication required', 401)
 
-    const userId = verifyToken(token)
-    if (!userId) return errorResponse('Invalid token', 401)
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    if (authError || !user) return errorResponse('Invalid token', 401)
 
-    const profile = await prisma.profiles.findUnique({
-      where: { id: userId }, select: { role: true },
-    })
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
     if (!profile || profile.role !== 'admin') return errorResponse('Admin access required', 403)
 
     const limit = Math.min(200, parseInt(new URL(req.url).searchParams.get('limit') || '100'))
 
-    // Use minimal select to avoid schema mismatch errors
-    const logs = await (prisma.audit_logs as any).findMany({
-      where: { user_id: userId },
-      orderBy: { created_at: 'desc' },
-      take: limit,
-    })
+    const { data: logs, error: logsError } = await supabaseAdmin
+      .from('audit_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit)
 
+    if (logsError || !logs) {
+      return successResponse({ activities: [] })
+    }
+
+    // Batch lookup profile names
     const profileIds = logs
       .filter((l: any) => l.entity_id && ['profiles','aspirant_profiles','agency_profiles'].includes(l.entity_type || ''))
       .map((l: any) => l.entity_id as string)
 
     const profileNames: Record<string, string> = {}
     if (profileIds.length > 0) {
-      try {
-        const profiles = await prisma.profiles.findMany({
-          where: { id: { in: profileIds } },
-          select: { id: true, name: true, profile_number: true },
-        })
-        profiles.forEach((p: any) => {
-          profileNames[p.id] = p.name || p.profile_number || p.id.slice(0, 8)
-        })
-      } catch {}
+      const { data: profiles } = await supabaseAdmin
+        .from('profiles')
+        .select('id, name, profile_number')
+        .in('id', profileIds)
+      profiles?.forEach((p: any) => {
+        profileNames[p.id] = p.name || p.profile_number || p.id.slice(0, 8)
+      })
     }
 
     const activities = logs.map((log: any) => {
@@ -98,7 +103,7 @@ export async function GET(req: NextRequest) {
       } else {
         try {
           const vals = log.new_values as Record<string, any>
-          if (vals?.description)    description = vals.description
+          if (vals?.description)        description = vals.description
           else if (vals?.action_detail) description = vals.action_detail
         } catch {}
       }
@@ -111,7 +116,7 @@ export async function GET(req: NextRequest) {
         module,
         status:      log.status || 'success',
         ip_address:  log.ip_address ? String(log.ip_address) : null,
-        created_at:  log.created_at?.toISOString?.() || '',
+        created_at:  log.created_at || '',
         description,
       }
     })
