@@ -66,7 +66,7 @@ interface ShortlistedTalent {
   img: string;
   role: string;
   castingCall: string;
-  castingCallId: string;
+  castingCallId?: string;
   projectType: string;
   shortlistedOn: string;
   shortlistedTime: string;
