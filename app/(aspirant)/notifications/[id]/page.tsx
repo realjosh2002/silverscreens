@@ -252,7 +252,7 @@ export default function NotificationDetailPage() {
           const rawType = found.type ?? 'system';
           const type: NotifType = typeMap[rawType] ?? (TYPE_CFG[rawType as NotifType] ? rawType as NotifType : 'system');
           setNotif({
-            id,
+            id: Number(id),
             type,
             read:      found.is_read ?? found.read ?? false,
             parts:     [found.message ?? found.title ?? 'Notification'],
