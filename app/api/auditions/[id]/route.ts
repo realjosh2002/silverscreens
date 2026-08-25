@@ -126,7 +126,7 @@ export async function PATCH(
         if (applicationId) {
           await prisma.applications.update({
             where: { id: applicationId },
-            data:  { status: newApplicationStatus },
+            data:  { status: newApplicationStatus as any },
           }).catch(e => console.error('[APPLICATION STATUS UPDATE ERROR]', e))
         } else {
           // Fallback: find by aspirant_id + casting_call_id
