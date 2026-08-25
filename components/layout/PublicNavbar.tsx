@@ -5,7 +5,7 @@ import SilverScreensLogo from '@/components/ui/SilverScreensLogo'
 import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import { useState, useEffect, useRef, Suspense } from 'react'
 
-const navLinks = [
+const navLinks: { label: string; href: string; dropdown?: { label: string; href: string }[] }[] = [
   { label: 'Home',            href: '/'               },
   { label: 'About Us',        href: '/about'          },
   { label: 'Explore Talents', href: '/explore-talents' },
