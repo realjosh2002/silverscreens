@@ -383,12 +383,12 @@ export default function DocumentsPage() {
                 <select value={catFilter} onChange={e => { setCatFilter(e.target.value); setPage(1); }}
                   style={{ background:BG2, border:'1px solid rgba(255,255,255,0.08)', borderRadius:7, padding:'9px 12px', color:catFilter?'#F5F5F5':'rgba(255,255,255,0.4)', fontFamily:BARLOW, fontSize:15, outline:'none', cursor:'pointer' }}>
                   <option value="">Category</option>
-                  {['Verification','Contracts','Casting Files','Financial','Compliance'].map(o => <option key={o} value={o}>{o}</option>)}
+                  {['Verification','Contracts','Casting Files','Financial','Compliance'].map((o: string) => <option key={o} value={o}>{o}</option>)}
                 </select>
                 <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
                   style={{ background:BG2, border:'1px solid rgba(255,255,255,0.08)', borderRadius:7, padding:'9px 12px', color:statusFilter?'#F5F5F5':'rgba(255,255,255,0.4)', fontFamily:BARLOW, fontSize:15, outline:'none', cursor:'pointer' }}>
                   <option value="">Status</option>
-                  {['Verified','Signed','Pending Signature','Active','Paid'].map(o => <option key={o} value={o}>{o}</option>)}
+                  {['Verified','Signed','Pending Signature','Active','Paid'].map((o: string) => <option key={o} value={o}>{o}</option>)}
                 </select>
                 <button style={{ display:'flex', alignItems:'center', gap:6, padding:'9px 14px', background:BG2, border:'1px solid rgba(255,255,255,0.08)', borderRadius:7, color:'rgba(255,255,255,0.6)', fontFamily:BARLOW, fontSize:15, cursor:'pointer' }}>
                   <Filter size={14} /> Filters
@@ -449,7 +449,7 @@ export default function DocumentsPage() {
 
                 {/* Table header */}
                 <div style={{ display:'grid', gridTemplateColumns:'3fr 1.2fr 1.8fr 1.2fr 1.4fr 1fr', padding:'10px 16px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-                  {['DOCUMENT NAME','CATEGORY','UPLOADED BY','DATE','STATUS','ACTIONS'].map(h => (
+                  {['DOCUMENT NAME','CATEGORY','UPLOADED BY','DATE','STATUS','ACTIONS'].map((h: string) => (
                     <div key={h} style={{ fontSize: 14, color:'rgba(255,255,255,0.35)', fontFamily:BARLOW, fontWeight:700, letterSpacing:0.5 }}>{h}</div>
                   ))}
                 </div>
@@ -482,7 +482,7 @@ export default function DocumentsPage() {
                     {/* Uploader */}
                     <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                       <div style={{ width:28, height:28, borderRadius:'50%', overflow:'hidden', flexShrink:0, background:BG4 }}>
-                        <img src={`https://images.unsplash.com/${doc.img}?w=60&q=80`} style={{ width:'100%', height:'100%', objectFit:'cover' }} alt="" />
+                        <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(doc.uploader || "A")}&size=60&background=1a1a2e&color=D4A64A`} style={{ width:'100%', height:'100%', objectFit:'cover' }} alt="" />
                       </div>
                       <div>
                         <div style={{ fontFamily:BARLOW, fontSize:14, color:'#F5F5F5', fontWeight:600 }}>{doc.uploader}</div>
@@ -577,7 +577,7 @@ export default function DocumentsPage() {
                         title:d.name, signer:d.uploader, date:`${d.date} · ${d.time}`, color:d.status==='Signed'?GREEN:GOLD,
                       }))
                     : [{title:'No signed documents yet',signer:'Upload documents to get started',date:'',color:'rgba(255,255,255,0.3)'}]
-                  ).map(sig => (
+                  ).map((sig: any) => (
                     <div key={sig.title} onClick={() => setShowEsig(true)} style={{ background:BG3, border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, padding:14, display:'flex', alignItems:'center', gap:12, cursor:'pointer' }}
                       onMouseEnter={e => (e.currentTarget.style.borderColor=sig.color)}
                       onMouseLeave={e => (e.currentTarget.style.borderColor='rgba(255,255,255,0.06)')}
@@ -793,7 +793,7 @@ export default function DocumentsPage() {
               <div style={{ overflowY:'auto', flex:1 }}>
                 {/* Column headers */}
                 <div style={{ display:'grid', gridTemplateColumns:'3fr 1.5fr 1.5fr 1.2fr 1fr', padding:'10px 24px', borderBottom:'1px solid rgba(255,255,255,0.06)', position:'sticky', top:0, background:BG2 }}>
-                  {['DOCUMENT NAME','UPLOADED BY','DATE','STATUS','ACTIONS'].map(h => (
+                  {['DOCUMENT NAME','UPLOADED BY','DATE','STATUS','ACTIONS'].map((h: string) => (
                     <div key={h} style={{ fontSize: 14, color:'rgba(255,255,255,0.35)', fontFamily:BARLOW, fontWeight:700, letterSpacing:0.5 }}>{h}</div>
                   ))}
                 </div>
@@ -1087,7 +1087,7 @@ export default function DocumentsPage() {
                     title:d.name, signer:d.uploader, date:`${d.date} · ${d.time}`, color:d.status==='Signed'?GREEN:GOLD,
                   }))
                 : [{title:'No signed documents yet',signer:'Upload and sign documents to see them here',date:'',color:'rgba(255,255,255,0.3)'}]
-              ).map(sig => (
+              ).map((sig: any) => (
                 <div key={sig.title} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px', background:BG3, border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, marginBottom:8 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                     <div style={{ width:36, height:36, borderRadius:'50%', background:'rgba(34,197,94,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
@@ -1129,7 +1129,7 @@ export default function DocumentsPage() {
               <div key={f.label} style={{ marginBottom:14 }}>
                 <label style={{ display:'block', fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.5)', marginBottom:5 }}>{f.label}</label>
                 <select style={{ width:'100%', background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:6, padding:'9px 12px', color:'#F5F5F5', fontFamily:BARLOW, fontSize:15, outline:'none' }}>
-                  {f.options.map(o => <option key={o}>{o}</option>)}
+                  {f.options.map((o: string) => <option key={o}>{o}</option>)}
                 </select>
               </div>
             ))}
