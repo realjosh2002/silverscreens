@@ -73,6 +73,9 @@ const APPLICATIONS: {
   shootDates: string; description: string;
   contactName: string; contactRole: string; contactEmail: string; contactPhone: string;
   ageRange: string; gender: string; language: string; experience: string;
+  studio?: string; agencyName?: string; agencyCity?: string; agencyVerified?: boolean;
+  auditionDate?: string; auditionAddress?: string; castingCallId?: string;
+  skills?: string[]; notes?: string;
 }[] = [
   { id: 1, title: 'City of Dreams', genre: 'Feature Film', role: 'Lead Hero', agency: 'Dharma Productions', location: 'Mumbai', appliedDate: '20 May 2024', dateTs: new Date('2024-05-20').getTime(), documents: 5, status: 'In Review', updatedDate: '21 May 2024, 10:45 AM', img: 'https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=600&h=400&fit=crop', compensation: '₹4,50,000 – ₹6,00,000', shootDates: '15 Jul 2024 – 30 Sep 2024', description: 'A gripping drama following an ambitious young man chasing his dreams in the city of Mumbai. Looking for a lead actor who can portray vulnerability and resilience in equal measure.', contactName: 'Rohan Mehta', contactRole: 'Casting Director', contactEmail: 'rohan.mehta@dharmaproductions.com', contactPhone: '+91 98200 11223', ageRange: '25 – 35 years', gender: 'Male', language: 'Hindi, English', experience: '3+ years preferred' },
   { id: 2, title: 'The Silent Witness', genre: 'Short Film', role: 'Supporting Actor', agency: 'Red Frame Studios', location: 'Mumbai', appliedDate: '18 May 2024', dateTs: new Date('2024-05-18').getTime(), documents: 4, status: 'Shortlisted', updatedDate: '21 May 2024, 02:30 PM', img: 'https://images.unsplash.com/photo-1535016120720-40c646be5580?w=600&h=400&fit=crop', compensation: '₹80,000 – ₹1,20,000', shootDates: '05 Jun 2024 – 15 Jun 2024', description: 'A psychological thriller about a witness to a crime who must decide whether to come forward. Seeking a supporting actor with strong screen presence.', contactName: 'Ananya Kapoor', contactRole: 'Casting Associate', contactEmail: 'ananya@redframestudios.in', contactPhone: '+91 99870 44556', ageRange: '20 – 30 years', gender: 'Any', language: 'Hindi', experience: '1+ years preferred' },
@@ -172,7 +175,7 @@ export default function ApplicationDetailPage() {
   castingCallId: a.casting_call_id ?? '',
   contactEmail: c.agency_profiles?.contact_email ?? c.contact_email ?? '',
   contactPhone: c.agency_profiles?.contact_phone ?? c.contact_mobile ?? '',
-} as unknown as typeof APPLICATIONS[0]);
+} as typeof APPLICATIONS[0]);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
