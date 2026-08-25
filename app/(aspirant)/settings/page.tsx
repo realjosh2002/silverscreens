@@ -30,7 +30,7 @@ const BARLOW = '"Barlow Condensed", sans-serif'
 const BEBAS  = "'Bebas Neue', sans-serif"
 
 /* ── SIDEBAR NAV ─────────────────────────────────────────────── */
-const sidebarItems = [
+const sidebarItems: { icon: any; label: string; href: string; active?: boolean; badge?: number }[] = [
   { icon: LayoutDashboard, label: 'Dashboard',             href: '/dashboard' },
   { icon: FileText,        label: 'My Applications',       href: '/applications' },
   { icon: MessageSquare,   label: 'Messages',   href: '/messages' },

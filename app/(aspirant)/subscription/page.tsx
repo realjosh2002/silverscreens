@@ -24,7 +24,7 @@ const BEBAS  = "'Bebas Neue', sans-serif";
 const GREEN  = '#22C55E';
 
 /* ─── Sidebar — same 7-item pattern as all aspirant pages ─────── */
-const SIDEBAR_ITEMS = [
+const SIDEBAR_ITEMS: { icon: any; label: string; href: string; active?: boolean; badge?: number }[] = [
   { icon: LayoutDashboard, label: 'Dashboard',             href: '/dashboard' },
   { icon: FileText,        label: 'My Applications',       href: '/my-applications' },
   { icon: MessageSquare,   label: 'Messages',              href: '/messages',          badge: 2 },
