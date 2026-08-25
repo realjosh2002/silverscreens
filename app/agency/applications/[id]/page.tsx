@@ -48,7 +48,7 @@ interface AppDetail {
   id: string; appId: string; aspirantProfileId: string; name: string; verified: boolean;
   category: string; gender: string; age: number; location: string;
   rating: number; reviews: number; views: string;
-  img: string; status: 'New' | 'In Review' | 'Shortlisted' | 'Rejected' | 'Selected';
+  img: string; status: 'New' | 'In Review' | 'Shortlisted' | 'Rejected' | 'Selected' | 'On Hold';
   appliedOn: string; appliedTime: string;
   castingCall: string; castingCallStatus: string; castingCallPoster: string;
   productionHouse: string; projectType: string; roleApplied: string;
