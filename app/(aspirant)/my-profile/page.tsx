@@ -23,7 +23,7 @@ const BG3    = '#121821'
 const BARLOW = "'Barlow Condensed', sans-serif"
 const BEBAS  = "'Bebas Neue', sans-serif"
 
-const SIDEBAR_ITEMS = [
+const SIDEBAR_ITEMS: { icon: any; label: string; href: string; active?: boolean; badge?: number }[] = [
   { icon: LayoutDashboard, label: 'Dashboard',            href: '/dashboard'       },
   { icon: FileText,        label: 'My Applications',      href: '/my-applications' },
   { icon: MessageSquare,   label: 'Messages',             href: '/messages' },
