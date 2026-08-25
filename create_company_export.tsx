@@ -217,8 +217,9 @@ export default function CreateCompanyProfilePage() {
 
     const headers: Record<string, string> = (() => {
       try {
-        const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
-        return u.token ? { Authorization: `Bearer ${u.token}` } : {}
+        const key = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'))
+        const token = key ? JSON.parse(localStorage.getItem(key) || '{}')?.access_token || '' : ''
+        return token ? { Authorization: `Bearer ${token}` } : {} as Record<string, string>
       } catch { return {} }
     })()
 
