@@ -184,7 +184,6 @@ export default function ShortlistedTalentsPage() {
             age:             ap.date_of_birth ? Math.floor((Date.now() - new Date(ap.date_of_birth).getTime()) / (1000 * 60 * 60 * 24 * 365.25)) : 0,
             location:        [ap.city, ap.state].filter(Boolean).join(', ') || '',
             img:             ap.profile_image_url ?? '',
-            age:             ap.date_of_birth ? Math.floor((Date.now() - new Date(ap.date_of_birth).getTime()) / (1000 * 60 * 60 * 24 * 365.25)) : 0,
             role:            cc.role_name ?? ap.role ?? ap.category ?? '',
             castingCallId:   s.casting_call_id ?? '',
             castingCall:     cc.title ?? '',
