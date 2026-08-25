@@ -180,7 +180,7 @@ export default function AgencyCalendarPage() {
     } catch {}
     try {
       const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
-      const h = u.token ? { Authorization: `Bearer ${u.token}` } : {};
+      const h: Record<string, string> = u.token ? { Authorization: `Bearer ${u.token}` } : {};
       fetch('/api/profile/agency', { headers: h })
         .then(r => r.ok ? r.json() : null)
         .then(d => {
