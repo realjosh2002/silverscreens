@@ -560,8 +560,8 @@ export default function AdminUsersPage() {
                               <div style={{ fontFamily:BARLOW, fontSize:15, fontWeight:600, color:'#F5F5F5', whiteSpace:'nowrap' as const, overflow:'hidden', textOverflow:'ellipsis' }}>{displayName(user)}</div>
                               <div style={{ fontFamily:BARLOW, fontSize:13, color:'rgba(255,255,255,0.4)' }}>
                                 {user.role === 'agency'
-                                  ? (user.agency_profiles?.[0]?.profile_number || user.profile_number || user.id.slice(0,8))
-                                  : (user.aspirant_profiles?.[0]?.profile_number || user.profile_number || user.id.slice(0,8))}
+                                  ? ((user.agency_profiles as any)?.[0]?.profile_number || user.profile_number || user.id.slice(0,8))
+                                  : ((user.aspirant_profiles as any)?.[0]?.profile_number || user.profile_number || user.id.slice(0,8))}
                               </div>
                             </div>
                           </div>
