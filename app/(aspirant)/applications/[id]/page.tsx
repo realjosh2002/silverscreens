@@ -172,7 +172,7 @@ export default function ApplicationDetailPage() {
   castingCallId: a.casting_call_id ?? '',
   contactEmail: c.agency_profiles?.contact_email ?? c.contact_email ?? '',
   contactPhone: c.agency_profiles?.contact_phone ?? c.contact_mobile ?? '',
-} as typeof APPLICATIONS[0]);
+} as unknown as typeof APPLICATIONS[0]);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
