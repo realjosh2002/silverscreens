@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
     if (error || !user) return errorResponse('Invalid session', 401)
 
     const body = await req.json()
-    const { recipient_id, content, conversation_id, message_type = 'text' } = body
+    const { recipient_id, content, conversation_id } = body
 
     if (!content?.trim()) return errorResponse('Message content is required', 400)
 
@@ -201,7 +201,6 @@ export async function POST(req: NextRequest) {
         conversation_id: convId,
         sender_id:       user.id,
         content:         content.trim(),
-        message_type,
         is_read:         false,
         created_at:      new Date(),
       },
