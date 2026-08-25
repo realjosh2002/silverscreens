@@ -1238,7 +1238,7 @@ function InfoRow({ icon: Icon, label, value, badge }: { icon: React.ElementType;
   );
 }
 
-function SystemInformation({ router }: { router: ReturnType<typeof useRouter> }) {
+function SystemInformation({ router }: { router?: ReturnType<typeof useRouter> }) {
   const [sysInfo, setSysInfo] = React.useState<any>(null);
   React.useEffect(function() {
     try {
