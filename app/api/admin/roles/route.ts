@@ -12,6 +12,16 @@ async function verifyAdmin(token: string) {
 }
 
 /* ── GET — list all roles ── */
+// ── Check if roles table exists ────────────────────────────────
+async function rolesTableExists(): Promise<boolean> {
+  try {
+    const { error } = await supabaseAdmin.from('roles').select('id').limit(1)
+    return !error
+  } catch {
+    return false
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const token = req.headers.get('authorization')?.replace('Bearer ', '')
