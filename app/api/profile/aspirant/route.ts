@@ -196,7 +196,7 @@ export async function PUT(req: NextRequest) {
 
     // ─── 9. Also update name in profiles table if name changed
     if (first_name !== undefined || last_name !== undefined) {
-      const fullName = `${first_name ?? currentProfile.first_name} ${last_name ?? currentProfile.last_name}`.trim()
+      const fullName = `${first_name ?? currentProfile?.first_name ?? ''} ${last_name ?? currentProfile?.last_name ?? ''}`.trim()
       await prisma.profiles.update({
         where: { id: user.id },
         data:  { name: fullName },
