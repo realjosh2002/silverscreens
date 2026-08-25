@@ -134,14 +134,14 @@ export async function GET(req: NextRequest) {
     if (verStatus) {
       const aspIds = (!role || role === 'aspirant')
         ? (await prisma.aspirant_profiles.findMany({
-            where: { verification_status: verStatus },
+            where: { verification_status: verStatus as any },
             select: { user_id: true },
           })).map((r: any) => r.user_id)
         : []
 
       const agIds = (!role || role === 'agency')
         ? (await prisma.agency_profiles.findMany({
-            where: { verification_status: verStatus },
+            where: { verification_status: verStatus as any },
             select: { user_id: true },
           })).map((r: any) => r.user_id)
         : []
