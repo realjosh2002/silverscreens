@@ -300,6 +300,12 @@ function SupportSection({ tickets, loading, tab, setTab, showModal, setShowModal
 }
 
 
+
+const PROJECT_TYPES = ['Feature Film', 'Short Film', 'Web Series', 'TV Serial', 'Documentary', 'Music Video', 'Ad Film', 'OTT Series', 'Theatre', 'Other'];
+const RELEASE_YEARS = Array.from({ length: 30 }, (_, i) => String(new Date().getFullYear() - i));
+const AVAILABLE_FOR = ['Feature Films', 'Short Films', 'Web Series', 'TV Commercials', 'Music Videos', 'Modelling', 'Theatre', 'OTT Projects', 'Reality Shows', 'Brand Endorsements'];
+const LANGUAGES_EXP = ['Hindi', 'English', 'Tamil', 'Telugu', 'Kannada', 'Malayalam', 'Bengali', 'Marathi', 'Gujarati', 'Punjabi', 'Urdu', 'Other'];
+
 export default function SettingsPage() {
   const router = useRouter()
   const { counts, markAllRead } = useNotifications()
