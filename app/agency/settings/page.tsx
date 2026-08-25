@@ -944,7 +944,7 @@ function UploadDocModal({ docLabel, onClose, onUploaded }: {
 
       const res = await fetch('/api/agency/documents', {
         method:  'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: ({ ...(token ? { Authorization: `Bearer ${token}` } : {}) }) as Record<string, string>,
         body:    fd,
       });
       const data = await res.json();
@@ -1091,7 +1091,7 @@ function DocumentsSection({ setModal }: { setModal:(m:string)=>void }) {
     async function fetchDocs() {
       try {
         const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
-        const headers = u.token ? { Authorization: `Bearer ${u.token}` } : {};
+        const headers: Record<string, string> = u.token ? { Authorization: `Bearer ${u.token}` } : {};
         const res = await fetch('/api/agency/documents', { headers });
         if (!res.ok) return;
         const data = await res.json();
@@ -1493,7 +1493,7 @@ export default function SettingsPage() {
               fd.append('doc_label', 'Company Logo');
               try {
                 const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
-                await fetch('/api/agency/documents', { method:'POST', headers: u.token ? { Authorization: `Bearer ${u.token}` } : {}, body: fd });
+                await fetch('/api/agency/documents', { method:'POST', headers: ({ ...(u.token ? { Authorization: `Bearer ${u.token}` } : {}) }) as Record<string, string>, body: fd });
                 alert('Logo uploaded successfully!');
               } catch { alert('Upload failed. Please try again.'); }
               setModal('');
