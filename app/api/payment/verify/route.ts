@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ─── 8. Create payment success notification ────────────────
-    await prisma.notifications.create({
+    await (prisma as any).notifications.create({
       data: {
         user_id: user.id,
         type:    'payment_success',

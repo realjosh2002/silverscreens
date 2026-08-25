@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
       select: { id: true },
     })
     if (adminProfiles.length > 0) {
-      await prisma.notifications.createMany({
+      await (prisma as any).notifications.createMany({
         data: adminProfiles.map(admin => ({
           user_id:    admin.id,
           title:      'New Document Awaiting Review',

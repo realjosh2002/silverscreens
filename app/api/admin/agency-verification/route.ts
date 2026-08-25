@@ -222,7 +222,7 @@ export async function PUT(req: NextRequest) {
           ? `Your ${doc.doc_label} has been approved by our verification team.`
           : `Your ${doc.doc_label} was rejected. Reason: ${reason ?? 'Please re-upload a valid document.'}`
 
-      await prisma.notifications.create({
+      await (prisma as any).notifications.create({
         data: {
           user_id:    doc.user_id,
           title:      notifTitle,
@@ -320,7 +320,7 @@ export async function PUT(req: NextRequest) {
           ? `Your verification is on hold. ${reason ?? 'Please upload any missing documents.'}`
           : `Verification not approved. Reason: ${reason ?? 'Contact support.'}`
 
-      await prisma.notifications.create({
+      await (prisma as any).notifications.create({
         data: {
           user_id:    resolvedUserId,
           action_url: '/agency/settings',

@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
       take:   1,
     })
     if (adminProfiles.length > 0) {
-      await prisma.notifications.create({
+      await (prisma as any).notifications.create({
         data: {
           user_id:    adminProfiles[0].id,
           type:       'system_announcement',
@@ -169,7 +169,7 @@ export async function PUT(req: NextRequest) {
           data:  { trust_score: { decrement: trust_score_deduction } },
         })
       }
-      await prisma.notifications.create({
+      await (prisma as any).notifications.create({
         data: {
           user_id:    report.reported_user_id,
           type:       'system_announcement',

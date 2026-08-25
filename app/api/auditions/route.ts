@@ -173,7 +173,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (aspirant?.user_id) {
-        await prisma.notifications.create({
+        await (prisma as any).notifications.create({
           data: {
             user_id:    aspirant.user_id,
             type:       'audition_scheduled' as any,

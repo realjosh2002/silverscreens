@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
 
         // Send failure notification to user
         if (transaction?.user_id) {
-          await prisma.notifications.create({
+          await (prisma as any).notifications.create({
             data: {
               user_id:    transaction.user_id,
               type:       'payment_failure',

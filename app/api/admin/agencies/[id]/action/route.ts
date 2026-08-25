@@ -99,7 +99,7 @@ export async function POST(
 
     // ── Send notification ─────────────────────────────────────────
     if (userId) {
-      await prisma.notifications.create({
+      await (prisma as any).notifications.create({
         data: {
           user_id:    userId,
           title:      notifMap[action].title,

@@ -230,7 +230,7 @@ export async function POST(req: NextRequest) {
         select: { name: true },
       })
 
-      await prisma.notifications.create({
+      await (prisma as any).notifications.create({
         data: {
           user_id:    recipientUserId,
           type:       'new_message',

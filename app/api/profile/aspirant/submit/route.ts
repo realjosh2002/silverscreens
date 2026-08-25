@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     })
 
     // ─── 7. Send notification to user ─────────────────────────
-    await prisma.notifications.create({
+    await (prisma as any).notifications.create({
       data: {
         user_id:    user.id,
         type:       'profile_verified',

@@ -258,7 +258,7 @@ export async function POST(req: NextRequest) {
     })
 
     // Notify agency
-    await prisma.notifications.create({
+    await (prisma as any).notifications.create({
       data: {
         user_id:    castingCall.agency_profiles.user_id,
         type:       'application_update',
@@ -269,7 +269,7 @@ export async function POST(req: NextRequest) {
     })
 
     // Notify aspirant
-    await prisma.notifications.create({
+    await (prisma as any).notifications.create({
       data: {
         user_id:    user.id,
         type:       'application_update',

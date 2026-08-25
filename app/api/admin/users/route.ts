@@ -247,7 +247,7 @@ export async function PUT(req: NextRequest) {
 
     if (action === 'suspend') {
       await prisma.profiles.update({ where: { id: user_id }, data: { is_active: false } })
-      await prisma.notifications.create({
+      await (prisma as any).notifications.create({
         data: {
           user_id, type: 'system_announcement',
           title: 'Account Suspended',
@@ -261,7 +261,7 @@ export async function PUT(req: NextRequest) {
       await prisma.profiles.update({ where: { id: user_id }, data: { is_active: true } })
       // Only send notification if not a deleted account
       if (!targetUser.email?.includes('@silverscreens.deleted')) {
-        await prisma.notifications.create({
+        await (prisma as any).notifications.create({
           data: {
             user_id, type: 'system_announcement',
             title: 'Account Activated',
@@ -273,7 +273,7 @@ export async function PUT(req: NextRequest) {
     }
 
     if (action === 'delete') {
-      await prisma.notifications.deleteMany({ where: { user_id } })
+      await (prisma as any).notifications.deleteMany({ where: { user_id } })
       await prisma.messages.deleteMany({ where: { sender_id: user_id } })
       await prisma.reports.deleteMany({ where: { reported_by: user_id } })
       await prisma.support_tickets.deleteMany({ where: { user_id } })

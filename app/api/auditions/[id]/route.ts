@@ -185,7 +185,7 @@ export async function PATCH(
       }
 
       if (notifTitle) {
-        await prisma.notifications.create({
+        await (prisma as any).notifications.create({
           data: {
             user_id:    aspirantUserId,
             type:       'audition_scheduled' as any,
