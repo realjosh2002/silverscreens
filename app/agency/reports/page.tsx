@@ -279,7 +279,7 @@ function getAuthHeaders(): Record<string, string> {
   } catch { return {} }
 }
 
-const NAV_ITEMS = [
+const NAV_ITEMS: { icon: any; label: string; href: string; active?: boolean; badge?: number }[] = [
   { icon: LayoutDashboard, label: 'Dashboard',               href: '/agency/dashboard' },
   { icon: PlusCircle,      label: 'Create Casting Call',     href: '/agency/create-casting' },
   { icon: Megaphone,       label: 'Casting Calls List',      href: '/agency/casting-calls' },

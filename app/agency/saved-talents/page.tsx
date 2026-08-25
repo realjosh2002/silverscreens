@@ -29,7 +29,7 @@ const BG4    = '#1C2030';
 const BEBAS  = "'Bebas Neue', sans-serif";
 const BARLOW = "'Barlow Condensed', sans-serif";
 
-const NAV_ITEMS = [
+const NAV_ITEMS: { icon: any; label: string; href: string; active?: boolean; badge?: number }[] = [
   { icon: LayoutDashboard, label: 'Dashboard',               href: '/agency/dashboard' },
   { icon: PlusCircle,      label: 'Create Casting Call',     href: '/agency/create-casting' },
   { icon: Megaphone,       label: 'Casting Calls List',      href: '/agency/casting-calls' },
@@ -132,7 +132,7 @@ export default function SavedTalentsPage() {
 
   const [loadingData,  setLoadingData]  = useState(true);
 
-  function getAuthHeaders() {
+  function getAuthHeaders(): Record<string, string> {
     try { const u = JSON.parse(localStorage.getItem('ss_user') || '{}'); const token = u.token ?? u.access_token ?? ''; return token ? { Authorization: `Bearer ${token}` } : {}; } catch { return {}; }
   }
 

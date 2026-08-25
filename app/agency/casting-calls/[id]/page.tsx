@@ -22,7 +22,7 @@ const BG4    = '#1C2030';
 const BEBAS  = "'Bebas Neue', sans-serif";
 const BARLOW = "'Barlow Condensed', sans-serif";
 
-const NAV_PRIMARY = [
+const NAV_PRIMARY: { icon: any; label: string; href: string; active?: boolean; badge?: number }[] = [
   { icon: LayoutDashboard, label: 'Dashboard',               href: '/agency/dashboard' },
   { icon: PlusCircle,      label: 'Create Casting Call',      href: '/agency/create-casting' },
   { icon: Megaphone,       label: 'Casting Calls List',       href: '/agency/casting-calls', active: true },

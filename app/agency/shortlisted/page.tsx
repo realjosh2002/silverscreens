@@ -32,7 +32,7 @@ const BEBAS  = "'Bebas Neue', sans-serif";
 const BARLOW = "'Barlow Condensed', sans-serif";
 
 /* ─── Sidebar nav ─────────────────────────────────────────────── */
-const NAV_ITEMS = [
+const NAV_ITEMS: { icon: any; label: string; href: string; active?: boolean; badge?: number }[] = [
   { icon: LayoutDashboard, label: 'Dashboard',               href: '/agency/dashboard' },
   { icon: PlusCircle,      label: 'Create Casting Call',     href: '/agency/create-casting' },
   { icon: Megaphone,       label: 'Casting Calls List',      href: '/agency/casting-calls' },
@@ -159,7 +159,7 @@ export default function ShortlistedTalentsPage() {
   const [agencyName,   setAgencyName]   = useState(() => { try { return JSON.parse(localStorage.getItem('ss_user') || '{}').name || 'My Agency'; } catch { return 'My Agency'; } });
   const [agencyInitials, setAgencyInitials] = useState(() => { try { const n = JSON.parse(localStorage.getItem('ss_user') || '{}').name || 'AG'; return n.split(' ').map((w: string) => w[0]).slice(0,2).join('').toUpperCase(); } catch { return 'AG'; } });
 
-  function getAuthHeaders() {
+  function getAuthHeaders(): Record<string, string> {
     try { const u = JSON.parse(localStorage.getItem('ss_user') || '{}'); const token = u.token ?? u.access_token ?? ''; return token ? { Authorization: `Bearer ${token}` } : {}; } catch { return {}; }
   }
 

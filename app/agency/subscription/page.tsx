@@ -1108,7 +1108,7 @@ function PlansAddonsTab({
 
 
 // ─── Nav config ───────────────────────────────────────────────────────────────
-const NAV_ITEMS = [
+const NAV_ITEMS: { icon: any; label: string; href: string; active?: boolean; badge?: number }[] = [
   { icon: LayoutDashboard, label: 'Dashboard',               href: '/agency/dashboard' },
   { icon: PlusCircle,      label: 'Create Casting Call',     href: '/agency/create-casting' },
   { icon: Megaphone,       label: 'Casting Calls List',      href: '/agency/casting-calls' },
@@ -1269,7 +1269,7 @@ function SubscriptionBillingInner() {
   useEffect(() => {
     function fetchCounts() {
       const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
-      const h = u.token ? { Authorization: `Bearer ${u.token}` } : {};
+      const h: Record<string, string> = u.token ? { Authorization: `Bearer ${u.token}` } : {};
       fetch('/api/notifications', { headers: h })
         .then(r => r.ok ? r.json() : null)
         .then(data => {

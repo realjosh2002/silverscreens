@@ -30,7 +30,7 @@ const AVAIL_COLOR: Record<string, string> = {
 };
 
 /* ─── Sidebar nav ─────────────────────────────────────────────── */
-const NAV_ITEMS = [
+const NAV_ITEMS: { icon: any; label: string; href: string; active?: boolean; badge?: number }[] = [
   { icon: LayoutDashboard, label: 'Dashboard',               href: '/agency/dashboard' },
   { icon: PlusCircle,      label: 'Create Casting Call',     href: '/agency/create-casting' },
   { icon: Megaphone,       label: 'Casting Calls List',      href: '/agency/casting-calls' },
@@ -270,7 +270,7 @@ export default function AspirantProfilePage() {
   const [msgCount,   setMsgCount]   = useState(0);
   const [notifCount, setNotifCount] = useState(0);
 
-  function getAuthHeaders() {
+  function getAuthHeaders(): Record<string, string> {
     try { const u = JSON.parse(localStorage.getItem('ss_user') || '{}'); const token = u.token ?? u.access_token ?? ''; return token ? { Authorization: `Bearer ${token}` } : {}; } catch { return {}; }
   }
 
