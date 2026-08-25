@@ -331,7 +331,7 @@ export async function POST(req: NextRequest) {
       const alertUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/notifications/casting-alert?casting_call_id=${castingCall.id}`
       fetch(alertUrl, {
         headers: { 'x-internal-trigger': process.env.INTERNAL_API_SECRET || 'silverscreens-internal' }
-      }).catch(err => console.error('[CASTING ALERT TRIGGER ERROR]', err))
+      }).catch((err: unknown) => console.error('[CASTING ALERT TRIGGER ERROR]', err))
     }
 
     return successResponse({

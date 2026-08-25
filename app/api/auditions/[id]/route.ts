@@ -130,7 +130,7 @@ export async function PATCH(
           await prisma.applications.update({
             where: { id: applicationId },
             data:  { status: newApplicationStatus as any },
-          }).catch(e => console.error('[APPLICATION STATUS UPDATE ERROR]', e))
+          }).catch((e: unknown) => console.error('[APPLICATION STATUS UPDATE ERROR]', e))
         } else {
           // Fallback: find by aspirant_id + casting_call_id
           const aspirantId    = (existing as any).aspirant_id
@@ -143,7 +143,7 @@ export async function PATCH(
                 casting_call_id: castingCallId,
               },
               data: { status: newApplicationStatus as any },
-            }).catch(e => console.error('[APPLICATION STATUS UPDATE ERROR]', e))
+            }).catch((e: unknown) => console.error('[APPLICATION STATUS UPDATE ERROR]', e))
           }
         }
       }
@@ -194,7 +194,7 @@ export async function PATCH(
             is_read:    false,
             action_url: '/auditions',
           },
-        }).catch(e => console.error('[NOTIFICATION CREATE ERROR]', e))
+        }).catch((e: unknown) => console.error('[NOTIFICATION CREATE ERROR]', e))
       }
     }
 
