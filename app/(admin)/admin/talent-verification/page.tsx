@@ -280,7 +280,7 @@ export default function TalentVerificationPage() {
 
   const handleReview = (a: Aspirant) => {
     setSelected(a);
-    setDocStatuses({ ...a.docStatus });
+    setDocStatuses({ idProof: a.docStatus.idProof ?? 'Pending', addressProof: a.docStatus.addressProof ?? 'Pending', faceVerification: a.docStatus.faceVerification ?? 'Pending', profileReview: a.docStatus.profileReview ?? 'Pending' });
     setNotes('');
     setInnerTab('profile');
     setMedia([]);
