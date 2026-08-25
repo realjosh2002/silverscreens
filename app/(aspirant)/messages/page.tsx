@@ -20,7 +20,7 @@ const BG3    = '#121821';
 const BG4    = '#1C2030';
 const BARLOW = '"Barlow Condensed", sans-serif';
 
-const sidebarItems = [
+const sidebarItems: { icon: any; label: string; href: string; active?: boolean; badge?: number }[] = [
   { icon: LayoutDashboard, label: 'Dashboard',            href: '/dashboard' },
   { icon: FileText,        label: 'My Applications',      href: '/my-applications' },
   { icon: MessageSquare,   label: 'Messages',             href: '/messages',    active: true },
