@@ -316,7 +316,7 @@ export default function CastingCallsPage() {
             title:        c.title       ?? c.name ?? '',
             project:      c.project_type ?? c.projectName ?? c.project ?? c.title ?? '',
             studio:       c.agency_profiles?.company_name ?? c.agency?.name ?? c.companyName ?? c.studio ?? '',
-            verified:     c.agency_profiles?.verification_status === 'approved' ?? c.verified ?? false,
+            verified:     (c.agency_profiles?.verification_status === 'approved') || c.verified || false,
             type:         c.project_type ?? c.projectType ?? c.type ?? 'Feature Film',
             role:         c.role_name   ?? c.role ?? '',
             gender:       c.gender_preference ?? c.gender ?? 'Any',
