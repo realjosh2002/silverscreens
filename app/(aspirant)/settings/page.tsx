@@ -732,7 +732,7 @@ export default function SettingsPage() {
               const readKey = label === 'Messages' ? 'messages' : label === 'Notifications' ? 'notifications' : null
               const badge = readKey === 'messages' ? counts.messages : readKey === 'notifications' ? counts.notifications : undefined
               return (
-              <div key={label} title={!sidebarOpen ? label : undefined} onClick={() => { if (readKey) markAllRead(readKey); navigate(href) }}
+              <div key={label} title={!sidebarOpen ? label : undefined} onClick={() => { if (readKey) markAllRead(readKey); router.push(href) }}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'space-between' : 'center', padding: sidebarOpen ? '8px 14px' : '10px 0', cursor: 'pointer', background: active ? 'rgba(200,32,42,0.1)' : 'transparent', borderLeft: sidebarOpen && active ? `3px solid ${RED}` : '3px solid transparent' }}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.03)' }}
                 onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
