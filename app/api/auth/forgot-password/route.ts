@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
       const linkResult = await withTimeout(
         supabaseAdmin.auth.admin.generateLink({ type: 'recovery', email: cleanEmail }),
         5000, // 5 second timeout
-        { data: null, error: new Error('timeout') }
+        { data: null, error: new Error('timeout') } as any
       )
       const actionLink = (linkResult as any)?.data?.properties?.action_link
       if (actionLink) resetUrl = actionLink
