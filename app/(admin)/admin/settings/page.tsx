@@ -1,4 +1,6 @@
-'use client';
+'use client'
+
+export const dynamic = 'force-dynamic';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminTopnav from '@/components/layout/AdminTopnav';

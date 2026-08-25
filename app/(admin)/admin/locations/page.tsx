@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect } from 'react'
 import AdminTopnav from '@/components/layout/AdminTopnav'
 import AdminSidebar from '@/components/layout/AdminSidebar'
