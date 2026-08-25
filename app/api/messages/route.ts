@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
 
       const messages = await prisma.messages.findMany({
         where:   { conversation_id },
-        orderBy: { sent_at: 'asc' },
+        orderBy: { created_at: 'asc' },
         include: {
           profiles: {
             select: { name: true, role: true },
@@ -69,11 +69,11 @@ export async function GET(req: NextRequest) {
       orderBy: { last_message_at: 'desc' },
       include: {
         messages: {
-          orderBy: { sent_at: 'desc' },
+          orderBy: { created_at: 'desc' },
           take:    1,
           select: {
             content:   true,
-            sent_at:   true,
+            created_at: true,
             is_read:   true,
             sender_id: true,
           },
@@ -204,7 +204,7 @@ export async function POST(req: NextRequest) {
         content:         content.trim(),
         message_type,
         is_read:         false,
-        sent_at:         new Date(),
+        created_at:      new Date(),
       },
     })
 
