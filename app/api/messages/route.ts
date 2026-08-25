@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
           sender_id: { not: user.id },
           is_read:   false,
         },
-        data: { is_read: true, read_at: new Date() },
+        data: { is_read: true },
       })
 
       return successResponse({ messages, conversation })
