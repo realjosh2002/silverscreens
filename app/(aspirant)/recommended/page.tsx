@@ -274,7 +274,7 @@ export default function RecommendedCastingsPage() {
         if (Array.isArray(list) && list.length > 0) {
           const typeMap: Record<string, CastType> = {
             Film: 'Film', Web_Series: 'Web Series', 'Web Series': 'Web Series',
-            TV_Series: 'TV Series', 'TV Series': 'TV Series', Ad_Film: 'Ad Film', 'Ad Film': 'Ad Film',
+            TV_Series: 'TV', 'TV Series': 'TV', Ad_Film: 'Ad Films', 'Ad Film': 'Ad Films',
           };
           setCastings(list.map((c: any, i: number) => {
             const ag = c.agency_profiles ?? {};
