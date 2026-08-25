@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
 
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 function verifyToken(token: string): string | null {
   try {
