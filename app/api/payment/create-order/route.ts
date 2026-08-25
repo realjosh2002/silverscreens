@@ -7,11 +7,6 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse, calculateGST } from '@/lib/api-helpers'
 
-const razorpay = new Razorpay({
-  key_id:     process.env.RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-})
-
 // RingsNRoses addon prices — must match frontend
 const RNR_PRICES: Record<string, number> = {
   spotlight: 149,
@@ -88,6 +83,10 @@ export async function POST(req: NextRequest) {
     const amountInPaise = total * 100
 
     // ─── 6. Create Razorpay order ──────────────────────────────
+    const razorpay = new Razorpay({
+      key_id:     process.env.RAZORPAY_KEY_ID || '',
+      key_secret: process.env.RAZORPAY_KEY_SECRET || '',
+    })
     const order = await razorpay.orders.create({
       amount:   amountInPaise,
       currency: 'INR',
