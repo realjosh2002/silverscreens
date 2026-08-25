@@ -111,9 +111,9 @@ function buildFallback(id: string): AppDetail {
     media: [], extraMedia: 0,
     auditionDate: '', auditionTime: '', auditionFormat: '',
     auditionLocation: '', auditionNotes: '',
-    dob: '', category: '', role: '',
+    dob: '', role: '',
     chest: '', hip: '', waist: '', shoe: '',
-    hairColor: '', eyeColor: '', complexion: '', bodyType: '',
+    hairColor: '', eyeColor: '', complexion: '',
     aboutMe: '', socialLinks: {}, availabilityFor: [], experienceCredits: [], agencyLogoUrl: '', castingCallId: '',
   };
 }
