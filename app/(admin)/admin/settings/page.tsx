@@ -1305,7 +1305,7 @@ function QuickActions({ router }: { router: ReturnType<typeof useRouter> }) {
         window.alert('This feature will be available soon.');
       }} />
       <ActionRow icon={RefreshCcw} label="System Backup Now" onClick={function() { window.alert('Database backups are managed automatically by Supabase with point-in-time recovery. No manual action required.'); }} />
-      <ActionRow icon={ScrollText} label="View Activity Logs" onClick={function() { router.push('/admin/audit'); }} />
+      <ActionRow icon={ScrollText} label="View Activity Logs" onClick={function() { router?.push('/admin/audit'); }} />
       <ActionRow icon={Mail} label="Reset Email Queue" onClick={function() { window.alert('Email queue will be manageable from the Email Logs section once your platform is live.'); }} />
     </RailCard>
   );
@@ -2008,7 +2008,7 @@ function SmsQuickActions({ router }: { router: ReturnType<typeof useRouter> }) {
     <RailCard title="QUICK ACTIONS" color={GOLD}>
       <ActionRow icon={MessageCircle} label="SMS Templates" onClick={function() { router.push('/admin/sms-templates'); }} />
       <ActionRow icon={MessageSquare} label="WhatsApp Templates" onClick={function() { router.push('/admin/sms-templates'); }} />
-      <ActionRow icon={FileSearch} label="Message Logs" onClick={function() { router.push('/admin/audit'); }} />
+      <ActionRow icon={FileSearch} label="Message Logs" onClick={function() { router?.push('/admin/audit'); }} />
       <ActionRow icon={BookOpen} label="Provider Documentation" onClick={function() { window.open('https://www.twilio.com/docs/sms', '_blank'); }} />
     </RailCard>
   );
@@ -2403,7 +2403,7 @@ function PaymentOverview({ router }: { router: ReturnType<typeof useRouter> }) {
         </div>
       </div>
       <div style={{ textAlign: 'center' as const, marginTop: 8 }}>
-        <span onClick={function() { router.push('/admin/audit'); }}
+        <span onClick={function() { router?.push('/admin/audit'); }}
           style={{ fontSize: 13, color: GOLD, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
           <FileBarChart size={14} />
           View Payment Reports
@@ -2417,9 +2417,9 @@ function PaymentQuickActions({ router }: { router: ReturnType<typeof useRouter> 
   return (
     <RailCard title="QUICK ACTIONS" color={GOLD}>
       <ActionRow icon={RotateCcw}    label="Manage Refund Requests"  onClick={function() { router.push('/admin/support'); }} />
-      <ActionRow icon={ListOrdered}  label="View Transactions"        onClick={function() { router.push('/admin/audit'); }} />
+      <ActionRow icon={ListOrdered}  label="View Transactions"        onClick={function() { router?.push('/admin/audit'); }} />
       <ActionRow icon={FileBarChart} label="Download Payout Reports"  onClick={function() { window.alert('Payout reports will be available when you go live.'); }} />
-      <ActionRow icon={FileSearch}   label="Payment Gateway Logs"     onClick={function() { router.push('/admin/audit'); }} />
+      <ActionRow icon={FileSearch}   label="Payment Gateway Logs"     onClick={function() { router?.push('/admin/audit'); }} />
       <ActionRow icon={Receipt}      label="Tax Report"               onClick={function() { window.alert('Tax reports will be available when you go live.'); }} />
     </RailCard>
   );
@@ -2885,7 +2885,7 @@ function RecentSecurityActivity({ router }: { router?: ReturnType<typeof useRout
   return (
     <RailCard title="RECENT SECURITY ACTIVITY" color={GOLD}>
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: -36, marginBottom: 14 }}>
-        <span onClick={function() { router.push('/admin/audit'); }} style={{ fontSize: 12, color: "#cfd3da", cursor: "pointer", border: '1px solid ' + BORDER + '', borderRadius: 6, padding: "4px 10px" }}>
+        <span onClick={function() { router?.push('/admin/audit'); }} style={{ fontSize: 12, color: "#cfd3da", cursor: "pointer", border: '1px solid ' + BORDER + '', borderRadius: 6, padding: "4px 10px" }}>
           View All
         </span>
       </div>
@@ -2901,7 +2901,7 @@ function RecentSecurityActivity({ router }: { router?: ReturnType<typeof useRout
 function SecurityQuickActions({ router }: { router: ReturnType<typeof useRouter> }) {
   return (
     <RailCard title="QUICK ACTIONS" color={GOLD}>
-      <ActionRow icon={MonitorSmartphone} label="View Active Sessions" onClick={function() { router.push('/admin/audit'); }} />
+      <ActionRow icon={MonitorSmartphone} label="View Active Sessions" onClick={function() { router?.push('/admin/audit'); }} />
       <ActionRow icon={KeyRound} label="Reset Admin Password" onClick={async function() {
         if (!window.confirm('Send a password reset link to the registered admin email?')) return;
         try {
@@ -2917,7 +2917,7 @@ function SecurityQuickActions({ router }: { router: ReturnType<typeof useRouter>
           else { window.alert('Failed to send reset link. Please try from User Management.'); }
         } catch { window.alert('Network error. Please try again.'); }
       }} />
-      <ActionRow icon={FileBarChart} label="View Login Logs" onClick={function() { router.push('/admin/audit'); }} />
+      <ActionRow icon={FileBarChart} label="View Login Logs" onClick={function() { router?.push('/admin/audit'); }} />
       <ActionRow icon={ShieldAlert} label="Security Alerts" onClick={function() { router.push('/admin/fraud'); }} />
     </RailCard>
   );
@@ -3304,7 +3304,7 @@ function NotificationQuickActions({ router }: { router: ReturnType<typeof useRou
     <RailCard title="QUICK ACTIONS" color={GOLD}>
       <ActionRow icon={Plus} label="Create New Notification" onClick={function() { router.push('/admin/email-templates'); }} />
       <ActionRow icon={FileBox} label="Manage Templates" onClick={function() { router.push('/admin/email-templates'); }} />
-      <ActionRow icon={FileSearch} label="Notification Logs" onClick={function() { router.push('/admin/audit'); }} />
+      <ActionRow icon={FileSearch} label="Notification Logs" onClick={function() { router?.push('/admin/audit'); }} />
       <ActionRow icon={PlayCircle} label="Test Notifications" onClick={function() { router.push('/admin/notifications'); }} />
       <ActionRow icon={SlidersHorizontal} label="Channel Configuration" onClick={function() { router.push('/admin/notifications'); }} />
     </RailCard>
@@ -4375,7 +4375,7 @@ function RecentActivityCard({ activity, router }: { activity: any[]; router: Ret
   return (
     <RailCard title="RECENT ACTIVITY" color={GOLD}>
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: -36, marginBottom: 14 }}>
-        <span onClick={function() { router.push('/admin/audit'); }} style={{ fontSize: 12, color: "#cfd3da", cursor: "pointer", border: '1px solid ' + BORDER + '', borderRadius: 6, padding: "4px 10px" }}>
+        <span onClick={function() { router?.push('/admin/audit'); }} style={{ fontSize: 12, color: "#cfd3da", cursor: "pointer", border: '1px solid ' + BORDER + '', borderRadius: 6, padding: "4px 10px" }}>
           View All
         </span>
       </div>
@@ -4400,9 +4400,9 @@ function IntegrationsQuickActions({ router, onAddIntegration }: { router: Return
     <RailCard title="QUICK ACTIONS" color={GOLD}>
       <ActionRow icon={Plus} label="Add New Integration" onClick={function() { if (onAddIntegration) onAddIntegration(); }} />
       <ActionRow icon={Key} label="Manage API Keys" onClick={function() { router.push('/admin/roles'); }} />
-      <ActionRow icon={Webhook} label="Webhook Endpoints" onClick={function() { router.push('/admin/audit'); }} />
+      <ActionRow icon={Webhook} label="Webhook Endpoints" onClick={function() { router?.push('/admin/audit'); }} />
       <ActionRow icon={PlayCircle} label="Test Integrations" onClick={function() { router.push('/admin/settings'); }} />
-      <ActionRow icon={FileSearch} label="Integration Logs" onClick={function() { router.push('/admin/audit'); }} />
+      <ActionRow icon={FileSearch} label="Integration Logs" onClick={function() { router?.push('/admin/audit'); }} />
     </RailCard>
   );
 }
