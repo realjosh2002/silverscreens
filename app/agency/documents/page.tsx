@@ -357,7 +357,7 @@ export default function DocumentsPage() {
                     </div>
                     <div style={{ fontFamily:BEBAS, fontSize:28, color:'#F5F5F5', letterSpacing:1, lineHeight:1 }}>{s.value}</div>
                     {(s as any).bar && <div style={{ height:4, background:BG4, borderRadius:2, margin:'6px 0 4px', overflow:'hidden' }}><div style={{ height:'100%', width:'16%', background:GOLD, borderRadius:2 }} /></div>}
-                    <div style={{ fontSize: 14, color: s.alert ? s.alertColor : 'rgba(255,255,255,0.35)', marginTop: s.bar ? 0 : 4 }}>{s.sub}</div>
+                    <div style={{ fontSize: 14, color: s.alert ? s.alertColor : 'rgba(255,255,255,0.35)', marginTop: (s as any).bar ? 0 : 4 }}>{s.sub}</div>
                   </div>
                 ))}
               </div>
