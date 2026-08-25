@@ -375,7 +375,7 @@ export default function DashboardPage() {
             <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(212,166,74,0.38)', flexShrink: 0 }}>
               <ProtectedMedia
                 type="image"
-                src={avatarUrl || undefined}
+                src={avatarUrl || ''}
                 alt={userName}
                 avatar
                 width={36}
@@ -427,7 +427,7 @@ export default function DashboardPage() {
               <div style={{ width: 38, height: 38, borderRadius: 9, overflow: 'hidden', border: '1px solid rgba(212,166,74,0.25)', flexShrink: 0 }}>
                 <ProtectedMedia
                   type="image"
-                  src={avatarUrl || undefined}
+                  src={avatarUrl || ''}
                   alt=""
                   avatar
                   width={38}
