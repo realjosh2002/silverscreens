@@ -347,7 +347,7 @@ export async function GET(req: NextRequest) {
         orderBy: { created_at: 'desc' },
         select: {
           id: true, reason: true, description: true,
-          status: true, admin_action: true, created_at: true,
+          status: true, created_at: true,
         },
       })
 
