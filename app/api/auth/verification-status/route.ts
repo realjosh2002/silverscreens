@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 // app/api/auth/verification-status/route.ts
 import { createServerClient } from '@supabase/ssr'

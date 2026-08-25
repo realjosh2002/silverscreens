@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 // app/api/profile/aspirant/media/route.ts
 import { NextRequest } from 'next/server'

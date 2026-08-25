@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 // app/api/admin/email-templates/test/route.ts
 import { NextRequest, NextResponse } from 'next/server'
