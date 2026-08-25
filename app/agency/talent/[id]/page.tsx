@@ -45,16 +45,16 @@ const NAV_ITEMS: { icon: any; label: string; href: string; active?: boolean; bad
 
 /* ─── Full mock profile data ──────────────────────────────────── */
 interface Credit {
-  type:        string;
-  year:        string;
-  role:        string;   // role type e.g. "Lead", "Supporting"
-  title:       string;   // project title
-  character:   string;   // character name
-  director:    string;
-  production:  string;   // production house
-  platform:    string;   // Feature Film, Web Series etc.
-  language:    string;
-  description: string;
+  type:         string;
+  year:         string;
+  role:         string;
+  title:        string;
+  character?:   string;
+  director?:    string;
+  production?:  string;
+  platform?:    string;
+  language?:    string;
+  description?: string;
 }
 interface Education { type: string; year: string; institution: string; detail: string }
 interface ActivityItem { color: string; text: string; time: string; badge?: string; badgeColor?: string }
