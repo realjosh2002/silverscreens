@@ -127,12 +127,11 @@ function Modal({ title, onClose, children, width=480 }: { title:string; onClose:
   );
 }
 
-function getAuthHeaders() {
+function getAuthHeaders(): Record<string, string> {
   try {
-    const raw = localStorage.getItem('ss_user') || sessionStorage.getItem('ss_user') || '{}';
-    const u = JSON.parse(raw);
-    const t = u.token ?? u.access_token ?? '';
-    return t ? { Authorization: `Bearer ${t}` } : {};
+    const key = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+    const token = key ? JSON.parse(localStorage.getItem(key) || '{}')?.access_token || '' : '';
+    return token ? { Authorization: `Bearer ${token}` } : {};
   } catch { return {}; }
 }
 
