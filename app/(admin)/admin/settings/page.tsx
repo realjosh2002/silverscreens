@@ -3426,6 +3426,7 @@ function LanguagesSubPanel({
   setBrowserLangDetection: (v: boolean) => void;
   onAddLanguage?: () => void;
   onEditLanguage?: (l: any) => void;
+  router?: any;
 }) {
   const [langPage, setLangPage] = useState(1);
   const LANG_PER_PAGE = 6;
