@@ -569,6 +569,9 @@ function AgencyProfileViewPageInner() {
   )
 }
 import { Suspense } from 'react'
-export default function AgencyProfileViewPage() {
+function AgencyProfileViewPageInner() {
   return <Suspense fallback={null}><AgencyProfileViewPageInner /></Suspense>
 }
+
+import { Suspense } from 'react'
+export default function AgencyProfileViewPage() { return <Suspense fallback={null}><AgencyProfileViewPageInner /></Suspense> }
