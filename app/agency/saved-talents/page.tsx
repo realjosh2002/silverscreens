@@ -159,7 +159,6 @@ export default function SavedTalentsPage() {
             state:    t.state ?? '—',
             addedOn:  t.created_at ? new Date(t.created_at).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '—',
             avatar:   t.avatar ?? '',
-            img:      t.avatar ?? '',
             priority: false,
             rating:   t.trust_score ?? 0,
             skills:   t.languages ?? [],
