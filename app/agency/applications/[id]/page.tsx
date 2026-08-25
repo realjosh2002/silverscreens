@@ -125,8 +125,8 @@ export default function ApplicationDetailPage() {
   const [msgCount,   setMsgCount]   = useState(0);
   const [notifCount, setNotifCount] = useState(0);
 
-  function getAuthHeaders() {
-    try { const u = JSON.parse(localStorage.getItem('ss_user') || '{}'); const token = u.token ?? u.access_token ?? ''; return token ? { Authorization: `Bearer ${token}` } : {}; } catch { return {}; }
+  function getAuthHeaders(): Record<string, string> {
+    try { const key = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token')); const token = key ? JSON.parse(localStorage.getItem(key) || '{}')?.access_token || '' : ''; return token ? { Authorization: `Bearer ${token}` } : {}; } catch { return {}; }
   }
 
   useEffect(() => {
