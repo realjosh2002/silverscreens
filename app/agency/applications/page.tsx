@@ -276,7 +276,7 @@ function ApplicationsManagementPage() {
           }
           if (p.profile_number ?? p.profileNumber) setAgencyId(p.profile_number ?? p.profileNumber);
           if (p.company_type  ?? p.companyType)    setAgencyType(p.company_type ?? p.companyType)
-        const vs=p.verification_status??p.verificationStatus??'pending'; setIsApproved(vs==='approved'||vs==='active');;
+        // verification status loaded via getIsApproved()
         })
         .catch(() => {});
 
