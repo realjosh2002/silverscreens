@@ -23,7 +23,7 @@ const BG2 = '#0B0F14'
 const BG3 = '#121821'
 
 // ── Data ──
-const NAV_PRIMARY = [
+const NAV_PRIMARY: { icon: any; label: string; href: string; active?: boolean; badge?: number }[] = [
   { icon: LayoutDashboard, label: 'Dashboard',              href: '/agency/dashboard'     },
   { icon: PlusCircle,      label: 'Create Casting Call',    href: '/agency/create-casting'},
   { icon: Megaphone,       label: 'Casting Calls List',     href: '/agency/casting-calls' },
