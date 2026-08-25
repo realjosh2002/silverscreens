@@ -484,7 +484,7 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 function ContactSection({ c, isLoggedIn, isSubscribed }: {
   c: typeof CASTINGS[0]; isLoggedIn: boolean; isSubscribed: boolean
 }) {
-  const contact = { name: c.contactName, phone: c.contactPhone || c.contactMobile ? `+91 ${(c.contactPhone || c.contactMobile || '').replace(/^\+91\s*/, '').replace(/^91/, '').trim()}` : '', email: c.contactEmail }
+  const contact = { name: c.contactName, phone: c.contactMobile ? `+91 ${(c.contactMobile || '').replace(/^\+91\s*/, '').replace(/^91/, '').trim()}` : '', email: c.contactEmail }
 
   if (!isLoggedIn) {
     return (
