@@ -1011,7 +1011,7 @@ export default function MyProfilePage() {
 
           {/*Image*/}
           <div onClick={e => e.stopPropagation()} style={{ maxWidth: '80vw', maxHeight: '85vh', position: 'relative' as const }}>
-            <ProtectedMedia type="image" src={lightboxPhoto} alt="" style={{ maxWidth: '80vw', maxHeight: '85vh', borderRadius: 10, objectFit: 'contain', display: 'block', boxShadow: '0 20px 80px rgba(0,0,0,0.8)' }} watermarkPosition="center" />
+            <ProtectedMedia type="image" src={lightboxPhoto} alt="" style={{ maxWidth: '80vw', maxHeight: '85vh', borderRadius: 10, objectFit: 'contain', display: 'block', boxShadow: '0 20px 80px rgba(0,0,0,0.8)' }} watermarkPosition="bottom-right" />
             {/*Counter*/}
             <div style={{ position: 'absolute' as const, bottom: -36, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 8 }}>
               {displayPhotos.map((_, i) => (
