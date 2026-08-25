@@ -2881,7 +2881,7 @@ function ActivityRow({
   );
 }
 
-function RecentSecurityActivity({ router }: { router: ReturnType<typeof useRouter> }) {
+function RecentSecurityActivity({ router }: { router?: ReturnType<typeof useRouter> }) {
   return (
     <RailCard title="RECENT SECURITY ACTIVITY" color={GOLD}>
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: -36, marginBottom: 14 }}>
