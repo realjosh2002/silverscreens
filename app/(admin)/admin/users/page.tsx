@@ -453,7 +453,7 @@ export default function AdminUsersPage() {
             {/* Stats */}
             <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12, marginBottom:20 }}>
               {STAT_CARDS.map(s => (
-                <div key={s.label} onClick={s.onClick} style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:'16px', cursor:s.onClick?'pointer':'default' }}
+                <div key={s.label} onClick={s.onClick} style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:'16px', cursor:'pointer' }}
                   onMouseEnter={e => { if(s.onClick) e.currentTarget.style.borderColor = s.color }}
                   onMouseLeave={e => { if(s.onClick) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)' }}
                 >
@@ -830,4 +830,4 @@ export default function AdminUsersPage() {
       {toast && <Toast msg={toast.msg} type={toast.type}/>}
     </div>
   );
-}	
+}
