@@ -3322,7 +3322,7 @@ const LOCALIZATION_SUBTABS = [
 ];
 
 function LocalizationPanel(props: any) {
-  const { subTab, setSubTab, languages, toggleLanguageStatus, defaultPlatformLanguage, setDefaultPlatformLanguage, allowLanguageChange, setAllowLanguageChange, browserLangDetection, setBrowserLangDetection, regions, toggleRegionStatus, localizationCurrencies, toggleCurrencyStatus, globalDateFormat, setGlobalDateFormat, globalTimeFormat, setGlobalTimeFormat, firstDayOfWeek, setFirstDayOfWeek, defaultTimezoneDisplay, setDefaultTimezoneDisplay, autoDST, setAutoDST, decimalSeparator, setDecimalSeparator, thousandsSeparator, setThousandsSeparator, decimalPlaces, setDecimalPlaces, measurementUnit, setMeasurementUnit, phoneNumberFormat, setPhoneNumberFormat, onAddLanguage, onAddRegion, onAddCurrency, onManageLocales, onEditLanguage, onEditRegion, onEditCurrency } = props;
+  const { subTab, setSubTab, languages, toggleLanguageStatus, defaultPlatformLanguage, setDefaultPlatformLanguage, allowLanguageChange, setAllowLanguageChange, browserLangDetection, setBrowserLangDetection, regions, toggleRegionStatus, localizationCurrencies, toggleCurrencyStatus, globalDateFormat, setGlobalDateFormat, globalTimeFormat, setGlobalTimeFormat, firstDayOfWeek, setFirstDayOfWeek, defaultTimezoneDisplay, setDefaultTimezoneDisplay, autoDST, setAutoDST, decimalSeparator, setDecimalSeparator, thousandsSeparator, setThousandsSeparator, decimalPlaces, setDecimalPlaces, measurementUnit, setMeasurementUnit, phoneNumberFormat, setPhoneNumberFormat, onAddLanguage, onAddRegion, onAddCurrency, onManageLocales, onEditLanguage, onEditRegion, onEditCurrency, router } = props;
 
   return (
     <>
@@ -3366,6 +3366,7 @@ function LocalizationPanel(props: any) {
           setBrowserLangDetection={setBrowserLangDetection}
           onAddLanguage={onAddLanguage}
           onEditLanguage={onEditLanguage}
+          router={router}
         />
       )}
       {subTab === "regions" && <RegionsSubPanel regions={regions} toggleRegionStatus={toggleRegionStatus} onEditRegion={onEditRegion} onAddRegion={onAddRegion} />}
@@ -3413,6 +3414,7 @@ function LanguagesSubPanel({
   setBrowserLangDetection,
   onAddLanguage,
   onEditLanguage,
+  router,
 }: {
   languages: any[];
   toggleLanguageStatus: (id: string) => void;
