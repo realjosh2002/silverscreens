@@ -105,7 +105,7 @@ export async function GET(
       prisma.casting_calls.count({ where: { agency_id: agencyId, status: 'active' } }).catch(() => 0),
       prisma.applications.count({ where: { agency_id: agencyId } }).catch(() => 0),
       prisma.applications.count({ where: { agency_id: agencyId, status: "shortlisted" } }).catch(() => 0),
-      prisma.applications.count({ where: { agency_id: agencyId, status: "hired" } }).catch(() => 0),
+      prisma.applications.count({ where: { agency_id: agencyId, status: "selected" } }).catch(() => 0),
     ])
 
     const activityLogs = await supabaseAdmin
