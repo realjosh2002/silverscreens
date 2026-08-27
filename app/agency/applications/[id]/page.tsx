@@ -26,6 +26,7 @@ const BARLOW = "'Barlow Condensed', sans-serif";
 
 const STATUS_COLORS: Record<string, string> = {
   New: BLUE, 'In Review': GOLD, Shortlisted: GREEN, Rejected: RED,
+  Selected: GREEN, 'On Hold': GOLD,
 };
 
 /* ─── Sidebar nav ─────────────────────────────────────────────── */
@@ -38,8 +39,8 @@ const NAV_ITEMS = [
   { icon: Star,            label: 'Shortlisted Talents',     href: '/agency/shortlisted' },
   { icon: CalendarCheck,   label: 'Audition Management',     href: '/agency/auditions' },
   { icon: Bookmark,        label: 'Saved Talents',           href: '/agency/saved-talents' },
-  { icon: MessageSquare,   label: 'Messages',  badge: 12,    href: '/agency/messages' },
-  { icon: Bell,            label: 'Notifications', badge: 3, href: '/agency/notifications' },
+  { icon: MessageSquare,   label: 'Messages',  href: '/agency/messages' },
+  { icon: Bell,            label: 'Notifications', href: '/agency/notifications' },
 ];
 
 /* ─── Full application data (keyed by applicant id) ──────────── */
@@ -66,6 +67,15 @@ interface AppDetail {
   /* audition */
   auditionDate: string; auditionTime: string; auditionFormat: string;
   auditionLocation: string; auditionNotes: string;
+  /* extended aspirant profile */
+  dob: string; category: string; role: string;
+  chest: string; hip: string; waist: string; shoe: string;
+  hairColor: string; eyeColor: string; complexion: string; bodyType: string;
+  aboutMe: string; socialLinks: Record<string, string>;
+  availabilityFor: string[];
+  experienceCredits: { role: string; title: string; type: string; year: string; character: string; director: string; production: string; platform: string; language: string; description: string }[];
+  agencyLogoUrl: string;
+  castingCallId: string;
 }
 
 const MEDIA_IMGS = [
@@ -101,12 +111,44 @@ function buildFallback(id: string): AppDetail {
     media: [], extraMedia: 0,
     auditionDate: '', auditionTime: '', auditionFormat: '',
     auditionLocation: '', auditionNotes: '',
+    dob: '', category: '', role: '',
+    chest: '', hip: '', waist: '', shoe: '',
+    hairColor: '', eyeColor: '', complexion: '', bodyType: '',
+    aboutMe: '', socialLinks: {}, availabilityFor: [], experienceCredits: [], agencyLogoUrl: '', castingCallId: '',
   };
 }
 
 /* ══════════════════════════════════════════════════════════════ */
 export default function ApplicationDetailPage() {
   const router  = useRouter();
+
+  const [msgCount,   setMsgCount]   = useState(0);
+  const [notifCount, setNotifCount] = useState(0);
+
+  function getAuthHeaders() {
+    try { const u = JSON.parse(localStorage.getItem('ss_user') || '{}'); const token = u.token ?? u.access_token ?? ''; return token ? { Authorization: `Bearer ${token}` } : {}; } catch { return {}; }
+  }
+
+  useEffect(() => {
+    function fetchCounts() {
+      const h = getAuthHeaders();
+      fetch('/api/notifications', { headers: h }).then(r => r.ok ? r.json() : null).then(data => {
+        if (!data) return;
+        const count = data.data?.unread_count ?? data.unread_count;
+        if (count != null) { setNotifCount(count); return; }
+        const list = data.data?.notifications ?? data.notifications ?? [];
+        if (Array.isArray(list)) setNotifCount(list.filter((n: any) => !n.is_read).length);
+      }).catch(() => {});
+      fetch('/api/messages/conversations', { headers: h }).then(r => r.ok ? r.json() : null).then(data => {
+        if (!data) return;
+        const list = data.data?.conversations ?? data.conversations ?? [];
+        if (Array.isArray(list)) setMsgCount(list.filter((c: any) => c.unreadCount > 0 || c.unread_count > 0).length);
+      }).catch(() => {});
+    }
+    fetchCounts();
+    const interval = setInterval(fetchCounts, 30000);
+    return () => clearInterval(interval);
+  }, []);
   const params  = useParams();
   const rawId   = params?.id;
   const id      = typeof rawId === 'string' ? rawId : Array.isArray(rawId) ? rawId[0] : '';
@@ -121,12 +163,33 @@ export default function ApplicationDetailPage() {
   const [profileOpen,  setProfileOpen]  = useState(false);
   const [agencyName,    setAgencyName]    = useState('My Agency');
   const [agencyInitials,setAgencyInitials]= useState('AG');
+  const [agencyType,    setAgencyType]    = useState('Production House');
+  const [agencyId,      setAgencyId]      = useState('AGE·········');
+  const [isApproved,    setIsApproved]    = useState(true);
 
   useEffect(() => {
     try {
       const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
       if (u.name) { setAgencyName(u.name); setAgencyInitials(u.name.split(' ').map((w: string) => w[0]).join('').slice(0,2).toUpperCase()); }
+      if (u.profileNumber) setAgencyId(u.profileNumber);
+      const st = u.profileStatus ?? 'pending';
+      setIsApproved(st === 'approved' || st === 'active');
     } catch {}
+    // Fetch full agency profile
+    const h = getAuthHeaders();
+    fetch('/api/profile/agency', { headers: h })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        const p = data.data?.profile ?? data.profile ?? data;
+        const name = p.company_name ?? p.name;
+        if (name) { setAgencyName(name); setAgencyInitials(name.split(' ').map((w: string) => w[0]).join('').slice(0,2).toUpperCase()); }
+        const agNum = p.profile_number ?? p.profiles?.profile_number;
+        if (agNum) setAgencyId(agNum);
+        if (p.company_type ?? p.companyType) setAgencyType(p.company_type ?? p.companyType);
+        const vs = p.verification_status ?? p.verificationStatus ?? 'pending';
+        setIsApproved(vs === 'approved' || vs === 'active');
+      }).catch(() => {});
   }, []);
   const [activeTab,    setActiveTab]    = useState<'application' | 'audition' | 'documents' | 'messages' | 'notes' | 'activity'>('application');
   const [note,         setNote]         = useState('');
@@ -262,7 +325,36 @@ export default function ApplicationDetailPage() {
           languages:         Array.isArray(ap.languages) ? ap.languages.join(', ') : (ap.languages ?? prev.languages),
           height:            ap.height_cm ? `${ap.height_cm} cm` : prev.height,
           weight:            ap.weight_kg ? `${Math.round(parseFloat(String(ap.weight_kg)))} kg` : prev.weight,
-          bodyType:          ap.body_type ?? prev.bodyType,
+          bodyType:          ap.body_type      ?? prev.bodyType,
+          chest:             ap.chest_size     ? `${ap.chest_size} inch` : prev.chest,
+          hip:               ap.hip_size       ? `${ap.hip_size} inch` : prev.hip,
+          waist:             ap.waist_size     ? `${ap.waist_size} inch` : prev.waist,
+          shoe:              ap.shoe_size      ? `${ap.shoe_size}` : prev.shoe,
+          hairColor:         ap.hair_color     ?? prev.hairColor,
+          eyeColor:          ap.eye_color      ?? prev.eyeColor,
+          complexion:        ap.body_tone      ?? prev.complexion,
+          dob:               ap.date_of_birth  ? new Date(ap.date_of_birth).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : prev.dob,
+          role:              ap.role           ?? prev.role,
+          aboutMe:           ap.about_me       ?? prev.aboutMe,
+          socialLinks:       typeof ap.social_links === 'object' && ap.social_links ? ap.social_links : prev.socialLinks,
+          agencyLogoUrl:     cc.agency_profiles?.logo_url ?? prev.agencyLogoUrl,
+          availabilityFor:   Array.isArray(ap.availability) && ap.availability.length > 0
+                               ? ap.availability : prev.availabilityFor,
+          experienceCredits: Array.isArray(ap.social_links?.credits) && ap.social_links.credits.length > 0
+                               ? ap.social_links.credits.map((c: any) => ({
+                                   role:        c.role        ?? '',
+                                   title:       c.title       ?? '',
+                                   type:        c.type        ?? '',
+                                   year:        c.year        ? String(c.year) : '',
+                                   character:   c.characterName ?? c.character ?? '',
+                                   director:    c.director    ?? '',
+                                   production:  c.productionHouse ?? c.production ?? '',
+                                   platform:    c.platform    ?? '',
+                                   language:    c.language    ?? '',
+                                   description: c.description ?? '',
+                                 }))
+                               : prev.experienceCredits,
+          castingCallId:     cc.id ?? a.casting_call_id ?? prev.castingCallId,
           rating:            ap.average_rating ?? prev.rating,
           reviews:           ap.total_reviews  ?? prev.reviews,
           views:             ap.profile_views  ? String(ap.profile_views) : prev.views,
@@ -270,7 +362,7 @@ export default function ApplicationDetailPage() {
                                : Array.isArray(ap.social_links?.skills) ? ap.social_links.skills
                                : Array.isArray(ap.specializations) && ap.specializations.length > 0 ? ap.specializations
                                : prev.skills,
-          coverLetter:       a.notes ?? prev.coverLetter,
+          coverLetter:       a.cover_letter ?? a.notes ?? ap.about_me ?? prev.coverLetter,
           reqRole:           cc.role_name ?? prev.reqRole,
           reqGender:         cc.gender_preference ?? prev.reqGender,
           reqAgeRange:       cc.age_min && cc.age_max ? `${cc.age_min} – ${cc.age_max} Years` : prev.reqAgeRange,
@@ -280,8 +372,8 @@ export default function ApplicationDetailPage() {
           // Media from aspirant_media
           media:             Array.isArray(ap.aspirant_media) && ap.aspirant_media.length > 0
                                ? ap.aspirant_media.map((m: any) => ({
-                                   title:    m.title ?? m.media_type ?? m.type ?? 'Media',
-                                   type:     (m.media_type ?? m.type ?? 'file').toUpperCase(),
+                                   title:    m.title ?? m.document_type ?? (m.type === 'document' ? 'Document' : m.type === 'image' ? 'Photo' : 'Video'),
+                                   type:     m.type === 'document' ? 'DOCUMENT' : m.type === 'video' ? 'VIDEO' : 'IMAGE',
                                    size:     m.file_size ? `${(m.file_size / (1024 * 1024)).toFixed(1)} MB` : '',
                                    duration: m.duration ?? undefined,
                                    img:      m.url ?? m.file_url ?? MEDIA_IMGS[0],
@@ -305,11 +397,11 @@ export default function ApplicationDetailPage() {
                   : prev.skills,
                 media: Array.isArray(t.aspirant_media) && t.aspirant_media.length > 0
                   ? t.aspirant_media.map((m: any) => ({
-                      title:    m.title ?? m.media_type ?? 'Media',
-                      type:     (m.media_type ?? m.type ?? 'file').toUpperCase(),
+                      title:    m.title ?? m.document_type ?? (m.type === 'document' ? 'Document' : m.type === 'image' ? 'Photo' : 'Video'),
+                      type:     m.type === 'document' ? 'DOCUMENT' : m.type === 'video' ? 'VIDEO' : 'IMAGE',
                       size:     m.file_size ? `${(m.file_size / (1024 * 1024)).toFixed(1)} MB` : '',
                       duration: m.duration ?? undefined,
-                      img:      m.url ?? m.file_url ?? MEDIA_IMGS[0],
+                      img:      m.url ?? m.file_url ?? '',
                     }))
                   : prev.media,
               }));
@@ -326,7 +418,7 @@ export default function ApplicationDetailPage() {
   const TABS = [
     { key: 'application', label: 'Application' },
     { key: 'audition',    label: 'Audition' },
-    { key: 'documents',   label: `Documents (5)` },
+    { key: 'documents',   label: `Documents (${app.media.filter(m => m.type === 'DOCUMENT').length + (app.portfolioLink ? 1 : 0)})` },
     { key: 'messages',    label: 'Messages' },
     { key: 'notes',       label: 'Notes' },
     { key: 'activity',    label: 'Activity Log' },
@@ -365,7 +457,7 @@ export default function ApplicationDetailPage() {
 
       {/* ══ TOPNAV ══ */}
       <header style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, padding: '0 24px', height: 60, background: BG2, borderBottom: '1px solid rgba(255,255,255,0.06)', zIndex: 100 }}>
-        <SilverScreensLogo size="md" href="/" showTagline={false} />
+        <SilverScreensLogo size="md" href="/agency/dashboard" showTagline={false} />
         <div style={{ flex: 1 }} />
         <button onClick={() => router.push('/agency/create-casting')} style={{ display: 'flex', alignItems: 'center', gap: 7, background: RED, color: '#fff', border: 'none', borderRadius: 8, padding: '0 18px', height: 36, fontSize: 16, fontWeight: 700, fontFamily: BARLOW, cursor: 'pointer', whiteSpace: 'nowrap' }}>
           Post a Casting <span style={{ fontSize: 17, fontWeight: 400 }}>+</span>
@@ -374,20 +466,22 @@ export default function ApplicationDetailPage() {
           <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <MessageSquare size={15} color="rgba(255,255,255,0.7)" />
           </div>
-          <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', pointerEvents: 'none' }}>12</div>
+          {msgCount > 0 && <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', pointerEvents: 'none' }}>{msgCount}</div>}
         </div>
         <div onClick={() => router.push('/agency/notifications')} style={{ position: 'relative', cursor: 'pointer' }}>
           <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Bell size={15} color="rgba(255,255,255,0.7)" />
           </div>
-          <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', pointerEvents: 'none' }}>3</div>
+          {notifCount > 0 && <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', pointerEvents: 'none' }}>{notifCount}</div>}
         </div>
         <div style={{ position: 'relative' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer' }} onClick={() => setProfileOpen(v => !v)}>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#1a1410,#2a1e0e)', border: `2px solid ${GOLD}60`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, color: GOLD, fontFamily: BEBAS }}>{agencyInitials}</div>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#1a1410,#2a1e0e)', border: `2px solid ${GOLD}60`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, color: GOLD, fontFamily: BEBAS, overflow: 'hidden' }}>
+                {app.agencyLogoUrl ? <img src={app.agencyLogoUrl} alt={agencyInitials} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} /> : agencyInitials}
+              </div>
             <div>
               <div style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2 }}>{agencyName}</div>
-              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Production House</div>
+              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>{agencyType}</div>
             </div>
             <ChevronDown size={12} color="rgba(255,255,255,0.4)" />
           </div>
@@ -397,20 +491,20 @@ export default function ApplicationDetailPage() {
               <div style={{ position: 'absolute', top: 46, right: 0, width: 220, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', zIndex: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
                 <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Agency ID</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: GOLD }}>AGE062600001</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: GOLD }}>{agencyId}</span>
                 </div>
 
                 {[
                   { label: 'Reports & Analytics', href: '/agency/reports' },
-                  { label: 'Subscription & Billing', href: '/pricing' },
+                  { label: 'Subscription & Billing', href: '/agency/subscription' },
                   { label: 'Company Profile', href: '/agency-profile' },
                   { label: 'Documents', href: '/agency/documents' },
                   { label: 'Calendar', href: '/agency/calendar' },
                   { label: 'Settings', href: '/agency/settings' },
-                  { label: 'Support', href: '/contact' },
+                  { label: 'Support', href: '/agency/support' },
                   { label: 'Logout', href: '/login' },
                 ].map(({ label, href }) => (
-                  <div key={label} onClick={() => { router.push(href); setProfileOpen(false); }} style={{ padding: '10px 16px', fontSize: 16, cursor: 'pointer', color: label === 'Logout' ? '#ff6b6b' : '#F5F5F5', borderTop: label === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
+                  <div key={label} onClick={() => { if (label === 'Logout') { localStorage.removeItem('ss_user'); window.location.replace('/login'); } else { router.push(href); setProfileOpen(false); } }} style={{ padding: '10px 16px', fontSize: 16, cursor: 'pointer', color: label === 'Logout' ? '#ff6b6b' : '#F5F5F5', borderTop: label === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                   >{label}</div>
@@ -434,7 +528,9 @@ export default function ApplicationDetailPage() {
           </div>
           {sidebarOpen && (
             <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 38, height: 38, borderRadius: 9, background: 'linear-gradient(135deg,#1a1410,#2a1e0e)', border: `1px solid ${GOLD}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, color: GOLD, fontFamily: BEBAS, flexShrink: 0 }}>{agencyInitials}</div>
+              <div style={{ width: 38, height: 38, borderRadius: 9, background: 'linear-gradient(135deg,#1a1410,#2a1e0e)', border: `1px solid ${GOLD}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, color: GOLD, fontFamily: BEBAS, flexShrink: 0, overflow: 'hidden' }}>
+                {app.agencyLogoUrl ? <img src={app.agencyLogoUrl} alt={agencyInitials} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} /> : agencyInitials}
+              </div>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: '#F5F5F5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{agencyName}</div>
                 <div onClick={() => router.push('/agency-profile')} style={{ fontSize: 14, color: RED, fontWeight: 600, cursor: 'pointer' }}>View Company Profile</div>
@@ -442,7 +538,9 @@ export default function ApplicationDetailPage() {
             </div>
           )}
           <nav style={{ flex: 1, padding: sidebarOpen ? '8px 6px' : '8px 4px', overflowY: 'auto', scrollbarWidth: 'none' }}>
-            {NAV_ITEMS.map(({ icon: Icon, label, active, badge, href }) => (
+            {NAV_ITEMS.map(({ icon: Icon, label, active, href }) => {
+                const badge = label === 'Messages' ? (msgCount > 0 ? msgCount : undefined) : label === 'Notifications' ? (notifCount > 0 ? notifCount : undefined) : undefined;
+                return (
               <div key={label} onClick={() => router.push(href)} title={!sidebarOpen ? label : undefined}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'space-between' : 'center', padding: sidebarOpen ? '8px 10px' : '10px 0', marginBottom: 2, borderRadius: 6, cursor: 'pointer', background: active ? 'rgba(200,32,42,0.12)' : 'transparent', borderLeft: sidebarOpen && active ? `3px solid ${RED}` : sidebarOpen ? '3px solid transparent' : 'none', position: 'relative' }}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
@@ -455,14 +553,15 @@ export default function ApplicationDetailPage() {
                 {sidebarOpen && badge && <div style={{ background: RED, color: '#fff', borderRadius: 10, fontSize: 14, fontWeight: 700, padding: '1px 6px', minWidth: 18, textAlign: 'center' }}>{badge}</div>}
                 {!sidebarOpen && badge && <div style={{ position: 'absolute', top: 6, right: 4, background: RED, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff' }}>{badge}</div>}
               </div>
-            ))}
+                );
+              })}
           </nav>
           {sidebarOpen && (
             <div style={{ margin: '8px 10px 14px', borderRadius: 12, background: 'linear-gradient(135deg,#1a1205,#2a1e0a)', border: '1px solid rgba(212,166,74,0.25)', padding: '14px 12px', textAlign: 'center', flexShrink: 0 }}>
               <div style={{ fontSize: 20, marginBottom: 4 }}>👑</div>
               <div style={{ fontSize: 16, fontWeight: 700, color: GOLD, marginBottom: 3 }}>Upgrade to Pro</div>
               <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', marginBottom: 10, lineHeight: 1.5 }}>Unlock advanced filters and AI matching.</div>
-              <button onClick={() => router.push('/pricing')} style={{ width: '100%', background: GOLD, color: '#000', border: 'none', borderRadius: 8, padding: '7px 0', fontSize: 14, fontWeight: 700, fontFamily: BARLOW, cursor: 'pointer' }}>Upgrade Now</button>
+              <button onClick={() => router.push('/agency/subscription')} style={{ width: '100%', background: GOLD, color: '#000', border: 'none', borderRadius: 8, padding: '7px 0', fontSize: 14, fontWeight: 700, fontFamily: BARLOW, cursor: 'pointer' }}>Upgrade Now</button>
             </div>
           )}
         </aside>
@@ -515,7 +614,7 @@ export default function ApplicationDetailPage() {
               <button onClick={() => router.push(`/agency/talent/${app.aspirantProfileId || app.id}`)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'none', border: `1px solid ${GOLD}`, borderRadius: 8, padding: '9px 0', color: GOLD, fontSize: 15, fontFamily: BARLOW, fontWeight: 700, cursor: 'pointer', width: '100%' }}>
                 <Eye size={14} color={GOLD} /> View Full Profile
               </button>
-              <button onClick={() => router.push('/agency/messages')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '9px 0', color: 'rgba(255,255,255,0.7)', fontSize: 15, fontFamily: BARLOW, fontWeight: 500, cursor: 'pointer', width: '100%' }}>
+              <button onClick={() => router.push(`/agency/messages?recipient_id=${app.aspirantProfileId}&recipient_name=${encodeURIComponent(app.name)}`)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '9px 0', color: 'rgba(255,255,255,0.7)', fontSize: 15, fontFamily: BARLOW, fontWeight: 500, cursor: 'pointer', width: '100%' }}>
                 <MessageSquare size={14} /> Contact Aspirant
               </button>
             </div>
@@ -563,6 +662,7 @@ export default function ApplicationDetailPage() {
                       {[
                         { label: 'Schedule Audition', onClick: () => { router.push(`/agency/auditions/schedule?applicationId=${id}`); setMoreOpen(false); } },
                         { label: 'Save to Talent Pool', onClick: () => { router.push('/agency/saved-talents'); setMoreOpen(false); } },
+                        { label: 'View Talent Profile', onClick: () => { router.push(`/agency/talent/${app.aspirantProfileId}`); setMoreOpen(false); } },
                         { label: 'Download Application', onClick: () => setMoreOpen(false) },
                       ].map(({ label, onClick }) => (
                         <div key={label} onClick={onClick} style={{ padding: '9px 14px', fontSize: 15, fontFamily: BARLOW, cursor: 'pointer', color: '#F5F5F5' }}
@@ -646,31 +746,107 @@ export default function ApplicationDetailPage() {
               {activeTab === 'application' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-                  {/* Cover Letter */}
-                  <CentreCard title="Cover Letter / About">
-                    <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)', lineHeight: 1.55, margin: 0 }}>{app.coverLetter}</p>
-                  </CentreCard>
+                  {/* About / Cover Letter */}
+                  {app.coverLetter && (
+                    <CentreCard title="About / Cover Letter">
+                      <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)', lineHeight: 1.7, margin: 0 }}>{app.coverLetter}</p>
+                    </CentreCard>
+                  )}
 
-                  {/* Attributes — 2-column grid, no stretching */}
-                  <div style={{ background: BG2, border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '14px 16px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 0 }}>
+                  {/* About Me */}
+                  {app.aboutMe && (
+                    <CentreCard title="About Me">
+                      <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)', lineHeight: 1.7, margin: 0 }}>{app.aboutMe}</p>
+                    </CentreCard>
+                  )}
+
+                  {/* Available For */}
+                  {app.availabilityFor.length > 0 && (
+                    <CentreCard title="Available For">
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {app.availabilityFor.map((a: string) => (
+                          <span key={a} style={{ fontSize: 14, color: GREEN, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 20, padding: '5px 14px' }}>{a}</span>
+                        ))}
+                      </div>
+                    </CentreCard>
+                  )}
+
+                  {/* Experience & Credits */}
+                  {app.experienceCredits.length > 0 && (
+                    <CentreCard title={`Experience & Credits (${app.experienceCredits.length})`}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                        {app.experienceCredits.map((c, i, arr) => (
+                          <div key={i} style={{ padding: '16px 0', borderBottom: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.07)' : 'none' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                              <div>
+                                {c.role && <div style={{ fontSize: 17, fontWeight: 700, color: '#fff', letterSpacing: 0.5 }}>{c.role.toUpperCase()}</div>}
+                                {c.title && <div style={{ fontSize: 15, color: GOLD, fontWeight: 600 }}>{c.title}</div>}
+                                {c.character && <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)' }}>as <strong style={{ color: '#fff' }}>{c.character}</strong></div>}
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+                                {c.year && <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>{c.year}</span>}
+                                {c.type && <span style={{ fontSize: 12, color: GOLD, background: `${GOLD}15`, border: `1px solid ${GOLD}30`, borderRadius: 20, padding: '2px 10px' }}>{c.type}</span>}
+                              </div>
+                            </div>
+                            {(c.director || c.production || c.platform || c.language) && (
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 24px', marginBottom: 6 }}>
+                                {c.director && <div style={{ fontSize: 14 }}><span style={{ color: 'rgba(255,255,255,0.4)' }}>Director: </span><strong style={{ color: '#fff' }}>{c.director}</strong></div>}
+                                {c.production && <div style={{ fontSize: 14 }}><span style={{ color: 'rgba(255,255,255,0.4)' }}>Production: </span><strong style={{ color: '#fff' }}>{c.production}</strong></div>}
+                                {c.platform && <div style={{ fontSize: 14 }}><span style={{ color: 'rgba(255,255,255,0.4)' }}>Platform: </span><strong style={{ color: '#fff' }}>{c.platform}</strong></div>}
+                                {c.language && <div style={{ fontSize: 14 }}><span style={{ color: 'rgba(255,255,255,0.4)' }}>Language: </span><strong style={{ color: '#fff' }}>{c.language}</strong></div>}
+                              </div>
+                            )}
+                            {c.description && <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6 }}>{c.description}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    </CentreCard>
+                  )}
+
+                  {/* Personal Details */}
+                  <CentreCard title="Personal Details">
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0 }}>
                       {[
-                        { label: 'Experience',               value: app.experience },
-                        { label: 'Availability',             value: app.availability, color: app.availability === 'Available Now' ? GREEN : GOLD },
-                        { label: 'Languages Known',          value: app.languages },
-                        { label: 'Expected Date of Joining', value: app.joiningDate },
-                        { label: 'Height',                   value: app.height },
-                        { label: 'Weight',                   value: app.weight },
-                        { label: 'Travel',                   value: app.travel },
-                        { label: 'Portfolio Link',           value: app.portfolioLink, link: true },
-                      ].filter(r => r.value).map(({ label, value, color, link }, i, arr) => (
-                        <div key={label} style={{ padding: '10px 12px', borderBottom: i < arr.length - 2 ? '1px solid rgba(255,255,255,0.05)' : 'none', borderRight: i % 2 === 0 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
-                          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', marginBottom: 4, textTransform: 'uppercase' as const, letterSpacing: 0.4 }}>{label}</div>
-                          <div style={{ fontSize: 15, fontWeight: 500, color: link ? GOLD : (color || '#fff'), textDecoration: link ? 'underline' : 'none', cursor: link ? 'pointer' : 'default' }}>{value}</div>
+                        { label: 'Date of Birth',  value: app.dob },
+                        { label: 'Gender',         value: app.gender },
+                        { label: 'Age',            value: app.age ? `${app.age} Years` : '' },
+                        { label: 'Category',       value: app.category },
+                        { label: 'Role',           value: app.role },
+                        { label: 'Experience',     value: app.experience },
+                        { label: 'Location',       value: app.location },
+                        { label: 'Languages',      value: app.languages },
+                        { label: 'Availability',   value: app.availability, color: app.availability === 'Available Now' ? GREEN : GOLD },
+                      ].filter(r => r.value).map(({ label, value, color }, i, arr) => (
+                        <div key={label} style={{ padding: '10px 12px', borderBottom: i < arr.length - 3 ? '1px solid rgba(255,255,255,0.05)' : 'none', borderRight: i % 3 !== 2 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: 0.4 }}>{label}</div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: color || '#fff' }}>{value}</div>
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </CentreCard>
+
+                  {/* Physical Attributes */}
+                  <CentreCard title="Physical Attributes">
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0 }}>
+                      {[
+                        { label: 'Height',     value: app.height },
+                        { label: 'Weight',     value: app.weight },
+                        { label: 'Chest',      value: app.chest },
+                        { label: 'Waist',      value: app.waist },
+                        { label: 'Hip',        value: app.hip },
+                        { label: 'Shoe Size',  value: app.shoe },
+                        { label: 'Hair Color', value: app.hairColor },
+                        { label: 'Eye Color',  value: app.eyeColor },
+                        { label: 'Complexion', value: app.complexion },
+                        { label: 'Body Type',  value: app.bodyType },
+                      ].filter(r => r.value).map(({ label, value }, i, arr) => (
+                        <div key={label} style={{ padding: '10px 12px', borderBottom: i < arr.length - 4 ? '1px solid rgba(255,255,255,0.05)' : 'none', borderRight: i % 4 !== 3 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: 0.4 }}>{label}</div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </CentreCard>
 
                   {/* Skills */}
                   <CentreCard title="Skills">
@@ -684,6 +860,40 @@ export default function ApplicationDetailPage() {
                       </div>
                     )}
                   </CentreCard>
+
+                  {/* Application Specifics */}
+                  {(app.joiningDate || app.travel || app.portfolioLink) && (
+                    <CentreCard title="Application Details">
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 0 }}>
+                        {[
+                          { label: 'Expected Joining', value: app.joiningDate },
+                          { label: 'Travel',           value: app.travel },
+                          { label: 'Portfolio Link',   value: app.portfolioLink, link: true },
+                        ].filter(r => r.value).map(({ label, value, link }, i, arr) => (
+                          <div key={label} style={{ padding: '10px 12px', borderBottom: i < arr.length - 2 ? '1px solid rgba(255,255,255,0.05)' : 'none', borderRight: i % 2 === 0 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: 0.4 }}>{label}</div>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: link ? GOLD : '#fff', textDecoration: link ? 'underline' : 'none', cursor: link ? 'pointer' : 'default' }}
+                              onClick={() => link && app.portfolioLink && window.open(app.portfolioLink.startsWith('http') ? app.portfolioLink : `https://${app.portfolioLink}`, '_blank')}
+                            >{value}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </CentreCard>
+                  )}
+
+                  {/* Social Links */}
+                  {app.socialLinks && Object.values(app.socialLinks).some(v => v && !['credits'].includes(Object.keys(app.socialLinks)[Object.values(app.socialLinks).indexOf(v)])) && (
+                    <CentreCard title="Social Links">
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {Object.entries(app.socialLinks).filter(([k, v]) => v && k !== 'credits' && typeof v === 'string').map(([k, v]) => (
+                          <a key={k} href={String(v).startsWith('http') ? String(v) : `https://${v}`} target="_blank" rel="noreferrer"
+                            style={{ fontSize: 14, color: BLUE, background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 20, padding: '5px 14px', textDecoration: 'none', textTransform: 'capitalize' as const }}>
+                            {k} ↗
+                          </a>
+                        ))}
+                      </div>
+                    </CentreCard>
+                  )}
                 </div>
               )}
 
@@ -720,22 +930,30 @@ export default function ApplicationDetailPage() {
               {/* ── DOCUMENTS TAB ── */}
               {activeTab === 'documents' && (
                 <CentreCard title="Submitted Documents">
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {['Resume / CV', 'Headshots Pack', 'Acting Reel', 'Identity Proof', 'Portfolio PDF'].map((doc, i) => (
-                      <div key={doc} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: BG3, borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{ width: 32, height: 32, borderRadius: 6, background: `${GOLD}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <FileText size={14} color={GOLD} />
+                  {(() => {
+                    const docs = app.media.filter(m => m.type === 'DOCUMENT');
+                    if (docs.length === 0) return (
+                      <div style={{ textAlign: 'center', padding: '30px 0', color: 'rgba(255,255,255,0.35)', fontSize: 15 }}>No documents submitted.</div>
+                    );
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {docs.map((doc, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: BG3, borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <div style={{ width: 32, height: 32, borderRadius: 6, background: `${GOLD}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <FileText size={14} color={GOLD} />
+                              </div>
+                              <div>
+                                <div style={{ fontSize: 15, color: '#fff', fontWeight: 500 }}>{doc.title || `Document ${i + 1}`}</div>
+                                <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.35)' }}>{doc.size || 'Document'}</div>
+                              </div>
+                            </div>
+                            <button onClick={() => doc.img && window.open(doc.img, '_blank')} style={{ background: 'none', border: `1px solid ${GOLD}40`, borderRadius: 6, padding: '5px 12px', color: GOLD, fontSize: 14, fontFamily: BARLOW, cursor: 'pointer' }}>View</button>
                           </div>
-                          <div>
-                            <div style={{ fontSize: 15, color: '#fff', fontWeight: 500 }}>{doc}</div>
-                            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.35)' }}>PDF · {2 + i}.{i + 1} MB</div>
-                          </div>
-                        </div>
-                        <button style={{ background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, padding: '5px 12px', color: 'rgba(255,255,255,0.6)', fontSize: 14, fontFamily: BARLOW, cursor: 'pointer' }}>Download</button>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })()}
                 </CentreCard>
               )}
 
@@ -745,7 +963,7 @@ export default function ApplicationDetailPage() {
                   <div style={{ textAlign: 'center', padding: '30px 0' }}>
                     <MessageSquare size={36} color="rgba(255,255,255,0.15)" style={{ marginBottom: 12 }} />
                     <div style={{ fontSize: 16, color: 'rgba(255,255,255,0.4)', marginBottom: 16 }}>No messages yet with this applicant.</div>
-                    <button onClick={() => router.push('/agency/messages')} style={{ background: RED, border: 'none', borderRadius: 8, padding: '9px 20px', color: '#fff', fontSize: 15, fontFamily: BARLOW, fontWeight: 700, cursor: 'pointer' }}>Start a Conversation</button>
+                    <button onClick={() => router.push(`/agency/messages?recipient_id=${app.aspirantProfileId}&recipient_name=${encodeURIComponent(app.name)}`)} style={{ background: RED, border: 'none', borderRadius: 8, padding: '9px 20px', color: '#fff', fontSize: 15, fontFamily: BARLOW, fontWeight: 700, cursor: 'pointer' }}>Start a Conversation</button>
                   </div>
                 </CentreCard>
               )}
@@ -771,8 +989,8 @@ export default function ApplicationDetailPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                     {[
                       { color: BLUE,  text: `Applied for "${app.castingCall}" as ${app.roleApplied}`, time: `${app.appliedOn}, ${app.appliedTime}`, badge: 'New', badgeColor: BLUE },
-                      { color: GOLD,  text: `Application viewed by ${agencyName}`,              time: `${app.appliedOn}, 12:00 PM` },
-                      { color: GREEN, text: 'Profile viewed',                                         time: `${app.appliedOn}, 11:50 AM` },
+                      { color: GOLD,  text: `Application viewed by ${agencyName}`,              time: app.appliedOn },
+                      { color: GREEN, text: 'Profile viewed',                                         time: app.appliedOn },
                     ].map((a, i, arr) => (
                       <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '13px 0', borderBottom: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
                         <div style={{ width: 10, height: 10, borderRadius: '50%', background: a.color, flexShrink: 0, marginTop: 4 }} />
@@ -793,7 +1011,7 @@ export default function ApplicationDetailPage() {
           <div style={{ width: 260, flexShrink: 0, overflowY: 'auto', scrollbarWidth: 'none', borderLeft: '1px solid rgba(255,255,255,0.06)', padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 18 }}>
 
             {/* Role Requirements */}
-            <RPanel title="Role Requirements" action={<span onClick={() => router.push(`/agency/casting-calls`)} style={{ fontSize: 14, color: GOLD, cursor: 'pointer' }}>View Full Casting Call Details →</span>}>
+            <RPanel title="Role Requirements" action={<span onClick={() => app.castingCallId && router.push(`/agency/casting-calls/${app.castingCallId}`)} style={{ fontSize: 14, color: GOLD, cursor: app.castingCallId ? 'pointer' : 'default', opacity: app.castingCallId ? 1 : 0.4 }}>View Full Casting Call →</span>}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                 {[
                   { label: 'Role',       value: app.reqRole,       highlight: PURPLE },
@@ -816,9 +1034,9 @@ export default function ApplicationDetailPage() {
             </RPanel>
 
             {/* Submitted Media */}
-            <RPanel title="Submitted Media" action={<span style={{ fontSize: 14, color: GOLD, cursor: 'pointer' }}>View All</span>}>
+            <RPanel title="Submitted Media" action={<span onClick={() => router.push(`/agency/talent/${app.aspirantProfileId}`)} style={{ fontSize: 14, color: GOLD, cursor: 'pointer' }}>View All →</span>}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-                {app.media.slice(0, 4).map((m, i) => (
+                {app.media.filter(m => m.type !== 'DOCUMENT').slice(0, 4).map((m, i) => (
                   <div key={i} style={{ borderRadius: 8, overflow: 'hidden', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.06)', transition: 'border-color 0.15s' }}
                     onMouseEnter={e => (e.currentTarget.style.borderColor = `${GOLD}50`)}
                     onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)')}

@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation'
+
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
+import ProtectedMedia from '@/components/ui/ProtectedMedia';
 import {
   LayoutDashboard, FileText, MessageSquare, Mic2,
   Bookmark, Star, Bell, ChevronRight, ChevronLeft, Menu,
@@ -27,20 +29,25 @@ const RED      = '#EF4444';
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard',            href: '/dashboard',        active: true },
   { icon: FileText,        label: 'My Applications',      href: '/my-applications' },
-  { icon: MessageSquare,   label: 'Messages',             href: '/messages',          badge: 2 },
+  { icon: MessageSquare,   label: 'Messages',             href: '/messages' },
   { icon: Mic2,            label: 'Auditions',            href: '/auditions' },
   { icon: Bookmark,        label: 'Saved Castings',       href: '/saved-castings' },
   { icon: Star,            label: 'Recommended Castings', href: '/recommended' },
   { icon: Bell,            label: 'Notifications',        href: '/notifications',     badge: 3 },
 ];
 
-const PROFILE_MENU = [
+const PROFILE_MENU_APPROVED = [
   { label: 'My Profile',     href: '/my-profile' },
   { label: 'Subscription',   href: '/dashboard/subscription' },
   { label: 'Analytics',      href: '/analytics' },
   { label: 'Calendar',       href: '/calendar' },
   { label: 'Settings',       href: '/settings' },
-  { label: 'Help & Support', href: '/contact' },
+  { label: 'Help & Support', href: '/settings?tab=support' },
+  { label: 'Logout',         href: '' },
+];
+
+const PROFILE_MENU_PENDING = [
+  { label: 'My Profile',     href: '/my-profile' },
   { label: 'Logout',         href: '' },
 ];
 
@@ -63,12 +70,19 @@ const completionItems = [
   'Media Gallery', 'Documents', 'Availability',
 ];
 
-const quickActions = [
-  { icon: Clock,      label: 'Update Availability', href: '/profile?tab=availability' },
-  { icon: Upload,     label: 'Upload New Media',    href: '/profile?tab=media' },
-  { icon: PlusCircle, label: 'Add New Skill',       href: '/profile?tab=skills' },
-  { icon: Eye,        label: 'View My Profile',     href: '/my-profile' },
-  { icon: FolderOpen, label: 'Manage Documents',    href: '/profile?tab=documents' },
+const QUICK_ACTIONS_APPROVED = [
+  { icon: Clock,      label: 'Update Availability', href: '/settings?tab=preferences'  },
+  { icon: Upload,     label: 'Upload New Media',    href: '/edit-profile?section=media' },
+  { icon: PlusCircle, label: 'Add New Skill',       href: '/settings?tab=skills'        },
+  { icon: Eye,        label: 'View My Profile',     href: '/my-profile'                 },
+  { icon: FolderOpen, label: 'Manage Documents',    href: '/settings?tab=documents'     },
+];
+const QUICK_ACTIONS_PENDING = [
+  { icon: Clock,      label: 'Update Availability', href: '/create-profile' },
+  { icon: Upload,     label: 'Upload New Media',    href: '/create-profile' },
+  { icon: PlusCircle, label: 'Add New Skill',       href: '/create-profile' },
+  { icon: Eye,        label: 'View My Profile',     href: '/create-profile' },
+  { icon: FolderOpen, label: 'Manage Documents',    href: '/create-profile' },
 ];
 
 /* ─── Helper ─────────────────────────────────────────────────── */
@@ -92,19 +106,24 @@ interface UpcomingEvent {
 }
 
 export default function DashboardPage() {
-  const router = useRouter();
+  const router = useRouter()
 
   /* ── Auth guard ── */
   useEffect(() => {
     try {
       const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
       if (!u?.loggedIn) { window.location.replace('/login'); return }
+      // Dashboard is always accessible — incomplete/missing profile shows a banner
     } catch { window.location.replace('/login'); return }
 
     const onPopState = () => {
       try {
         const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
         if (!u?.loggedIn) window.location.replace('/login')
+        else {
+          const ps = u?.profileStatus
+          // no redirect from dashboard — banner handles it
+        }
       } catch { window.location.replace('/login') }
     }
     window.addEventListener('popstate', onPopState)
@@ -127,12 +146,15 @@ export default function DashboardPage() {
   const [avatarUrl,      setAvatarUrl]      = useState('');
 
   /* ── Data from API ── */
-  const [castings,       setCastings]       = useState(FALLBACK_CASTINGS);
-  const [msgList,        setMsgList]        = useState(FALLBACK_MESSAGES);
+  const [castings,       setCastings]       = useState<typeof FALLBACK_CASTINGS>([]);
+  const [msgList,        setMsgList]        = useState<typeof FALLBACK_MESSAGES>([]);
   const [notifCount,     setNotifCount]     = useState(0);
   const [msgCount,       setMsgCount]       = useState(0);
   const [profilePct,     setProfilePct]     = useState(0);
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
+  const [profileStatus,  setProfileStatus]  = useState('');
+  const hasProfile  = profileStatus !== '' && profileStatus !== 'incomplete';
+  const isApproved  = profileStatus === 'approved' || profileStatus === 'active';
   const [stats,          setStats]          = useState({
     applications: '0', shortlisted: '0', auditions: '0',
     offers: '0', earnings: '₹0',
@@ -142,8 +164,8 @@ export default function DashboardPage() {
   useEffect(() => {
     try {
       const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
-      if (u.name)                                   setUserName(u.name)
       if (u.departments)                            setUserDepts(u.departments)
+      if (u.profileStatus)                          setProfileStatus(u.profileStatus)
       const pn = u.profileNumber ?? u.profile_number
       if (pn)                                       setProfileNumber(pn)
     } catch {}
@@ -258,7 +280,12 @@ export default function DashboardPage() {
       })
       .catch(() => {})
 
-    // 5. Notifications count
+    // 5. Notifications count — only for approved profiles
+    const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
+    const ps2 = u?.profileStatus
+    const canFetch = ps2 === 'approved' || ps2 === 'active'
+    if (!canFetch) return
+
     fetch('/api/notifications', { headers })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
@@ -328,8 +355,8 @@ export default function DashboardPage() {
           <span style={{ fontFamily: BARLOW, fontSize: 14, fontWeight: 700, color: GOLD, letterSpacing: 1 }}>ASPIRANT</span>
         </div>
         <div style={{ flex: 1 }} />
-        <button onClick={() => router.push('/casting-calls')} style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'transparent', border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 8, padding: '0 16px', height: 36, fontSize: 14, fontWeight: 600, fontFamily: BARLOW, cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
-          + Find Casting Calls
+        <button onClick={() => isApproved && router.push('/casting-calls')} style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'transparent', border: `1px solid ${isApproved ? GOLD : 'rgba(212,166,74,0.3)'}`, color: isApproved ? GOLD : 'rgba(212,166,74,0.35)', borderRadius: 8, padding: '0 16px', height: 36, fontSize: 14, fontWeight: 600, fontFamily: BARLOW, cursor: isApproved ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap' as const, opacity: isApproved ? 1 : 0.6 }}>
+          {isApproved ? '+ Find Casting Calls' : '🔒 Find Casting Calls'}
         </button>
         <div onClick={() => router.push('/messages')} style={{ position: 'relative', cursor: 'pointer' }}>
           <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -346,10 +373,17 @@ export default function DashboardPage() {
         <div style={{ position: 'relative' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer' }} onClick={() => setProfileOpen(v => !v)}>
             <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(212,166,74,0.38)', flexShrink: 0 }}>
-              <img src={avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=C8202A&color=fff`} alt={userName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <ProtectedMedia
+                type="image"
+                src={avatarUrl || undefined}
+                alt={userName}
+                avatar
+                width={36}
+                height={36}
+              />
             </div>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>{userName}</div>
+              <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>{isApproved ? userName : 'My Account'}</div>
               <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Aspirant</div>
             </div>
             <ChevronDown size={12} color="rgba(255,255,255,0.4)" />
@@ -362,7 +396,7 @@ export default function DashboardPage() {
                   <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Aspirant ID</span>
                   <span style={{ fontSize: 14, fontWeight: 700, color: GOLD }}>{profileNumber}</span>
                 </div>
-                {PROFILE_MENU.map(({ label, href }) => (
+                {(profileStatus === 'approved' || profileStatus === 'active' ? PROFILE_MENU_APPROVED : PROFILE_MENU_PENDING).map(({ label, href }) => (
                   <div key={label}
                     onClick={() => { if (label === 'Logout') { handleLogout(); } else { router.push(href); setProfileOpen(false); } }}
                     style={{ padding: '10px 16px', fontSize: 15, cursor: 'pointer', color: label === 'Logout' ? '#ff6b6b' : '#F5F5F5', borderTop: label === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
@@ -391,10 +425,17 @@ export default function DashboardPage() {
           {sidebarOpen && (
             <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ width: 38, height: 38, borderRadius: 9, overflow: 'hidden', border: '1px solid rgba(212,166,74,0.25)', flexShrink: 0 }}>
-                <img src={avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=C8202A&color=fff`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
+                <ProtectedMedia
+                  type="image"
+                  src={avatarUrl || undefined}
+                  alt=""
+                  avatar
+                  width={38}
+                  height={38}
+                />
               </div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#F5F5F5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{userName}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#F5F5F5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{isApproved ? userName : 'My Account'}</div>
                 <div style={{ fontSize: 14, color: GOLD, fontWeight: 600 }}>{profileNumber}</div>
               </div>
             </div>
@@ -431,6 +472,22 @@ export default function DashboardPage() {
 
         {/* ── SCROLLABLE CONTENT ── */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '18px 20px 32px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+          {/* Profile incomplete banner */}
+          {!hasProfile && (
+            <div style={{ padding: '12px 18px', background: 'rgba(212,166,74,0.08)', border: '1px solid rgba(212,166,74,0.3)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 18 }}>🎬</span>
+                <div>
+                  <div style={{ fontFamily: BEBAS, fontSize: 16, letterSpacing: 1, color: GOLD }}>COMPLETE YOUR PROFILE TO UNLOCK ALL FEATURES</div>
+                  <div style={{ fontFamily: BARLOW, fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 1 }}>Submit your profile, choose a plan, complete payment and get admin approval.</div>
+                </div>
+              </div>
+              <button onClick={() => router.push('/create-profile')} style={{ flexShrink: 0, padding: '7px 16px', background: GOLD, border: 'none', borderRadius: 6, color: '#050505', fontFamily: BEBAS, fontSize: 14, letterSpacing: 1, cursor: 'pointer' }}>
+                CREATE PROFILE →
+              </button>
+            </div>
+          )}
 
           {/* Welcome row */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -469,7 +526,8 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          {/* Casting Calls + Upcoming row */}
+          {/* Casting Calls + Upcoming row — only shown after approval */}
+          {isApproved && (
           <div style={{ display: 'flex', gap: 12, alignItems: 'stretch' }}>
 
             {/* Casting Calls */}
@@ -483,6 +541,13 @@ export default function DashboardPage() {
                 </div>
                 <span onClick={() => router.push('/casting-calls')} style={{ fontSize: 14, color: GOLD, cursor: 'pointer', fontWeight: 600 }}>View All</span>
               </div>
+              {castings.length === 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 16px', textAlign: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 32 }}>🎬</span>
+                  <div style={{ fontSize: 15, fontFamily: BARLOW, fontWeight: 600, color: 'rgba(255,255,255,0.5)' }}>No casting calls yet</div>
+                  <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', lineHeight: 1.5 }}>Check back soon — new castings are posted daily.</div>
+                </div>
+              ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {castings.slice(0, 5).map((call, i) => (
                   <div key={i} onClick={() => router.push(call.href)} style={{ display: 'flex', gap: 12, padding: 10, cursor: 'pointer', background: BG4, borderRadius: 10, border: '1px solid rgba(255,255,255,0.05)' }}
@@ -512,6 +577,7 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
+              )}
               <button onClick={() => router.push('/casting-calls')} style={{ width: '100%', marginTop: 12, background: 'transparent', border: `1px solid ${GOLD_BDR}`, color: GOLD, borderRadius: 8, padding: '9px 0', fontSize: 14, fontWeight: 600, fontFamily: BARLOW, cursor: 'pointer' }}>Browse All Casting Calls</button>
             </div>
 
@@ -560,16 +626,24 @@ export default function DashboardPage() {
               <button onClick={() => router.push('/calendar')} style={{ width: '100%', marginTop: 12, background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', borderRadius: 8, padding: '9px 0', fontSize: 14, fontWeight: 600, fontFamily: BARLOW, cursor: 'pointer' }}>View Full Calendar</button>
             </div>
           </div>
+          )} {/* end isApproved casting+upcoming row */}
 
           {/* Messages + Profile Completion row */}
           <div style={{ display: 'flex', gap: 12, alignItems: 'stretch' }}>
 
-            {/* Messages */}
+            {/* Messages — only shown after approval */}
+            {isApproved && (
             <div style={{ flex: 2, minWidth: 0, borderRadius: 12, background: BG3, border: '1px solid rgba(255,255,255,0.06)', padding: '16px 18px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <span style={{ fontSize: 18, fontWeight: 700 }}>Messages</span>
                 <span onClick={() => router.push('/messages')} style={{ fontSize: 14, color: GOLD, cursor: 'pointer', fontWeight: 600 }}>View All</span>
               </div>
+              {msgList.length === 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 16px', textAlign: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 28 }}>💬</span>
+                  <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>No messages yet</div>
+                </div>
+              ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {msgList.map((msg, i) => (
                   <div key={i} onClick={() => router.push(msg.href)} style={{ display: 'flex', gap: 12, padding: 10, cursor: 'pointer', background: BG4, borderRadius: 10, border: '1px solid rgba(255,255,255,0.05)', alignItems: 'flex-start' }}
@@ -590,7 +664,9 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
+              )}
             </div>
+            )}
 
             {/* Profile Completion */}
             <div style={{ flex: 2, minWidth: 0, borderRadius: 12, background: BG3, border: '1px solid rgba(255,255,255,0.06)', padding: '16px 18px', display: 'flex', flexDirection: 'column' }}>
@@ -636,7 +712,7 @@ export default function DashboardPage() {
           <div style={{ borderRadius: 12, background: BG3, border: '1px solid rgba(255,255,255,0.06)', padding: '16px 18px' }}>
             <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>Quick Actions</div>
             <div style={{ display: 'flex', gap: 10 }}>
-              {quickActions.map(({ icon: Icon, label, href }, i) => (
+              {(isApproved ? QUICK_ACTIONS_APPROVED : QUICK_ACTIONS_PENDING).map(({ icon: Icon, label, href }, i) => (
                 <div key={i} onClick={() => router.push(href)} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 9, background: BG4, cursor: 'pointer', border: '1px solid rgba(255,255,255,0.05)' }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
                   onMouseLeave={e => (e.currentTarget.style.background = BG4)}

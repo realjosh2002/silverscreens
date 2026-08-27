@@ -1,8 +1,9 @@
 'use client';
+import AdminSidebar from '@/components/layout/AdminSidebar';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
+import AdminTopnav from '@/components/layout/AdminTopnav';
 import {
   LayoutDashboard, Users, Building2, Megaphone, FileText,
   BarChart2, ShieldCheck, Flag, CreditCard,
@@ -14,11 +15,13 @@ import {
   ZoomIn, ArrowLeft, Search, CheckCircle, XCircle, AlertCircle,
 } from 'lucide-react';
 
-const BG     = '#0D1117';
-const BG2    = '#131720';
-const BG3    = '#181E2A';
-const BG4    = '#1C2338';
+const BG     = '#050505';
+const BG2    = '#0B0F14';
+const BG3    = '#121821';
+const BG4    = 'rgba(255,255,255,0.03)';
 const GOLD   = '#D4A64A';
+const GOLD_DIM = 'rgba(212,166,74,0.12)';
+const GOLD_BDR = 'rgba(212,166,74,0.22)';
 const RED    = '#C8202A';
 const GREEN  = '#22C55E';
 const BLUE   = '#3B82F6';
@@ -47,29 +50,43 @@ const ADMIN_NAV = [
 ];
 
 const PROFILE_MENU = [
-  { label: 'My Profile',    href: '/admin/profile'   },
-  { label: 'Settings',      href: '/admin/settings'  },
-  { label: 'Audit Logs',    href: '/admin/audit'     },
-  { label: 'Help & Support',href: '/contact'         },
-  { label: 'Logout',        href: '/login'           },
+  { label: 'My Profile',               href: '/admin/profile'          },
+  { label: 'Account Settings',         href: '/admin/account-settings' },
+  { label: 'Security & Login',         href: '/admin/security-login'   },
+  { label: 'Notification Preferences', href: '/admin/notifications'    },
+  { label: 'Activity Log',             href: '/admin/activity-log'     },
+  { label: 'Help & Support',           href: '/admin/help-support'     },
+  { label: 'Logout',                   href: '/admin/login'            },
 ];
 
-const ASPIRANTS = [
-  { id:'ASP062500001', name:'Ananya Sharma',  email:'ananya.sharma@email.com',  phone:'+91 98765 43210', location:'Mumbai, Maharashtra',  joined:'20 Jun 2025', submitted:'20 Jun 2025, 10:29 AM', status:'Pending',  dob:'12 Mar 2000', gender:'Female', nationality:'Indian', department:'Acting',         role:'Heroine',           appliedCastings:7,  profileCompletion:85,  matchScore:98, avatar:'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&h=120&fit=crop&crop=face', docStatus:{idProof:'Pending',  addressProof:'Pending',  faceVerification:'Pending',  profileReview:'Pending' }, history:[{event:'Documents submitted by user',time:'20 Jun 2025, 10:29 AM',color:GREEN},{event:'Under review by admin',time:'20 Jun 2025, 11:05 AM',color:BLUE},{event:'Additional documents requested',time:'20 Jun 2025, 11:20 AM',color:ORANGE}] },
-  { id:'ASP062500002', name:'Rohit Verma',    email:'rohit.verma@email.com',    phone:'+91 98765 43211', location:'Delhi',                 joined:'18 Jun 2025', submitted:'18 Jun 2025, 09:15 AM', status:'Pending',  dob:'5 Jul 1995',  gender:'Male',   nationality:'Indian', department:'Acting',         role:'Hero',              appliedCastings:3,  profileCompletion:72,  matchScore:91, avatar:'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&h=120&fit=crop&crop=face',  docStatus:{idProof:'Approved', addressProof:'Pending',  faceVerification:'Pending',  profileReview:'Pending' }, history:[{event:'Documents submitted',time:'18 Jun 2025, 09:15 AM',color:GREEN},{event:'ID proof approved',time:'18 Jun 2025, 02:30 PM',color:GREEN}] },
-  { id:'ASP062500003', name:'Neha Iyer',      email:'neha.iyer@email.com',      phone:'+91 98765 43213', location:'Kochi, Kerala',         joined:'17 Jun 2025', submitted:'17 Jun 2025, 10:00 AM', status:'Pending',  dob:'22 Nov 1998', gender:'Female', nationality:'Indian', department:'Hair & Make Up',  role:'Make Up Artist',    appliedCastings:12, profileCompletion:100, matchScore:99, avatar:'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=120&h=120&fit=crop&crop=face', docStatus:{idProof:'Approved', addressProof:'Approved', faceVerification:'Pending',  profileReview:'Pending' }, history:[{event:'Documents submitted',time:'17 Jun 2025, 10:00 AM',color:GREEN},{event:'Partial approval',time:'17 Jun 2025, 03:00 PM',color:BLUE}] },
-  { id:'ASP062500004', name:'Karan Mehta',    email:'karan.mehta@email.com',    phone:'+91 98765 43212', location:'Bengaluru, Karnataka',  joined:'16 Jun 2025', submitted:'16 Jun 2025, 11:00 AM', status:'Rejected', dob:'14 Apr 1993', gender:'Male',   nationality:'Indian', department:'Dancing',        role:'Dancer',            appliedCastings:0,  profileCompletion:45,  matchScore:62, avatar:'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&h=120&fit=crop&crop=face',  docStatus:{idProof:'Rejected', addressProof:'Rejected', faceVerification:'Pending',  profileReview:'Pending' }, history:[{event:'Documents submitted',time:'16 Jun 2025, 11:00 AM',color:GREEN},{event:'Documents rejected',time:'16 Jun 2025, 04:00 PM',color:RED}] },
-  { id:'ASP062500005', name:'Priya Nair',     email:'priya.nair@email.com',     phone:'+91 98765 43215', location:'Chennai, Tamil Nadu',   joined:'15 Jun 2025', submitted:'15 Jun 2025, 02:10 PM', status:'Approved', dob:'9 Sep 1999',  gender:'Female', nationality:'Indian', department:'Singing',        role:'Singer',            appliedCastings:18, profileCompletion:100, matchScore:97, avatar:'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=120&h=120&fit=crop&crop=face', docStatus:{idProof:'Approved', addressProof:'Approved', faceVerification:'Approved', profileReview:'Approved'}, history:[{event:'Documents submitted',time:'15 Jun 2025, 02:10 PM',color:GREEN},{event:'All documents verified',time:'15 Jun 2025, 05:00 PM',color:GREEN}] },
-  { id:'ASP062500006', name:'Arjun Kapoor',   email:'arjun.kapoor@email.com',   phone:'+91 98765 43216', location:'Hyderabad, Telangana',  joined:'14 Jun 2025', submitted:'14 Jun 2025, 09:45 AM', status:'Pending',  dob:'1 Jan 1997',  gender:'Male',   nationality:'Indian', department:'Stunt',          role:'Stunt Coordinator', appliedCastings:5,  profileCompletion:60,  matchScore:88, avatar:'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=120&h=120&fit=crop&crop=face',  docStatus:{idProof:'Pending',  addressProof:'Pending',  faceVerification:'Pending',  profileReview:'Pending' }, history:[{event:'Documents submitted',time:'14 Jun 2025, 09:45 AM',color:GREEN}] },
-  { id:'ASP062500007', name:'Meera Pillai',   email:'meera.pillai@email.com',   phone:'+91 98765 43217', location:'Pune, Maharashtra',     joined:'13 Jun 2025', submitted:'13 Jun 2025, 03:20 PM', status:'On Hold',  dob:'15 May 2001', gender:'Female', nationality:'Indian', department:'Modelling',      role:'Model',             appliedCastings:2,  profileCompletion:55,  matchScore:74, avatar:'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=120&h=120&fit=crop&crop=face',  docStatus:{idProof:'Pending',  addressProof:'Pending',  faceVerification:'Pending',  profileReview:'Pending' }, history:[{event:'Documents submitted',time:'13 Jun 2025, 03:20 PM',color:GREEN},{event:'Put on hold',time:'13 Jun 2025, 05:00 PM',color:GOLD}] },
-  { id:'ASP062500008', name:'Vikram Singh',   email:'vikram.singh@email.com',   phone:'+91 98765 43214', location:'Ahmedabad, Gujarat',    joined:'12 Jun 2025', submitted:'12 Jun 2025, 11:30 AM', status:'Approved', dob:'20 Aug 1994', gender:'Male',   nationality:'Indian', department:'Camera & Lighting', role:'Camera Operator', appliedCastings:9,  profileCompletion:100, matchScore:96, avatar:'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=120&h=120&fit=crop&crop=face',  docStatus:{idProof:'Approved', addressProof:'Approved', faceVerification:'Approved', profileReview:'Approved'}, history:[{event:'Documents submitted',time:'12 Jun 2025, 11:30 AM',color:GREEN},{event:'Fully approved',time:'12 Jun 2025, 04:00 PM',color:GREEN}] },
-];
+// Real data loaded from API
+type Aspirant = {
+  id: string; profile_id: string; user_id: string;
+  name: string; email: string; phone: string;
+  location: string; joined: string; submitted: string; status: string;
+  title: string; first_name: string; last_name: string;
+  dob: string; gender: string; nationality: string;
+  address_line1: string; address_line2: string;
+  city: string; state: string; pincode: string; country: string;
+  height_cm: number; weight_kg: number; hair_color: string; eye_color: string;
+  body_tone: string; body_type: string; chest_size: number; hip_size: number;
+  waist_size: number; shoe_size: number;
+  department: string; role: string; experience_level: string;
+  about_me: string; languages: string[]; skills: string[]; availability: string[];
+  profile_image_url: string; intro_video_url: string; resume_url: string;
+  social_links: Record<string, any>;
+  profileCompletion: number; matchScore: number; profile_views: number;
+  is_available: boolean; subscription: string; avatar: string;
+  appliedCastings: number;
+  docStatus: Record<string,string>; history: {event:string;time:string;color:string}[];
+};
 
-const TABS = [
-  { key:'Pending',  label:'Pending Verification', badge:4 },
-  { key:'Approved', label:'Approved',              badge:2 },
-  { key:'Rejected', label:'Rejected',              badge:1 },
-  { key:'On Hold',  label:'On Hold',               badge:1 },
+// TABS badges will be dynamic from API counts
+const TABS_CONFIG = [
+  { key:'Pending',  label:'Pending Verification' },
+  { key:'Approved', label:'Approved'              },
+  { key:'Rejected', label:'Rejected'              },
+  { key:'On Hold',  label:'On Hold'               },
 ];
 
 /* ── Document placeholder cards (SVG-based, no random photos) ── */
@@ -110,123 +127,244 @@ function Modal({ title, onClose, children, width=480 }: { title:string; onClose:
   );
 }
 
+function getAuthHeaders() {
+  try {
+    const raw = localStorage.getItem('ss_user') || sessionStorage.getItem('ss_user') || '{}';
+    const u = JSON.parse(raw);
+    const t = u.token ?? u.access_token ?? '';
+    return t ? { Authorization: `Bearer ${t}` } : {};
+  } catch { return {}; }
+}
+
+function fmtDate(iso: string) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function initials(name: string) {
+  return (name || 'U').split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2);
+}
+
 export default function TalentVerificationPage() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [activeTab,   setActiveTab]   = useState('Pending');
-  const [search,      setSearch]      = useState('');
-  const [selected,    setSelected]    = useState<typeof ASPIRANTS[0]|null>(null);
-  const [notes,       setNotes]       = useState('');
-  const [modal,       setModal]       = useState('');
-  const [docStatuses, setDocStatuses] = useState({ idProof:'Pending', addressProof:'Pending', faceVerification:'Pending', profileReview:'Pending' });
+  const [profileOpen,   setProfileOpen]   = useState(false);
+  const [activeTab,     setActiveTab]     = useState('Pending');
+  const [search,        setSearch]        = useState('');
+  const [selected,      setSelected]      = useState<Aspirant|null>(null);
+  const [notes,         setNotes]         = useState('');
+  const [modal,         setModal]         = useState('');
+  const [docStatuses,   setDocStatuses]   = useState({ idProof:'Pending', addressProof:'Pending', faceVerification:'Pending', profileReview:'Pending' });
+  const [rejectReason,   setRejectReason]   = useState('Documents unclear or invalid');
+  const [actionLoading,  setActionLoading]  = useState(false);
+  const [toast,          setToast]          = useState<{msg:string;type:'success'|'error'}|null>(null);
+  const [innerTab,       setInnerTab]       = useState<'profile'|'media'>('profile');
+  const [media,          setMedia]          = useState<{id:string;type:string;url:string;is_primary:boolean;moderation_status:string;rejection_reason:string}[]>([]);
+  const [mediaLoading,   setMediaLoading]   = useState(false);
+  const [mediaModal,     setMediaModal]     = useState<{id:string;type:string;url:string}|null>(null);
+  const [rejectMediaId,  setRejectMediaId]  = useState<string|null>(null);
+  const [mediaRejectReason, setMediaRejectReason] = useState('Content does not meet platform standards');
 
-  const SB_W = sidebarOpen ? 220 : 52;
+  // Real data
+  const [ASPIRANTS, setASPIRANTS] = useState<Aspirant[]>([]);
+  const [counts,    setCounts]    = useState({ Pending:0, Approved:0, Rejected:0, 'On Hold':0 });
+  const [loading,   setLoading]   = useState(true);
+
+
+  const showToast = (msg: string, type: 'success'|'error') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const fetchAspirants = useCallback(() => {
+    setLoading(true);
+    const h = getAuthHeaders();
+    const statusParam = activeTab === 'Pending' ? 'pending' : activeTab === 'Approved' ? 'approved' : activeTab === 'Rejected' ? 'rejected' : 'pending';
+    fetch(`/api/admin/verification?type=aspirant&status=${statusParam}`, { headers: h })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data?.data) return;
+        const raw = data.data.aspirants ?? [];
+        const mapped: Aspirant[] = raw.map((a: any) => ({
+          id:                a.profiles?.profile_number || a.profile_number || a.id.slice(0,8),
+          profile_id:        a.id,
+          user_id:           a.user_id,
+          name:              [a.title, a.first_name, a.last_name].filter(Boolean).join(' ') || a.profiles?.name || '—',
+          email:             a.profiles?.email || '—',
+          phone:             a.profiles?.phone || '—',
+          location:          [a.city, a.state].filter(Boolean).join(', ') || '—',
+          joined:            fmtDate(a.created_at),
+          submitted:         fmtDate(a.updated_at || a.created_at),
+          status:            a.verification_status === 'pending' ? 'Pending' : a.verification_status === 'approved' ? 'Approved' : a.verification_status === 'rejected' ? 'Rejected' : 'On Hold',
+          title:             a.title || '',
+          first_name:        a.first_name || '',
+          last_name:         a.last_name || '',
+          dob:               a.date_of_birth ? fmtDate(a.date_of_birth) : '—',
+          gender:            a.gender || '—',
+          nationality:       a.country || '—',
+          address_line1:     a.address_line1 || '',
+          address_line2:     a.address_line2 || '',
+          city:              a.city || '—',
+          state:             a.state || '—',
+          pincode:           a.pincode || '',
+          country:           a.country || '',
+          height_cm:         a.height_cm ?? 0,
+          weight_kg:         a.weight_kg ?? 0,
+          hair_color:        a.hair_color || '—',
+          eye_color:         a.eye_color || '—',
+          body_tone:         a.body_tone || '—',
+          body_type:         a.body_type || '—',
+          chest_size:        a.chest_size ?? 0,
+          hip_size:          a.hip_size ?? 0,
+          waist_size:        a.waist_size ?? 0,
+          shoe_size:         a.shoe_size ?? 0,
+          department:        a.category || '—',
+          role:              a.role || '—',
+          experience_level:  a.experience_level || '—',
+          about_me:          a.about_me || '',
+          languages:         a.languages ?? [],
+          skills:            a.skills ?? [],
+          availability:      a.availability ?? [],
+          profile_image_url: a.profile_image_url || '',
+          intro_video_url:   a.intro_video_url || '',
+          resume_url:        a.resume_url || '',
+          social_links:      a.social_links ?? {},
+          profileCompletion: a.profile_completion ?? 0,
+          matchScore:        a.trust_score ?? 0,
+          profile_views:     a.profile_views ?? 0,
+          is_available:      a.is_available ?? false,
+          subscription:      a.profiles?.subscriptions?.[0]?.plan_name || '—',
+          avatar:            a.profile_image_url || '',
+          appliedCastings:   0,
+          docStatus:         { idProof:'Pending', addressProof:'Pending', faceVerification:'Pending', profileReview:'Pending' },
+          history:           Array.isArray(a.history) ? a.history : [],
+        }));
+        setASPIRANTS(mapped);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [activeTab]);
+
+  const fetchCounts = useCallback(() => {
+    const h = getAuthHeaders();
+    Promise.all([
+      fetch('/api/admin/verification?type=aspirant&status=pending',  { headers: h }).then(r => r.ok ? r.json() : null),
+      fetch('/api/admin/verification?type=aspirant&status=approved', { headers: h }).then(r => r.ok ? r.json() : null),
+      fetch('/api/admin/verification?type=aspirant&status=rejected', { headers: h }).then(r => r.ok ? r.json() : null),
+    ]).then(([p, a, r]) => {
+      setCounts({
+        'Pending':  p?.data?.aspirants?.length ?? 0,
+        'Approved': a?.data?.aspirants?.length ?? 0,
+        'Rejected': r?.data?.aspirants?.length ?? 0,
+        'On Hold':  0,
+      });
+    }).catch(() => {});
+  }, []);
+
+  const fetchMedia = useCallback((aspirantProfileId: string) => {
+    setMediaLoading(true);
+    const h = getAuthHeaders();
+    fetch(`/api/admin/media-moderation?aspirant_id=${aspirantProfileId}&status=all`, { headers: h })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.data) setMedia(data.data.media || []); })
+      .catch(() => {})
+      .finally(() => setMediaLoading(false));
+  }, []);
+
+  useEffect(() => { fetchAspirants(); }, [fetchAspirants]);
+  useEffect(() => { fetchCounts(); },    [fetchCounts]);
 
   const filtered = ASPIRANTS.filter(a => {
-    const matchTab    = a.status === activeTab;
     const matchSearch = !search || a.name.toLowerCase().includes(search.toLowerCase()) || a.id.toLowerCase().includes(search.toLowerCase()) || a.email.toLowerCase().includes(search.toLowerCase());
-    return matchTab && matchSearch;
+    return matchSearch;
   });
 
-  const handleReview = (a: typeof ASPIRANTS[0]) => {
+  const handleReview = (a: Aspirant) => {
     setSelected(a);
     setDocStatuses({ ...a.docStatus });
     setNotes('');
+    setInnerTab('profile');
+    setMedia([]);
+    fetchMedia(a.profile_id);
   };
 
-  const navIdx  = selected ? filtered.indexOf(selected) : -1;
+  const navIdx  = selected ? filtered.findIndex(a => a.id === selected.id) : -1;
   const prevAsp = navIdx > 0 ? filtered[navIdx - 1] : null;
   const nextAsp = navIdx < filtered.length - 1 ? filtered[navIdx + 1] : null;
 
-  /* ── TOPNAV ── */
-  const Topnav = () => (
-    <header style={{ height:60, flexShrink:0, display:'flex', alignItems:'center', gap:14, padding:'0 24px', background:BG2, borderBottom:'1px solid rgba(255,255,255,0.06)', zIndex:100 }}>
-      <SilverScreensLogo size="md" href="/" showTagline={false}/>
-      <div style={{ padding:'3px 10px', background:'rgba(200,32,42,0.15)', border:'1px solid rgba(200,32,42,0.3)', borderRadius:5 }}>
-        <span style={{ fontFamily:BARLOW, fontSize: 14, fontWeight:700, color:RED, letterSpacing:1 }}>ADMIN</span>
-      </div>
-      <div style={{ flex:1 }}/>
-      <div onClick={() => router.push('/admin/support')} style={{ position:'relative', cursor:'pointer' }}>
-        <div style={{ width:36, height:36, borderRadius:8, background:'rgba(255,255,255,0.07)', display:'flex', alignItems:'center', justifyContent:'center' }}><MessageSquare size={15} color="rgba(255,255,255,0.7)"/></div>
-        <div style={{ position:'absolute', top:-5, right:-5, background:RED, borderRadius:'50%', width:18, height:18, display:'flex', alignItems:'center', justifyContent:'center', fontSize: 14, fontWeight:700, color:'#fff' }}>8</div>
-      </div>
-      <div onClick={() => router.push('/admin/notifications')} style={{ position:'relative', cursor:'pointer' }}>
-        <div style={{ width:36, height:36, borderRadius:8, background:'rgba(255,255,255,0.07)', display:'flex', alignItems:'center', justifyContent:'center' }}><Bell size={15} color="rgba(255,255,255,0.7)"/></div>
-        <div style={{ position:'absolute', top:-5, right:-5, background:RED, borderRadius:'50%', width:18, height:18, display:'flex', alignItems:'center', justifyContent:'center', fontSize: 14, fontWeight:700, color:'#fff' }}>3</div>
-      </div>
-      <div style={{ position:'relative' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:9, cursor:'pointer' }} onClick={() => setProfileOpen(v=>!v)}>
-          <div style={{ width:36, height:36, borderRadius:'50%', overflow:'hidden', border:'2px solid rgba(212,166,74,0.38)', flexShrink:0 }}>
-            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face" style={{ width:'100%', height:'100%', objectFit:'cover' }} alt=""/>
-          </div>
-          <div>
-            <div style={{ fontSize:15, fontWeight:700, lineHeight:1.2 }}>Super Admin</div>
-            <div style={{ fontSize: 14, color:'rgba(255,255,255,0.4)' }}>Administrator</div>
-          </div>
-          <ChevronDown size={12} color="rgba(255,255,255,0.4)"/>
-        </div>
-        {profileOpen && (
-          <>
-            <div onClick={() => setProfileOpen(false)} style={{ position:'fixed', inset:0, zIndex:150 }}/>
-            <div style={{ position:'absolute', top:46, right:0, width:210, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, overflow:'hidden', zIndex:200, boxShadow:'0 8px 32px rgba(0,0,0,0.6)' }}>
-              <div style={{ padding:'10px 16px', borderBottom:'1px solid rgba(255,255,255,0.07)', display:'flex', justifyContent:'space-between' }}>
-                <span style={{ fontSize: 14, color:'rgba(255,255,255,0.4)' }}>Admin ID</span>
-                <span style={{ fontSize: 14, fontWeight:700, color:RED }}>ADM000001</span>
-              </div>
-              {PROFILE_MENU.map(({ label, href }) => (
-                <div key={label} onClick={() => { router.push(href); setProfileOpen(false); }}
-                  style={{ padding:'10px 16px', fontSize:15, cursor:'pointer', color:label==='Logout'?'#ff6b6b':'#F5F5F5', borderTop:label==='Logout'?'1px solid rgba(255,255,255,0.07)':'none' }}
-                  onMouseEnter={e => (e.currentTarget.style.background='rgba(255,255,255,0.05)')}
-                  onMouseLeave={e => (e.currentTarget.style.background='transparent')}
-                >{label}</div>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-    </header>
-  );
+  async function doMediaAction(mediaId: string, action: 'approve' | 'reject') {
+    setActionLoading(true);
+    const h = getAuthHeaders();
+    try {
+      const res = await fetch('/api/admin/media-moderation', {
+        method: 'PUT',
+        headers: { ...h, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ media_id: mediaId, action, rejection_reason: mediaRejectReason }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(action === 'approve' ? 'Media approved' : 'Media rejected — aspirant notified', 'success');
+        setRejectMediaId(null);
+        if (selected) fetchMedia(selected.profile_id);
+      } else {
+        showToast(data.error || 'Action failed', 'error');
+      }
+    } catch {
+      showToast('Network error', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function doVerification(action: 'approve' | 'reject' | 'request_info') {
+    if (!selected) return;
+    setActionLoading(true);
+    const h = getAuthHeaders();
+    try {
+      const res = await fetch('/api/admin/verification', {
+        method: 'PUT',
+        headers: { ...h, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profile_id:       selected.profile_id,
+          profile_type:     'aspirant',
+          action,
+          rejection_reason: rejectReason,
+        }),
+      });
+      const data = await res.json();
+      // Handle both { success: true } and { success: false, error/message }
+      if (res.ok && (data.success !== false)) {
+        showToast(action === 'approve' ? `${selected.name} approved!` : action === 'reject' ? `${selected.name} rejected` : 'Info requested', 'success');
+        setModal('');
+        setSelected(null);
+        // Switch to the matching tab so admin can see the result
+        if (action === 'approve') setActiveTab('Approved');
+        else if (action === 'reject') setActiveTab('Rejected');
+        // fetchAspirants fires via useEffect when activeTab changes
+        fetchCounts();
+      } else {
+        const errMsg = data.error || data.message || `Action failed (HTTP ${res.status})`;
+        console.error('[doVerification] error:', errMsg, data);
+        showToast(errMsg, 'error');
+      }
+    } catch (e) {
+      console.error('[doVerification] network error:', e);
+      showToast('Network error', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  // AdminTopnav used directly below
 
   /* ── SIDEBAR ── */
   const Sidebar = () => (
-    <aside style={{ width:SB_W, flexShrink:0, background:BG2, borderRight:'1px solid rgba(255,255,255,0.06)', display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', transition:'width 0.2s ease', scrollbarWidth:'none' as const }}>
-      <div style={{ height:52, display:'flex', alignItems:'center', justifyContent:sidebarOpen?'flex-end':'center', padding:sidebarOpen?'0 12px':0, borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
-        <button onClick={() => setSidebarOpen(v=>!v)} style={{ background:'none', border:'none', cursor:'pointer', width:30, height:30, borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,0.5)' }}
-          onMouseEnter={e => (e.currentTarget.style.background='rgba(255,255,255,0.07)')}
-          onMouseLeave={e => (e.currentTarget.style.background='none')}
-        >{sidebarOpen?<ChevronLeft size={16}/>:<Menu size={16}/>}</button>
-      </div>
-      {sidebarOpen && (
-        <div style={{ padding:'14px 16px', borderBottom:'1px solid rgba(255,255,255,0.06)', display:'flex', alignItems:'center', gap:12 }}>
-          <div style={{ width:38, height:38, borderRadius:9, overflow:'hidden', border:'1px solid rgba(212,166,74,0.25)', flexShrink:0 }}>
-            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face" style={{ width:'100%', height:'100%', objectFit:'cover' }} alt=""/>
-          </div>
-          <div style={{ minWidth:0 }}>
-            <div style={{ fontSize:14, fontWeight:700, color:'#F5F5F5', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>Super Admin</div>
-            <div style={{ fontSize: 14, color:RED, fontWeight:600 }}>ADM000001</div>
-          </div>
-        </div>
-      )}
-      <nav style={{ flex:1, padding:sidebarOpen?'8px 6px':'8px 4px', overflowY:'auto', scrollbarWidth:'none' as const }}>
-        {ADMIN_NAV.map(({ icon:Icon, label, href, active }) => (
-          <div key={label} onClick={() => router.push(href)} title={!sidebarOpen?label:undefined}
-            style={{ display:'flex', alignItems:'center', justifyContent:sidebarOpen?'flex-start':'center', padding:sidebarOpen?'8px 10px':'10px 0', marginBottom:2, borderRadius:6, cursor:'pointer', background:active?'rgba(212,166,74,0.1)':'transparent', borderLeft:sidebarOpen&&active?`3px solid ${GOLD}`:sidebarOpen?'3px solid transparent':'none', gap:sidebarOpen?9:0 }}
-            onMouseEnter={e => { if(!active) e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}
-            onMouseLeave={e => { if(!active) e.currentTarget.style.background=active?'rgba(212,166,74,0.1)':'transparent'; }}
-          >
-            <Icon size={15} color={active?GOLD:'rgba(255,255,255,0.42)'} strokeWidth={active?2.5:1.8}/>
-            {sidebarOpen && <span style={{ fontSize:14, color:active?GOLD:'rgba(255,255,255,0.6)', fontWeight:active?700:400, whiteSpace:'nowrap', flex:1 }}>{label}</span>}
-            {sidebarOpen && active && <ChevronRight size={12} color={GOLD} opacity={0.6}/>}
-          </div>
-        ))}
-      </nav>
-    </aside>
+        <AdminSidebar onCollapse={(c) => setSidebarOpen(!c)} />
   );
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100vh', overflow:'hidden', background:BG, fontFamily:BARLOW, color:'#F5F5F5' }}>
-      <Topnav/>
+      <AdminTopnav/>
       <div style={{ display:'flex', flex:1, overflow:'hidden' }}>
         <Sidebar/>
         <div style={{ flex:1, minWidth:0, overflowY:'auto', overflowX:'hidden' }}>
@@ -266,10 +404,10 @@ export default function TalentVerificationPage() {
                 {/* Stat cards */}
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:24 }}>
                   {[
-                    { label:'Total Aspirants', value:ASPIRANTS.length, delta:'+8 this week', color:BLUE,   icon:'👥', tab:null       },
-                    { label:'Pending Review',  value:4,                delta:'4 awaiting',  color:ORANGE, icon:'⏳', tab:'Pending'  },
-                    { label:'Approved',        value:2,                delta:'2 verified',  color:GREEN,  icon:'✅', tab:'Approved' },
-                    { label:'Rejected',        value:1,                delta:'1 declined',  color:RED,    icon:'❌', tab:'Rejected' },
+                    { label:'Total Aspirants', value:counts['Pending']+counts['Approved']+counts['Rejected'], delta:'Live count', color:BLUE,   icon:'👥', tab:null       },
+                    { label:'Pending Review',  value:counts['Pending'],  delta:'Awaiting review', color:ORANGE, icon:'⏳', tab:'Pending'  },
+                    { label:'Approved',        value:counts['Approved'], delta:'Verified',        color:GREEN,  icon:'✅', tab:'Approved' },
+                    { label:'Rejected',        value:counts['Rejected'], delta:'Declined',        color:RED,    icon:'❌', tab:'Rejected' },
                   ].map(s => (
                     <div key={s.label} onClick={() => s.tab && setActiveTab(s.tab)}
                       style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:'16px 18px', cursor:s.tab?'pointer':'default', transition:'border-color 0.2s' }}
@@ -296,14 +434,14 @@ export default function TalentVerificationPage() {
                       <button onClick={() => { setActiveTab('Pending'); setSearch(''); }} style={{ background:'none', border:'none', color:RED, fontFamily:BARLOW, fontSize:14, fontWeight:600, cursor:'pointer' }}>Clear All</button>
                     </div>
                     <div style={{ fontFamily:BARLOW, fontSize: 14, fontWeight:700, color:'rgba(255,255,255,0.4)', letterSpacing:1, textTransform:'uppercase' as const, marginBottom:10 }}>Verification Status</div>
-                    {TABS.map(tab => (
+                    {TABS_CONFIG.map(tab => (
                       <div key={tab.key} onClick={() => setActiveTab(tab.key)}
                         style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'9px 12px', marginBottom:4, borderRadius:8, cursor:'pointer', background:activeTab===tab.key?`${RED}15`:'transparent', border:activeTab===tab.key?`1px solid ${RED}30`:'1px solid transparent' }}
                         onMouseEnter={e => { if(activeTab!==tab.key) e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}
                         onMouseLeave={e => { if(activeTab!==tab.key) e.currentTarget.style.background='transparent'; }}
                       >
                         <span style={{ fontFamily:BARLOW, fontSize:15, color:activeTab===tab.key?'#F5F5F5':'rgba(255,255,255,0.55)', fontWeight:activeTab===tab.key?700:400 }}>{tab.label}</span>
-                        <span style={{ padding:'1px 8px', background:activeTab===tab.key?RED:'rgba(255,255,255,0.08)', borderRadius:20, fontSize: 14, fontWeight:700, color:activeTab===tab.key?'#fff':'rgba(255,255,255,0.45)' }}>{tab.badge}</span>
+                        <span style={{ padding:'1px 8px', background:activeTab===tab.key?RED:'rgba(255,255,255,0.08)', borderRadius:20, fontSize: 14, fontWeight:700, color:activeTab===tab.key?'#fff':'rgba(255,255,255,0.45)' }}>{counts[tab.key as keyof typeof counts] ?? 0}</span>
                       </div>
                     ))}
                     <div style={{ height:1, background:'rgba(255,255,255,0.07)', margin:'16px 0' }}/>
@@ -313,14 +451,6 @@ export default function TalentVerificationPage() {
                       <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Name, ID or email..."
                         style={{ width:'100%', background:BG3, border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, padding:'8px 10px 8px 30px', color:'#F5F5F5', fontFamily:BARLOW, fontSize:14, outline:'none', boxSizing:'border-box' as const }}/>
                     </div>
-                    <div style={{ fontFamily:BARLOW, fontSize: 14, fontWeight:700, color:'rgba(255,255,255,0.4)', letterSpacing:1, textTransform:'uppercase' as const, marginBottom:8 }}>Face Match</div>
-                    <select style={{ width:'100%', background:BG3, border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, padding:'8px 10px', color:'#F5F5F5', fontFamily:BARLOW, fontSize:14, outline:'none', marginBottom:14 }}>
-                      <option value=''>-- Select --</option><option>All Scores</option><option>High (90%+)</option><option>Moderate (70–90%)</option><option>Low (&lt;70%)</option>
-                    </select>
-                    <div style={{ fontFamily:BARLOW, fontSize: 14, fontWeight:700, color:'rgba(255,255,255,0.4)', letterSpacing:1, textTransform:'uppercase' as const, marginBottom:8 }}>Documents</div>
-                    <select style={{ width:'100%', background:BG3, border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, padding:'8px 10px', color:'#F5F5F5', fontFamily:BARLOW, fontSize:14, outline:'none', marginBottom:20 }}>
-                      <option value=''>-- Select --</option><option>All</option><option>All Verified</option><option>Partially Verified</option><option>None Verified</option>
-                    </select>
                     <button style={{ width:'100%', padding:'10px', background:RED, border:'none', borderRadius:8, color:'#fff', fontFamily:BEBAS, fontSize:17, letterSpacing:1, cursor:'pointer' }}>Apply Filters</button>
                   </div>
 
@@ -328,7 +458,7 @@ export default function TalentVerificationPage() {
                   <div>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
                       <span style={{ fontFamily:BARLOW, fontSize:15, color:'rgba(255,255,255,0.5)' }}>
-                        Viewing: <strong style={{ color:'#F5F5F5' }}>{TABS.find(t=>t.key===activeTab)?.label} ({filtered.length})</strong>
+                        Viewing: <strong style={{ color:'#F5F5F5' }}>{TABS_CONFIG.find(t=>t.key===activeTab)?.label} ({filtered.length})</strong>
                       </span>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                         <span style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.4)' }}>Sort by:</span>
@@ -341,16 +471,16 @@ export default function TalentVerificationPage() {
                     <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, overflow:'hidden' }}>
                       <div style={{ display:'grid', gridTemplateColumns:'36px 1.8fr 1.2fr 120px 110px 150px 120px 90px', padding:'11px 16px', background:'rgba(255,255,255,0.025)', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
                         <div/>
-                        {['Applicant','Location','Submitted','Completion','Documents','Face Match','Action'].map(h => (
+                        {['Applicant','Location','Submitted','Completion','Subscription','Action'].map(h => (
                           <div key={h} style={{ fontFamily:BARLOW, fontSize: 14, fontWeight:700, color:'rgba(255,255,255,0.45)', letterSpacing:0.5, textTransform:'uppercase' as const }}>{h}</div>
                         ))}
                       </div>
 
-                      {filtered.length === 0 ? (
+                      {loading ? (
+                        <div style={{ textAlign:'center' as const, padding:60, color:'rgba(255,255,255,0.3)', fontFamily:BARLOW, fontSize:16 }}>Loading…</div>
+                      ) : filtered.length === 0 ? (
                         <div style={{ textAlign:'center' as const, padding:60, color:'rgba(255,255,255,0.3)', fontFamily:BARLOW, fontSize:16 }}>No aspirants found in this queue</div>
                       ) : filtered.map((a, i) => {
-                        const docsApproved = Object.values(a.docStatus).filter(s=>s==='Approved').length;
-                        const docsTotal    = Object.values(a.docStatus).length;
                         return (
                           <div key={a.id}
                             style={{ display:'grid', gridTemplateColumns:'36px 1.8fr 1.2fr 120px 110px 150px 120px 90px', padding:'13px 16px', borderBottom:i<filtered.length-1?'1px solid rgba(255,255,255,0.05)':'none', alignItems:'center' }}
@@ -361,8 +491,8 @@ export default function TalentVerificationPage() {
                             {/* Applicant */}
                             <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                               <div style={{ position:'relative', flexShrink:0 }}>
-                                <div style={{ width:44, height:44, borderRadius:'50%', overflow:'hidden', border:`2px solid ${statusColor(a.status)}40` }}>
-                                  <img src={a.avatar} style={{ width:'100%', height:'100%', objectFit:'cover' }} alt=""/>
+                                <div style={{ width:44, height:44, borderRadius:'50%', overflow:'hidden', border:`2px solid ${statusColor(a.status)}40`, background:'rgba(200,32,42,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:700, color:RED }}>
+                                  {a.avatar ? <img src={a.avatar} style={{ width:'100%', height:'100%', objectFit:'cover' }} alt=""/> : (a.name||'U').charAt(0)}
                                 </div>
                                 <div style={{ position:'absolute', bottom:1, right:1, width:11, height:11, borderRadius:'50%', background:statusColor(a.status), border:'2px solid '+BG2 }}/>
                               </div>
@@ -400,26 +530,10 @@ export default function TalentVerificationPage() {
                                 <div style={{ height:'100%', width:`${a.profileCompletion}%`, background:a.profileCompletion===100?GREEN:GOLD, borderRadius:2 }}/>
                               </div>
                             </div>
-                            {/* Documents */}
-                            <div>
-                              <div style={{ fontFamily:BARLOW, fontSize: 14, color:'rgba(255,255,255,0.55)', marginBottom:5 }}>{docsApproved}/{docsTotal} Verified</div>
-                              <div style={{ display:'flex', gap:4 }}>
-                                {[{k:'idProof',l:'ID'},{k:'addressProof',l:'Addr'},{k:'faceVerification',l:'Face'},{k:'profileReview',l:'Prof'}].map(d => {
-                                  const s = a.docStatus[d.k as keyof typeof a.docStatus];
-                                  const col = s==='Approved'?GREEN:s==='Rejected'?RED:ORANGE;
-                                  return (
-                                    <span key={d.k} style={{ padding:'2px 6px', background:`${col}12`, border:`1px solid ${col}35`, borderRadius:4, fontFamily:BARLOW, fontSize: 14, color:col, fontWeight:700 }}>{d.l}</span>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                            {/* Face Match */}
-                            <div>
-                              <div style={{ fontFamily:BEBAS, fontSize:22, color:a.matchScore>=90?GREEN:a.matchScore>=70?GOLD:RED, letterSpacing:1, lineHeight:1, marginBottom:3 }}>{a.matchScore}%</div>
-                              <div style={{ fontFamily:BARLOW, fontSize: 14, color:a.matchScore>=90?GREEN:a.matchScore>=70?GOLD:RED, fontWeight:600 }}>
-                                {a.matchScore>=90?'High Match':a.matchScore>=70?'Moderate':'Low Match'}
-                              </div>
-                            </div>
+                             {/* Subscription */}
+                             <div style={{ fontFamily:BARLOW, fontSize:15, color:'rgba(255,255,255,0.6)' }}>
+                               {a.subscription}
+                             </div>
                             {/* Action */}
                             <button onClick={() => handleReview(a)}
                               style={{ padding:'8px 16px', background:RED, border:'none', borderRadius:7, color:'#fff', fontFamily:BARLOW, fontSize:14, fontWeight:700, cursor:'pointer' }}
@@ -446,7 +560,7 @@ export default function TalentVerificationPage() {
                       onMouseLeave={e => (e.currentTarget.style.borderColor='rgba(255,255,255,0.1)')}
                     ><ArrowLeft size={15}/> Back to Queue</button>
                     <div>
-                      <div style={{ fontFamily:BARLOW, fontSize:22, fontWeight:700, color:'#F5F5F5' }}>Reviewing: {selected.name}</div>
+                      <div style={{ fontFamily:BARLOW, fontSize:24, fontWeight:700, color:'#F5F5F5' }}>Reviewing: {selected.name}</div>
                       <div style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.4)' }}>{selected.id} · Submitted {selected.submitted}</div>
                     </div>
                   </div>
@@ -463,193 +577,313 @@ export default function TalentVerificationPage() {
                   </div>
                 </div>
 
+                {/* Inner tabs */}
+                <div style={{ display:'flex', gap:0, borderBottom:'2px solid rgba(255,255,255,0.07)', marginBottom:16 }}>
+                  {[{key:'profile',label:'Profile Details'},{key:'media',label:`Media (${media.length})`}].map(t => (
+                    <button key={t.key} onClick={() => setInnerTab(t.key as any)}
+                      style={{ padding:'9px 18px', background:'none', border:'none', cursor:'pointer', fontFamily:BARLOW, fontSize:15, fontWeight:innerTab===t.key?700:400, color:innerTab===t.key?'#F5F5F5':'rgba(255,255,255,0.45)', borderBottom:innerTab===t.key?`2px solid ${RED}`:'2px solid transparent', marginBottom:-2 }}>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Media Tab */}
+                {innerTab === 'media' && (
+                  <div>
+                    {mediaLoading ? (
+                      <div style={{ textAlign:'center' as const, padding:40, color:'rgba(255,255,255,0.4)', fontFamily:BARLOW, fontSize:15 }}>Loading media…</div>
+                    ) : media.length === 0 ? (
+                      <div style={{ textAlign:'center' as const, padding:40, background:BG2, borderRadius:12, border:'1px solid rgba(255,255,255,0.07)', color:'rgba(255,255,255,0.4)', fontFamily:BARLOW, fontSize:15 }}>No media uploaded by this aspirant yet.</div>
+                    ) : (
+                      <div>
+                        {/* Images */}
+                        {media.filter(m => m.type === 'image').length > 0 && (
+                          <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:20, marginBottom:14 }}>
+                            <div style={{ fontFamily:BARLOW, fontSize:18, fontWeight:700, color:'#F5F5F5', marginBottom:16 }}>Images ({media.filter(m=>m.type==='image').length})</div>
+                            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12 }}>
+                              {media.filter(m => m.type === 'image').map(m => (
+                                <div key={m.id} style={{ borderRadius:10, overflow:'hidden', border:`2px solid ${m.moderation_status==='approved'?GREEN:m.moderation_status==='rejected'?RED:'rgba(255,255,255,0.1)'}`, position:'relative' as const }}>
+                                  <img src={m.url} alt="" style={{ width:'100%', aspectRatio:'3/4', objectFit:'cover', display:'block', cursor:'pointer' }} onClick={() => setMediaModal(m)} />
+                                  {m.is_primary && <div style={{ position:'absolute' as const, top:6, left:6, background:GOLD, color:'#000', fontFamily:BARLOW, fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:10 }}>PRIMARY</div>}
+                                  <div style={{ position:'absolute' as const, top:6, right:6, padding:'2px 10px', borderRadius:10, fontSize:11, fontWeight:700, fontFamily:BARLOW, background:m.moderation_status==='approved'?'rgba(34,197,94,0.9)':m.moderation_status==='rejected'?'rgba(200,32,42,0.9)':'rgba(245,158,11,0.9)', color:'#fff' }}>
+                                    {m.moderation_status==='approved'?'✓ Approved':m.moderation_status==='rejected'?'✗ Rejected':'⏳ Pending'}
+                                  </div>
+                                  {m.rejection_reason && (
+                                    <div style={{ padding:'6px 10px', background:'rgba(200,32,42,0.15)', fontSize:11, fontFamily:BARLOW, color:'#EF4444', lineHeight:1.4 }}>{m.rejection_reason}</div>
+                                  )}
+                                  <div style={{ display:'flex', gap:6, padding:'8px 10px', background:BG3 }}>
+                                    {m.moderation_status !== 'approved' && (
+                                      <button disabled={actionLoading} onClick={() => doMediaAction(m.id,'approve')}
+                                        style={{ flex:1, padding:'5px 0', background:'rgba(34,197,94,0.1)', border:'1px solid rgba(34,197,94,0.3)', borderRadius:5, color:GREEN, fontFamily:BARLOW, fontSize:13, fontWeight:700, cursor:'pointer' }}>✓ Approve</button>
+                                    )}
+                                    {m.moderation_status !== 'rejected' && (
+                                      <button disabled={actionLoading} onClick={() => setRejectMediaId(m.id)}
+                                        style={{ flex:1, padding:'5px 0', background:'rgba(200,32,42,0.1)', border:'1px solid rgba(200,32,42,0.3)', borderRadius:5, color:RED, fontFamily:BARLOW, fontSize:13, fontWeight:700, cursor:'pointer' }}>✗ Reject</button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Videos */}
+                        {media.filter(m => m.type === 'video').length > 0 && (
+                          <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:20 }}>
+                            <div style={{ fontFamily:BARLOW, fontSize:18, fontWeight:700, color:'#F5F5F5', marginBottom:16 }}>Videos ({media.filter(m=>m.type==='video').length})</div>
+                            <div style={{ display:'flex', flexDirection:'column' as const, gap:10 }}>
+                              {media.filter(m => m.type === 'video').map(m => (
+                                <div key={m.id} style={{ display:'flex', alignItems:'center', gap:14, padding:'12px 16px', background:BG3, borderRadius:10, border:`1px solid ${m.moderation_status==='approved'?GREEN:m.moderation_status==='rejected'?RED:'rgba(255,255,255,0.08)'}` }}>
+                                  <div style={{ width:80, height:52, borderRadius:6, overflow:'hidden', flexShrink:0, position:'relative' as const, cursor:'pointer', background:BG4 }} onClick={() => setMediaModal(m)}>
+                                    <video src={m.url} style={{ width:'100%', height:'100%', objectFit:'cover' as const }} muted preload="metadata" />
+                                    <div style={{ position:'absolute' as const, inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.45)' }}>
+                                      <span style={{ fontSize:20, lineHeight:1 }}>▶</span>
+                                    </div>
+                                  </div>
+                                  <div style={{ flex:1, minWidth:0 }}>
+                                    <div style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.6)', marginBottom:4, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' as const }}>{m.url.split('/').pop()}</div>
+                                    <span style={{ padding:'2px 10px', borderRadius:10, fontSize:12, fontWeight:700, fontFamily:BARLOW, background:m.moderation_status==='approved'?'rgba(34,197,94,0.15)':m.moderation_status==='rejected'?'rgba(200,32,42,0.15)':'rgba(245,158,11,0.15)', color:m.moderation_status==='approved'?GREEN:m.moderation_status==='rejected'?RED:ORANGE }}>
+                                      {m.moderation_status==='approved'?'✓ Approved':m.moderation_status==='rejected'?'✗ Rejected':'⏳ Pending'}
+                                    </span>
+                                    {m.rejection_reason && <div style={{ fontFamily:BARLOW, fontSize:12, color:'#EF4444', marginTop:4 }}>{m.rejection_reason}</div>}
+                                  </div>
+                                  <div style={{ display:'flex', gap:8, flexShrink:0 }}>
+                                    {m.moderation_status !== 'approved' && (
+                                      <button disabled={actionLoading} onClick={() => doMediaAction(m.id,'approve')}
+                                        style={{ padding:'6px 14px', background:'rgba(34,197,94,0.1)', border:'1px solid rgba(34,197,94,0.3)', borderRadius:6, color:GREEN, fontFamily:BARLOW, fontSize:13, fontWeight:700, cursor:'pointer' }}>✓ Approve</button>
+                                    )}
+                                    {m.moderation_status !== 'rejected' && (
+                                      <button disabled={actionLoading} onClick={() => setRejectMediaId(m.id)}
+                                        style={{ padding:'6px 14px', background:'rgba(200,32,42,0.1)', border:'1px solid rgba(200,32,42,0.3)', borderRadius:6, color:RED, fontFamily:BARLOW, fontSize:13, fontWeight:700, cursor:'pointer' }}>✗ Reject</button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {innerTab === 'profile' && (
+                <>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 272px', gap:16, alignItems:'flex-start' }}>
 
                   {/* LEFT */}
                   <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
 
-                    {/* Profile Card */}
+                    {/* Profile Header */}
                     <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, overflow:'hidden' }}>
                       <div style={{ height:3, background:`linear-gradient(90deg,${statusColor(selected.status)},transparent)` }}/>
-                      <div style={{ padding:'20px 24px', display:'grid', gridTemplateColumns:'96px 1.1fr 1fr', gap:20, alignItems:'flex-start' }}>
-                        {/* Avatar */}
-                        <div style={{ position:'relative' }}>
+                      <div style={{ padding:'20px 24px', display:'flex', gap:20, alignItems:'flex-start' }}>
+                        <div style={{ flexShrink:0 }}>
                           <div style={{ width:90, height:90, borderRadius:'50%', overflow:'hidden', border:`3px solid ${statusColor(selected.status)}50` }}>
-                            <img src={selected.avatar} style={{ width:'100%', height:'100%', objectFit:'cover' }} alt=""/>
+                            {selected.avatar ? <img src={selected.avatar} style={{ width:'100%', height:'100%', objectFit:'cover' }} alt=""/> : <div style={{ width:'100%', height:'100%', background:'rgba(200,32,42,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:28, fontWeight:700, color:RED }}>{(selected.name||'U').charAt(0)}</div>}
                           </div>
-                          <div style={{ position:'absolute', bottom:4, right:4, width:13, height:13, borderRadius:'50%', background:statusColor(selected.status), border:'2px solid '+BG2 }}/>
                         </div>
-                        {/* Identity */}
-                        <div>
-                          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4 }}>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4, flexWrap:'wrap' as const }}>
                             <span style={{ fontFamily:BARLOW, fontSize:24, fontWeight:700, color:'#F5F5F5' }}>{selected.name}</span>
-                            <span style={{ padding:'3px 12px', background:statusBg(selected.status), border:`1px solid ${statusColor(selected.status)}40`, borderRadius:20, fontFamily:BARLOW, fontSize: 14, fontWeight:700, color:statusColor(selected.status) }}>{selected.status}</span>
+                            <span style={{ padding:'3px 12px', background:statusBg(selected.status), border:`1px solid ${statusColor(selected.status)}40`, borderRadius:20, fontFamily:BARLOW, fontSize:13, fontWeight:700, color:statusColor(selected.status) }}>{selected.status}</span>
+                            {selected.is_available && <span style={{ padding:'3px 10px', background:'rgba(34,197,94,0.12)', border:'1px solid rgba(34,197,94,0.3)', borderRadius:20, fontFamily:BARLOW, fontSize:12, fontWeight:700, color:GREEN }}>Available</span>}
                           </div>
-                          <div style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.38)', marginBottom:12 }}>Aspirant ID: {selected.id}</div>
-                          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                            {[{icon:<Mail size={14}/>,text:selected.email},{icon:<Phone size={14}/>,text:selected.phone},{icon:<MapPin size={14}/>,text:selected.location},{icon:<Calendar size={14}/>,text:`Joined ${selected.joined}`}].map((r,i) => (
-                              <div key={i} style={{ display:'flex', alignItems:'center', gap:8, fontFamily:BARLOW, fontSize:15, color:'rgba(255,255,255,0.65)' }}>
+                          <div style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.38)', marginBottom:10 }}>ID: {selected.id} · {selected.department}</div>
+                          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'4px 20px' }}>
+                            {[
+                              { icon:<Mail size={13}/>, text:selected.email },
+                              { icon:<Phone size={13}/>, text:selected.phone },
+                              { icon:<MapPin size={13}/>, text:selected.location },
+                              { icon:<Calendar size={13}/>, text:`Joined ${selected.joined}` },
+                            ].map((r,i) => (
+                              <div key={i} style={{ display:'flex', alignItems:'center', gap:6, fontFamily:BARLOW, fontSize:15, color:'rgba(255,255,255,0.6)' }}>
                                 <span style={{ color:'rgba(255,255,255,0.3)', flexShrink:0 }}>{r.icon}</span>{r.text}
                               </div>
                             ))}
                           </div>
                         </div>
-                        {/* Details grid */}
-                        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px 20px', paddingTop:4 }}>
-                          {[{l:'Date of Birth',v:selected.dob},{l:'Gender',v:selected.gender},{l:'Nationality',v:selected.nationality},{l:'Department',v:selected.department},{l:'Role',v:selected.role},{l:'User Type',v:'Aspirant'},{l:'Applied Castings',v:String(selected.appliedCastings)+' projects'}].map(r => (
-                            <div key={r.l}>
-                              <div style={{ fontFamily:BARLOW, fontSize: 14, color:'rgba(255,255,255,0.38)', marginBottom:3, textTransform:'uppercase' as const, letterSpacing:0.5 }}>{r.l}</div>
-                              <div style={{ fontFamily:BARLOW, fontSize:16, fontWeight:600, color:'#F5F5F5' }}>{r.v}</div>
-                            </div>
-                          ))}
-                          <div>
-                            <div style={{ fontFamily:BARLOW, fontSize: 14, color:'rgba(255,255,255,0.38)', marginBottom:5, textTransform:'uppercase' as const, letterSpacing:0.5 }}>Profile Completion</div>
-                            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                              <div style={{ flex:1, height:6, background:BG4, borderRadius:3, overflow:'hidden' }}>
-                                <div style={{ height:'100%', width:`${selected.profileCompletion}%`, background:selected.profileCompletion===100?GREEN:GOLD, borderRadius:3 }}/>
-                              </div>
-                              <span style={{ fontFamily:BARLOW, fontSize:15, fontWeight:700, color:selected.profileCompletion===100?GREEN:GOLD }}>{selected.profileCompletion}%</span>
-                            </div>
-                          </div>
-                        </div>
                       </div>
                     </div>
 
-                    {/* Submitted Documents */}
+                    {/* Personal Information */}
                     <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:20 }}>
-                      <div style={{ fontFamily:BARLOW, fontSize:18, fontWeight:700, color:'#F5F5F5', marginBottom:16 }}>Submitted Documents</div>
-                      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12 }}>
-                        {DOC_CARDS.map(doc => (
-                          <div key={doc.key} style={{ background:BG3, border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, overflow:'hidden' }}>
-                            <div style={{ padding:'10px 12px', borderBottom:'1px solid rgba(255,255,255,0.07)', display:'flex', alignItems:'center', gap:8 }}>
-                              <span style={{ fontSize:15 }}>{doc.icon}</span>
-                              <span style={{ fontFamily:BARLOW, fontSize:14, fontWeight:700, color:'#F5F5F5' }}>{doc.label}</span>
-                            </div>
-                            {/* SVG Document Placeholder */}
-                            <div style={{ height:120, background:doc.bg, display:'flex', flexDirection:'column', justifyContent:'center', padding:'12px 14px', cursor:'pointer', position:'relative' }}
-                              onClick={() => setModal('viewDoc')}
-                            >
-                              {doc.isPhoto ? (
-                                <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100%' }}>
-                                  <div style={{ width:64, height:64, borderRadius:'50%', overflow:'hidden', border:`3px solid ${doc.color}40` }}>
-                                    <img src={selected.avatar} style={{ width:'100%', height:'100%', objectFit:'cover' }} alt=""/>
-                                  </div>
-                                </div>
-                              ) : (
-                                doc.lines?.map((line, li) => (
-                                  <div key={li} style={{ fontFamily:li===0?BEBAS:BARLOW, fontSize:li===0?11:10, color:li===0?doc.color:'rgba(255,255,255,0.3)', marginBottom:li===0?6:3, letterSpacing:li===0?1:0 }}>{line}</div>
-                                ))
-                              )}
-                              <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0)', display:'flex', alignItems:'center', justifyContent:'center', transition:'background 0.2s' }}
-                                onMouseEnter={e => (e.currentTarget.style.background='rgba(0,0,0,0.4)')}
-                                onMouseLeave={e => (e.currentTarget.style.background='rgba(0,0,0,0)')}
-                              >
-                                <div style={{ width:32, height:32, borderRadius:'50%', background:'rgba(255,255,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                                  <ZoomIn size={16} color="#fff"/>
-                                </div>
-                              </div>
-                            </div>
-                            <div style={{ padding:'10px 12px' }}>
-                              <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:4 }}>
-                                <Check size={13} color={GREEN}/>
-                                <span style={{ fontFamily:BARLOW, fontSize: 14, fontWeight:700, color:GREEN }}>Clear</span>
-                              </div>
-                              <div style={{ fontFamily:BARLOW, fontSize: 14, color:'rgba(255,255,255,0.4)', marginBottom:1 }}>Submitted on</div>
-                              <div style={{ fontFamily:BARLOW, fontSize: 14, color:'rgba(255,255,255,0.6)', marginBottom:8 }}>{doc.submitted}</div>
-                              <div style={{ display:'flex', gap:6 }}>
-                                <button onClick={() => setModal('viewDoc')} style={{ flex:1, padding:'5px 0', background:'rgba(59,130,246,0.1)', border:'1px solid rgba(59,130,246,0.2)', borderRadius:5, color:BLUE, fontFamily:BARLOW, fontSize: 14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:3 }}><Eye size={11}/> View</button>
-                                <button style={{ flex:1, padding:'5px 0', background:'rgba(34,197,94,0.1)', border:'1px solid rgba(34,197,94,0.2)', borderRadius:5, color:GREEN, fontFamily:BARLOW, fontSize: 14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:3 }}><Download size={11}/> Save</button>
-                              </div>
-                            </div>
+                      <div style={{ fontFamily:BARLOW, fontSize:18, fontWeight:700, color:GOLD, marginBottom:14, letterSpacing:0.5 }}>PERSONAL INFORMATION</div>
+                      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10 }}>
+                        {[
+                          { l:'Date of Birth',  v:selected.dob },
+                          { l:'Gender',         v:selected.gender },
+                          { l:'Category',       v:selected.department },
+                          { l:'Role',           v:selected.role },
+                          { l:'Experience',     v:selected.experience_level },
+                          { l:'Country',        v:selected.country },
+                          { l:'City',           v:selected.city },
+                          { l:'State',          v:selected.state },
+                          { l:'Pincode',        v:selected.pincode },
+                          { l:'Trust Score',    v:`${selected.matchScore}/100` },
+                          { l:'Profile Views',  v:selected.profile_views != null ? String(selected.profile_views) : '—' },
+                          { l:'Completion',     v:`${selected.profileCompletion}%` },
+                        ].map(r => (
+                          <div key={r.l} style={{ background:BG3, borderRadius:8, padding:'10px 12px' }}>
+                            <div style={{ fontFamily:BARLOW, fontSize:12, color:'rgba(255,255,255,0.4)', marginBottom:4, textTransform:'uppercase' as const, letterSpacing:0.5 }}>{r.l}</div>
+                            <div style={{ fontFamily:BARLOW, fontSize:15, fontWeight:600, color:'#F5F5F5' }}>{r.v||'—'}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {selected.address_line1 && (
+                        <div style={{ marginTop:10, background:BG3, borderRadius:8, padding:'10px 12px' }}>
+                          <div style={{ fontFamily:BARLOW, fontSize:11, color:'rgba(255,255,255,0.4)', marginBottom:4, textTransform:'uppercase' as const, letterSpacing:0.5 }}>Address</div>
+                          <div style={{ fontFamily:BARLOW, fontSize:14, color:'#F5F5F5' }}>{[selected.address_line1, selected.address_line2].filter(Boolean).join(', ')}</div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Physical Attributes */}
+                    <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:20 }}>
+                      <div style={{ fontFamily:BARLOW, fontSize:18, fontWeight:700, color:GOLD, marginBottom:14, letterSpacing:0.5 }}>PHYSICAL ATTRIBUTES</div>
+                      <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:10 }}>
+                        {[
+                          { l:'Height',     v:selected.height_cm  > 0 ? `${selected.height_cm} cm` : '—' },
+                          { l:'Weight',     v:selected.weight_kg  > 0 ? `${selected.weight_kg} kg` : '—' },
+                          { l:'Hair Color', v:selected.hair_color },
+                          { l:'Eye Color',  v:selected.eye_color },
+                          { l:'Body Type',  v:selected.body_type },
+                          { l:'Body Tone',  v:selected.body_tone },
+                          { l:'Chest',      v:selected.chest_size > 0 ? `${selected.chest_size}"` : '—' },
+                          { l:'Waist',      v:selected.waist_size > 0 ? `${selected.waist_size}"` : '—' },
+                          { l:'Hip',        v:selected.hip_size   ? `${selected.hip_size}"`   : '—' },
+                          { l:'Shoe Size',  v:selected.shoe_size  ? `UK ${selected.shoe_size}`: '—' },
+                        ].map(r => (
+                          <div key={r.l} style={{ background:BG3, borderRadius:8, padding:'10px 12px' }}>
+                            <div style={{ fontFamily:BARLOW, fontSize:12, color:'rgba(255,255,255,0.4)', marginBottom:4, textTransform:'uppercase' as const, letterSpacing:0.5 }}>{r.l}</div>
+                            <div style={{ fontFamily:BARLOW, fontSize:15, fontWeight:600, color:'#F5F5F5' }}>{r.v||'—'}</div>
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    {/* Face Verification */}
-                    <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:20 }}>
-                      <div style={{ fontFamily:BARLOW, fontSize:18, fontWeight:700, color:'#F5F5F5', marginBottom:16 }}>Face Verification</div>
-                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:20, alignItems:'center' }}>
-                        <div>
-                          <div style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.5)', marginBottom:8 }}>Live Captured Photo</div>
-                          <div style={{ borderRadius:10, overflow:'hidden', border:`2px solid ${GREEN}40`, position:'relative' }}>
-                            <img src={selected.avatar} style={{ width:'100%', height:160, objectFit:'cover', objectPosition:'top', display:'block' }} alt=""/>
-                            {['topleft','topright','bottomleft','bottomright'].map(pos => (
-                              <div key={pos} style={{ position:'absolute', width:20, height:20, borderColor:GREEN, borderStyle:'solid', borderWidth:0, ...(pos.includes('top')?{top:8}:{bottom:8}), ...(pos.includes('left')?{left:8}:{right:8}), ...(pos.includes('top')&&pos.includes('left')?{borderTopWidth:3,borderLeftWidth:3}:pos.includes('top')&&pos.includes('right')?{borderTopWidth:3,borderRightWidth:3}:pos.includes('bottom')&&pos.includes('left')?{borderBottomWidth:3,borderLeftWidth:3}:{borderBottomWidth:3,borderRightWidth:3}) }}/>
+                    {/* About - full width */}
+                    {selected.about_me && (
+                      <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:20 }}>
+                        <div style={{ fontFamily:BARLOW, fontSize:18, fontWeight:700, color:GOLD, marginBottom:10, letterSpacing:0.5 }}>ABOUT</div>
+                        <p style={{ fontFamily:BARLOW, fontSize:16, color:'rgba(255,255,255,0.65)', lineHeight:1.7, margin:0 }}>{selected.about_me}</p>
+                      </div>
+                    )}
+
+                    {/* Skills + Languages + Availability — 3 columns row 1 */}
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:14 }}>
+                      {selected.skills?.length > 0 && (
+                        <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:18 }}>
+                          <div style={{ fontFamily:BARLOW, fontSize:18, fontWeight:700, color:GOLD, marginBottom:12, letterSpacing:0.5 }}>SKILLS</div>
+                          <div style={{ display:'flex', flexWrap:'wrap' as const, gap:8 }}>
+                            {selected.skills.map((s,i) => <span key={i} style={{ padding:'5px 14px', background:'rgba(139,92,246,0.1)', border:'1px solid rgba(139,92,246,0.25)', borderRadius:20, fontSize:14, color:'#8B5CF6', fontWeight:600 }}>{s}</span>)}
+                          </div>
+                        </div>
+                      )}
+                      {selected.languages?.length > 0 && (
+                        <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:18 }}>
+                          <div style={{ fontFamily:BARLOW, fontSize:18, fontWeight:700, color:GOLD, marginBottom:12, letterSpacing:0.5 }}>LANGUAGES</div>
+                          <div style={{ display:'flex', flexWrap:'wrap' as const, gap:8 }}>
+                            {selected.languages.map((l,i) => <span key={i} style={{ padding:'5px 14px', background:'rgba(59,130,246,0.1)', border:'1px solid rgba(59,130,246,0.25)', borderRadius:20, fontSize:14, color:BLUE, fontWeight:600 }}>{l}</span>)}
+                          </div>
+                        </div>
+                      )}
+                      {selected.availability?.length > 0 && (
+                        <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:18 }}>
+                          <div style={{ fontFamily:BARLOW, fontSize:18, fontWeight:700, color:GOLD, marginBottom:12, letterSpacing:0.5 }}>AVAILABLE FOR</div>
+                          <div style={{ display:'flex', flexWrap:'wrap' as const, gap:8 }}>
+                            {selected.availability.map((a,i) => <span key={i} style={{ padding:'5px 14px', background:GOLD_DIM, border:`1px solid ${GOLD_BDR}`, borderRadius:20, fontSize:14, color:GOLD, fontWeight:600 }}>{a}</span>)}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Awards, Credits, Education from social_links */}
+                    {selected.social_links && (
+                      <>
+                        {/* Credits */}
+                        {Array.isArray((selected.social_links as any).credits) && (selected.social_links as any).credits.length > 0 && (
+                          <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:20 }}>
+                            <div style={{ fontFamily:BARLOW, fontSize:18, fontWeight:700, color:GOLD, marginBottom:12, letterSpacing:0.5 }}>WORK EXPERIENCE / CREDITS</div>
+                            {(selected.social_links as any).credits.filter((c: any) => c.title).map((c: any, i: number) => (
+                              <div key={i} style={{ padding:'10px 0', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
+                                <div style={{ fontFamily:BARLOW, fontSize:15, fontWeight:600, color:'#F5F5F5' }}>{c.title}</div>
+                                <div style={{ fontFamily:BARLOW, fontSize:13, color:'rgba(255,255,255,0.5)', marginTop:2 }}>{[c.type, c.role, c.year].filter(Boolean).join(' · ')}</div>
+                                {c.description && <div style={{ fontFamily:BARLOW, fontSize:13, color:'rgba(255,255,255,0.4)', marginTop:4, lineHeight:1.5 }}>{c.description}</div>}
+                              </div>
                             ))}
                           </div>
-                        </div>
-                        <div>
-                          <div style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.5)', marginBottom:8 }}>Profile Photo</div>
-                          <div style={{ borderRadius:10, overflow:'hidden', border:'2px solid rgba(255,255,255,0.1)' }}>
-                            <img src={selected.avatar} style={{ width:'100%', height:160, objectFit:'cover', objectPosition:'top', display:'block' }} alt=""/>
+                        )}
+                        {/* Education */}
+                        {Array.isArray((selected.social_links as any).education) && (selected.social_links as any).education.length > 0 && (
+                          <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:20 }}>
+                            <div style={{ fontFamily:BARLOW, fontSize:18, fontWeight:700, color:GOLD, marginBottom:12, letterSpacing:0.5 }}>EDUCATION</div>
+                            {(selected.social_links as any).education.map((e: any, i: number) => (
+                              <div key={i} style={{ padding:'10px 0', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
+                                <div style={{ fontFamily:BARLOW, fontSize:15, fontWeight:600, color:'#F5F5F5' }}>{e.degree}</div>
+                                <div style={{ fontFamily:BARLOW, fontSize:13, color:'rgba(255,255,255,0.5)', marginTop:2 }}>{e.institution} · {e.field} · {e.from}–{e.to}</div>
+                                {e.grade && <div style={{ fontFamily:BARLOW, fontSize:13, color:GOLD, marginTop:2 }}>Grade: {e.grade}</div>}
+                              </div>
+                            ))}
                           </div>
-                        </div>
-                        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:12, padding:20, background:BG3, borderRadius:12 }}>
-                          <div style={{ fontFamily:BARLOW, fontSize:15, color:'rgba(255,255,255,0.5)' }}>Match Score</div>
-                          <div style={{ fontFamily:BEBAS, fontSize:56, color:selected.matchScore>=90?GREEN:selected.matchScore>=70?GOLD:RED, letterSpacing:2, lineHeight:1 }}>{selected.matchScore}%</div>
-                          <div style={{ padding:'6px 20px', background:selected.matchScore>=90?'rgba(34,197,94,0.12)':'rgba(212,166,74,0.12)', border:`1px solid ${selected.matchScore>=90?'rgba(34,197,94,0.3)':'rgba(212,166,74,0.3)'}`, borderRadius:20, fontFamily:BARLOW, fontSize:15, fontWeight:700, color:selected.matchScore>=90?GREEN:GOLD }}>
-                            {selected.matchScore>=90?'High Match':'Moderate Match'}
+                        )}
+                        {/* Awards */}
+                        {Array.isArray((selected.social_links as any).awards) && (selected.social_links as any).awards.length > 0 && (
+                          <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:20 }}>
+                            <div style={{ fontFamily:BARLOW, fontSize:18, fontWeight:700, color:GOLD, marginBottom:12, letterSpacing:0.5 }}>AWARDS</div>
+                            {(selected.social_links as any).awards.map((a: any, i: number) => (
+                              <div key={i} style={{ padding:'10px 0', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
+                                <div style={{ fontFamily:BARLOW, fontSize:15, fontWeight:600, color:'#F5F5F5' }}>{a.name}</div>
+                                <div style={{ fontFamily:BARLOW, fontSize:13, color:'rgba(255,255,255,0.5)', marginTop:2 }}>{[a.category, a.issuedBy, a.year].filter(Boolean).join(' · ')}</div>
+                              </div>
+                            ))}
                           </div>
-                          <div style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.4)', textAlign:'center' as const }}>
-                            {selected.matchScore>=90?'Face matches successfully':'Manual review recommended'}
-                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* Resume & Intro Video */}
+                    {(selected.resume_url || selected.intro_video_url) && (
+                      <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:20 }}>
+                        <div style={{ fontFamily:BARLOW, fontSize:18, fontWeight:700, color:GOLD, marginBottom:12, letterSpacing:0.5 }}>DOCUMENTS & VIDEO</div>
+                        <div style={{ display:'flex', gap:10, flexWrap:'wrap' as const }}>
+                          {selected.resume_url && <a href={selected.resume_url} target="_blank" rel="noopener noreferrer" style={{ padding:'8px 18px', background:'rgba(59,130,246,0.1)', border:'1px solid rgba(59,130,246,0.3)', borderRadius:7, color:BLUE, fontFamily:BARLOW, fontSize:14, fontWeight:700, textDecoration:'none' }}>📄 View Resume</a>}
+                          {selected.intro_video_url && <a href={selected.intro_video_url} target="_blank" rel="noopener noreferrer" style={{ padding:'8px 18px', background:'rgba(200,32,42,0.1)', border:'1px solid rgba(200,32,42,0.3)', borderRadius:7, color:RED, fontFamily:BARLOW, fontSize:14, fontWeight:700, textDecoration:'none' }}>🎬 Intro Video</a>}
                         </div>
                       </div>
-                    </div>
+                    )}
 
                   </div>
 
                   {/* RIGHT PANEL */}
                   <div style={{ display:'flex', flexDirection:'column', gap:12, position:'sticky', top:0 }}>
 
-                    {/* Verification Status */}
-                    <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:18 }}>
-                      <div style={{ fontFamily:BARLOW, fontSize:17, fontWeight:700, color:'#F5F5F5', marginBottom:14 }}>Verification Status</div>
-                      {[
-                        { key:'idProof',         label:'ID Proof',          icon:<FileCheck size={15}/> },
-                        { key:'addressProof',     label:'Address Proof',     icon:<Home size={15}/>      },
-                        { key:'faceVerification', label:'Face Verification', icon:<User size={15}/>      },
-                        { key:'profileReview',    label:'Profile Review',    icon:<Shield size={15}/>    },
-                      ].map(item => {
-                        const s   = docStatuses[item.key as keyof typeof docStatuses];
-                        const col = s==='Approved'?GREEN:s==='Rejected'?RED:ORANGE;
-                        return (
-                          <div key={item.key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 0', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
-                            <div style={{ display:'flex', alignItems:'center', gap:9 }}>
-                              <span style={{ color:'rgba(255,255,255,0.35)' }}>{item.icon}</span>
-                              <span style={{ fontFamily:BARLOW, fontSize:15, color:'#F5F5F5' }}>{item.label}</span>
-                            </div>
-                            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                              {docStatusIcon(s)}
-                              <select value={s} onChange={e => setDocStatuses(d => ({ ...d, [item.key]:e.target.value }))}
-                                style={{ background:'transparent', border:'none', color:col, fontFamily:BARLOW, fontSize:14, fontWeight:700, cursor:'pointer', outline:'none' }}>
-                                <option value="Pending"  style={{ background:BG3 }}>Pending</option>
-                                <option value="Approved" style={{ background:BG3 }}>Approved</option>
-                                <option value="Rejected" style={{ background:BG3 }}>Rejected</option>
-                              </select>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
 
                     {/* Actions */}
-                    <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:18 }}>
-                      <div style={{ fontFamily:BARLOW, fontSize:17, fontWeight:700, color:'#F5F5F5', marginBottom:14 }}>Verification Actions</div>
-                      <button onClick={() => setModal('approve')} style={{ width:'100%', padding:'12px', background:'rgba(34,197,94,0.1)', border:'1px solid rgba(34,197,94,0.25)', borderRadius:8, color:GREEN, fontFamily:BARLOW, fontSize:16, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:8 }}
-                        onMouseEnter={e => (e.currentTarget.style.background='rgba(34,197,94,0.2)')}
-                        onMouseLeave={e => (e.currentTarget.style.background='rgba(34,197,94,0.1)')}
-                      ><Check size={16}/> Approve & Verify</button>
-                      <button onClick={() => setModal('reject')} style={{ width:'100%', padding:'12px', background:'rgba(200,32,42,0.1)', border:'1px solid rgba(200,32,42,0.25)', borderRadius:8, color:RED, fontFamily:BARLOW, fontSize:16, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:8 }}
-                        onMouseEnter={e => (e.currentTarget.style.background='rgba(200,32,42,0.2)')}
-                        onMouseLeave={e => (e.currentTarget.style.background='rgba(200,32,42,0.1)')}
-                      ><X size={16}/> Reject</button>
-                      <button onClick={() => setModal('hold')} style={{ width:'100%', padding:'12px', background:BG3, border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, color:'rgba(255,255,255,0.65)', fontFamily:BARLOW, fontSize:16, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}
-                        onMouseEnter={e => (e.currentTarget.style.background=BG4)}
-                        onMouseLeave={e => (e.currentTarget.style.background=BG3)}
-                      ><Clock size={16}/> Put On Hold</button>
-                    </div>
+                     <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:18 }}>
+                       <div style={{ fontFamily:BARLOW, fontSize:17, fontWeight:700, color:'#F5F5F5', marginBottom:14 }}>Verification Actions</div>
+                       {selected.status === 'Approved' ? (
+                         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 16px', background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.2)', borderRadius:8 }}>
+                           <Check size={16} color={GREEN}/>
+                           <span style={{ fontFamily:BARLOW, fontSize:15, fontWeight:700, color:GREEN }}>Profile Verified</span>
+                         </div>
+                       ) : (
+                         <>
+                           <button onClick={() => setModal('approve')} style={{ width:'100%', padding:'12px', background:'rgba(34,197,94,0.1)', border:'1px solid rgba(34,197,94,0.25)', borderRadius:8, color:GREEN, fontFamily:BARLOW, fontSize:16, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:8 }}
+                             onMouseEnter={e => (e.currentTarget.style.background='rgba(34,197,94,0.2)')}
+                             onMouseLeave={e => (e.currentTarget.style.background='rgba(34,197,94,0.1)')}
+                           ><Check size={16}/> Approve & Verify</button>
+                           <button onClick={() => setModal('reject')} style={{ width:'100%', padding:'12px', background:'rgba(200,32,42,0.1)', border:'1px solid rgba(200,32,42,0.25)', borderRadius:8, color:RED, fontFamily:BARLOW, fontSize:16, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:8 }}
+                             onMouseEnter={e => (e.currentTarget.style.background='rgba(200,32,42,0.2)')}
+                             onMouseLeave={e => (e.currentTarget.style.background='rgba(200,32,42,0.1)')}
+                           ><X size={16}/> Reject</button>
+                           <button onClick={() => setModal('hold')} style={{ width:'100%', padding:'12px', background:BG3, border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, color:'rgba(255,255,255,0.65)', fontFamily:BARLOW, fontSize:16, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}
+                             onMouseEnter={e => (e.currentTarget.style.background=BG4)}
+                             onMouseLeave={e => (e.currentTarget.style.background=BG3)}
+                           ><Clock size={16}/> Put On Hold</button>
+                         </>
+                       )}
+                     </div>
 
                     {/* Notes */}
                     <div style={{ background:BG2, border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:18 }}>
@@ -659,7 +893,33 @@ export default function TalentVerificationPage() {
                       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:4, marginBottom:10 }}>
                         <span style={{ fontFamily:BARLOW, fontSize: 14, color:'rgba(255,255,255,0.25)' }}>{notes.length}/500</span>
                       </div>
-                      <button onClick={() => setModal('saveNotes')} style={{ width:'100%', padding:'10px', background:GOLD, border:'none', borderRadius:8, color:BG, fontFamily:BEBAS, fontSize:17, letterSpacing:1, cursor:'pointer' }}>Save Notes</button>
+                      <button onClick={async () => {
+        if (!notes.trim() || !selected) return;
+        setActionLoading(true);
+        const h = getAuthHeaders();
+        try {
+          const res = await fetch('/api/admin/verification', {
+            method: 'PUT',
+            headers: { ...h, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profile_id: selected.profile_id, profile_type: 'aspirant', action: 'add_note', notes }),
+          });
+          const data = await res.json();
+          if (res.ok && data.success !== false) {
+            showToast('Notes saved successfully', 'success');
+            setNotes('');
+            fetchAspirants();
+          } else {
+            showToast(data.error || 'Failed to save notes', 'error');
+          }
+        } catch {
+          showToast('Network error — notes not saved', 'error');
+        } finally {
+          setActionLoading(false);
+        }
+      }} disabled={!notes.trim() || actionLoading}
+      style={{ width:'100%', padding:'10px', background:notes.trim()?GOLD:'rgba(212,166,74,0.3)', border:'none', borderRadius:8, color:BG, fontFamily:BEBAS, fontSize:17, letterSpacing:1, cursor:notes.trim()?'pointer':'not-allowed' }}>
+        {actionLoading ? 'Saving…' : 'Save Notes'}
+      </button>
                     </div>
 
                     {/* History */}
@@ -681,7 +941,9 @@ export default function TalentVerificationPage() {
 
                   </div>
                 </div>
-              </div>
+                </>
+              )}
+            </div>
             )}
 
           </div>
@@ -701,7 +963,7 @@ export default function TalentVerificationPage() {
           </div>
           <div style={{ display:'flex', gap:10 }}>
             <button onClick={() => setModal('')} style={{ flex:1, padding:10, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, color:'rgba(255,255,255,0.6)', fontFamily:BARLOW, fontSize:15, cursor:'pointer' }}>Cancel</button>
-            <button onClick={() => setModal('')} style={{ flex:2, padding:10, background:GREEN, border:'none', borderRadius:7, color:'#fff', fontFamily:BEBAS, fontSize:17, letterSpacing:1, cursor:'pointer' }}>Confirm Approval</button>
+            <button disabled={actionLoading} onClick={() => doVerification('approve')} style={{ flex:2, padding:10, background:GREEN, border:'none', borderRadius:7, color:'#fff', fontFamily:BEBAS, fontSize:17, letterSpacing:1, cursor:'pointer', opacity:actionLoading?0.6:1 }}>{actionLoading?'Approving…':'Confirm Approval'}</button>
           </div>
         </Modal>
       )}
@@ -710,7 +972,7 @@ export default function TalentVerificationPage() {
           <div style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.5)', marginBottom:14, lineHeight:1.6 }}>Rejecting verification for <strong style={{ color:'#F5F5F5' }}>{selected.name}</strong>. They will be notified via email.</div>
           <div style={{ marginBottom:14 }}>
             <label style={{ display:'block', fontFamily:BARLOW, fontSize: 14, color:'rgba(255,255,255,0.5)', marginBottom:5 }}>Reason for Rejection</label>
-            <select style={{ width:'100%', background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, padding:'10px 12px', color:'#F5F5F5', fontFamily:BARLOW, fontSize:15, outline:'none' }}>
+            <select value={rejectReason} onChange={e => setRejectReason(e.target.value)} style={{ width:'100%', background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, padding:'10px 12px', color:'#F5F5F5', fontFamily:BARLOW, fontSize:15, outline:'none' }}>
               <option>Documents unclear or invalid</option><option>Face verification failed</option><option>Incomplete profile</option><option>Fraudulent documents</option><option>Duplicate account</option><option>Other</option>
             </select>
           </div>
@@ -720,7 +982,7 @@ export default function TalentVerificationPage() {
           </div>
           <div style={{ display:'flex', gap:10 }}>
             <button onClick={() => setModal('')} style={{ flex:1, padding:10, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, color:'rgba(255,255,255,0.6)', fontFamily:BARLOW, fontSize:15, cursor:'pointer' }}>Cancel</button>
-            <button onClick={() => setModal('')} style={{ flex:2, padding:10, background:RED, border:'none', borderRadius:7, color:'#fff', fontFamily:BEBAS, fontSize:17, letterSpacing:1, cursor:'pointer' }}>Confirm Rejection</button>
+            <button disabled={actionLoading} onClick={() => doVerification('reject')} style={{ flex:2, padding:10, background:RED, border:'none', borderRadius:7, color:'#fff', fontFamily:BEBAS, fontSize:17, letterSpacing:1, cursor:'pointer', opacity:actionLoading?0.6:1 }}>{actionLoading?'Rejecting…':'Confirm Rejection'}</button>
           </div>
         </Modal>
       )}
@@ -735,7 +997,7 @@ export default function TalentVerificationPage() {
           </div>
           <div style={{ display:'flex', gap:10 }}>
             <button onClick={() => setModal('')} style={{ flex:1, padding:10, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, color:'rgba(255,255,255,0.6)', fontFamily:BARLOW, fontSize:15, cursor:'pointer' }}>Cancel</button>
-            <button onClick={() => setModal('')} style={{ flex:2, padding:10, background:GOLD, border:'none', borderRadius:7, color:BG, fontFamily:BEBAS, fontSize:17, letterSpacing:1, cursor:'pointer' }}>Put On Hold</button>
+            <button disabled={actionLoading} onClick={() => doVerification('request_info')} style={{ flex:2, padding:10, background:GOLD, border:'none', borderRadius:7, color:BG, fontFamily:BEBAS, fontSize:17, letterSpacing:1, cursor:'pointer', opacity:actionLoading?0.6:1 }}>{actionLoading?'Sending…':'Put On Hold'}</button>
           </div>
         </Modal>
       )}
@@ -753,7 +1015,7 @@ export default function TalentVerificationPage() {
           </div>
         </Modal>
       )}
-      {modal==='saveNotes' && (
+      {modal==='saveNotes_unused' && (
         <Modal title="NOTES SAVED" onClose={() => setModal('')}>
           <div style={{ textAlign:'center' as const, padding:'16px 0' }}>
             <div style={{ width:52, height:52, borderRadius:'50%', background:'rgba(34,197,94,0.12)', border:'1px solid rgba(34,197,94,0.3)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px' }}><Check size={22} color={GREEN}/></div>
@@ -762,6 +1024,143 @@ export default function TalentVerificationPage() {
           </div>
           <button onClick={() => setModal('')} style={{ width:'100%', padding:10, background:GOLD, border:'none', borderRadius:7, color:BG, fontFamily:BEBAS, fontSize:17, letterSpacing:1, cursor:'pointer', marginTop:8 }}>Done</button>
         </Modal>
+      )}
+      {/* ══ MEDIA LIGHTBOX — full viewer with nav + approve/reject ══ */}
+      {mediaModal && (() => {
+        const allMedia = media;
+        const currentIdx = allMedia.findIndex(m => m.id === mediaModal.id);
+        const prevMedia = currentIdx > 0 ? allMedia[currentIdx - 1] : null;
+        const nextMedia = currentIdx < allMedia.length - 1 ? allMedia[currentIdx + 1] : null;
+        const current = allMedia[currentIdx] || mediaModal;
+        return (
+          <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.95)', zIndex:600, display:'flex', flexDirection:'column' as const }}>
+            {/* Top bar */}
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 24px', background:'rgba(0,0,0,0.6)', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+                <button onClick={() => setMediaModal(null)} style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.15)', color:'#fff', padding:'7px 14px', borderRadius:8, cursor:'pointer', fontFamily:BARLOW, fontSize:14 }}>
+                  ✕ Close
+                </button>
+                <div style={{ fontFamily:BARLOW, fontSize:15, color:'rgba(255,255,255,0.6)' }}>
+                  <span style={{ color:'#fff', fontWeight:700 }}>{currentIdx + 1}</span> / {allMedia.length}
+                  <span style={{ marginLeft:12, padding:'2px 10px', borderRadius:10, fontSize:12, fontWeight:700,
+                    background: current.moderation_status==='approved'?'rgba(34,197,94,0.2)':current.moderation_status==='rejected'?'rgba(200,32,42,0.2)':'rgba(245,158,11,0.2)',
+                    color: current.moderation_status==='approved'?GREEN:current.moderation_status==='rejected'?RED:ORANGE,
+                    border: `1px solid ${current.moderation_status==='approved'?GREEN:current.moderation_status==='rejected'?RED:ORANGE}40`,
+                  }}>
+                    {current.moderation_status==='approved'?'✓ Approved':current.moderation_status==='rejected'?'✗ Rejected':'⏳ Pending'}
+                  </span>
+                  {current.is_primary && <span style={{ marginLeft:8, padding:'2px 10px', borderRadius:10, fontSize:12, fontWeight:700, background:'rgba(212,166,74,0.2)', color:GOLD, border:`1px solid ${GOLD}40` }}>PRIMARY</span>}
+                </div>
+              </div>
+              {/* Approve / Reject in top bar */}
+              <div style={{ display:'flex', gap:10 }}>
+                {current.moderation_status !== 'approved' && (
+                  <button disabled={actionLoading} onClick={async () => { await doMediaAction(current.id,'approve'); setMediaModal(m => m ? {...m} : null); }}
+                    style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 18px', background:'rgba(34,197,94,0.15)', border:`1px solid ${GREEN}50`, borderRadius:8, color:GREEN, fontFamily:BARLOW, fontSize:14, fontWeight:700, cursor:'pointer' }}>
+                    ✓ Approve
+                  </button>
+                )}
+                {current.moderation_status !== 'rejected' && (
+                  <button disabled={actionLoading} onClick={() => { setRejectMediaId(current.id); setMediaModal(null); }}
+                    style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 18px', background:'rgba(200,32,42,0.15)', border:`1px solid ${RED}50`, borderRadius:8, color:RED, fontFamily:BARLOW, fontSize:14, fontWeight:700, cursor:'pointer' }}>
+                    ✗ Reject
+                  </button>
+                )}
+                <a href={current.url} download target="_blank" rel="noopener noreferrer"
+                  style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 14px', background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.15)', borderRadius:8, color:'rgba(255,255,255,0.7)', fontFamily:BARLOW, fontSize:14, textDecoration:'none' }}>
+                  ⬇ Download
+                </a>
+              </div>
+            </div>
+
+            {/* Media area with prev/next */}
+            <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden' }}>
+              {/* Prev */}
+              <button onClick={() => prevMedia && setMediaModal(prevMedia)} disabled={!prevMedia}
+                style={{ position:'absolute', left:16, zIndex:10, width:44, height:44, borderRadius:'50%', background:prevMedia?'rgba(255,255,255,0.12)':'rgba(255,255,255,0.04)', border:'none', color:prevMedia?'#fff':'rgba(255,255,255,0.2)', fontSize:22, cursor:prevMedia?'pointer':'not-allowed', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                ‹
+              </button>
+
+              {/* Media */}
+              <div style={{ maxWidth:'75vw', maxHeight:'calc(100vh - 160px)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                {current.type === 'video' ? (
+                  <video src={current.url} controls autoPlay
+                    style={{ maxWidth:'75vw', maxHeight:'calc(100vh - 160px)', borderRadius:10, background:'#000' }}
+                  />
+                ) : (
+                  <img src={current.url} alt=""
+                    style={{ maxWidth:'75vw', maxHeight:'calc(100vh - 160px)', borderRadius:10, objectFit:'contain', display:'block' }}
+                  />
+                )}
+              </div>
+
+              {/* Next */}
+              <button onClick={() => nextMedia && setMediaModal(nextMedia)} disabled={!nextMedia}
+                style={{ position:'absolute', right:16, zIndex:10, width:44, height:44, borderRadius:'50%', background:nextMedia?'rgba(255,255,255,0.12)':'rgba(255,255,255,0.04)', border:'none', color:nextMedia?'#fff':'rgba(255,255,255,0.2)', fontSize:22, cursor:nextMedia?'pointer':'not-allowed', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                ›
+              </button>
+            </div>
+
+            {/* Bottom thumbnail strip */}
+            <div style={{ flexShrink:0, padding:'10px 24px', background:'rgba(0,0,0,0.6)', borderTop:'1px solid rgba(255,255,255,0.08)', display:'flex', gap:8, overflowX:'auto' as const, alignItems:'center', justifyContent:'center' }}>
+              {allMedia.map((m, i) => (
+                <div key={m.id} onClick={() => setMediaModal(m)}
+                  style={{ flexShrink:0, width:54, height:54, borderRadius:6, overflow:'hidden', cursor:'pointer',
+                    border:`2px solid ${m.id===current.id?GOLD:m.moderation_status==='approved'?GREEN:m.moderation_status==='rejected'?RED:'rgba(255,255,255,0.15)'}`,
+                    opacity: m.id===current.id ? 1 : 0.6,
+                    transition:'all 0.15s',
+                  }}>
+                  {m.type === 'video'
+                    ? <div style={{ width:'100%', height:'100%', background:BG4, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>▶</div>
+                    : <img src={m.url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                  }
+                </div>
+              ))}
+            </div>
+
+            {/* Rejection reason banner if rejected */}
+            {current.rejection_reason && (
+              <div style={{ flexShrink:0, padding:'8px 24px', background:'rgba(200,32,42,0.15)', borderTop:`1px solid ${RED}40`, fontFamily:BARLOW, fontSize:13, color:'#EF4444' }}>
+                ✗ Rejection reason: {current.rejection_reason}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Reject media modal */}
+      {rejectMediaId && (
+        <Modal title="REJECT MEDIA" onClose={() => setRejectMediaId(null)}>
+          <div style={{ fontFamily:BARLOW, fontSize:14, color:'rgba(255,255,255,0.5)', marginBottom:14, lineHeight:1.6 }}>
+            The aspirant will be notified and can upload a replacement.
+          </div>
+          <div style={{ marginBottom:14 }}>
+            <label style={{ display:'block', fontFamily:BARLOW, fontSize:13, color:'rgba(255,255,255,0.5)', marginBottom:5 }}>Rejection Reason</label>
+            <select value={mediaRejectReason} onChange={e => setMediaRejectReason(e.target.value)}
+              style={{ width:'100%', background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, padding:'10px 12px', color:'#F5F5F5', fontFamily:BARLOW, fontSize:15, outline:'none' }}>
+              <option>Content does not meet platform standards</option>
+              <option>Explicit or inappropriate content</option>
+              <option>Watermark or contact details visible</option>
+              <option>AI-generated or manipulated image</option>
+              <option>Copyright-infringing content</option>
+              <option>Image quality too low</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div style={{ display:'flex', gap:10 }}>
+            <button onClick={() => setRejectMediaId(null)} style={{ flex:1, padding:10, background:BG3, border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, color:'rgba(255,255,255,0.6)', fontFamily:BARLOW, fontSize:15, cursor:'pointer' }}>Cancel</button>
+            <button disabled={actionLoading} onClick={() => doMediaAction(rejectMediaId, 'reject')}
+              style={{ flex:2, padding:10, background:RED, border:'none', borderRadius:7, color:'#fff', fontFamily:BEBAS, fontSize:17, letterSpacing:1, cursor:'pointer', opacity:actionLoading?0.6:1 }}>
+              {actionLoading?'Rejecting…':'Confirm Rejection'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {toast && (
+        <div style={{ position:'fixed', bottom:24, right:24, zIndex:999, padding:'12px 20px', borderRadius:10, background:toast.type==='success'?'rgba(34,197,94,0.15)':'rgba(239,68,68,0.15)', border:`1px solid ${toast.type==='success'?GREEN:'#EF4444'}`, color:toast.type==='success'?GREEN:'#EF4444', fontFamily:BARLOW, fontSize:15, fontWeight:600 }}>
+          {toast.type==='success'?'✓':'✗'} {toast.msg}
+        </div>
       )}
     </div>
   );

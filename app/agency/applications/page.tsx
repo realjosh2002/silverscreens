@@ -1,15 +1,18 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
+
   LayoutDashboard, Megaphone, PlusCircle, ClipboardList,
   UserSearch, Star, CalendarCheck, MessageSquare, Bell,
   Bookmark, ChevronDown, MoreVertical, Filter, Search,
   ChevronLeft, ChevronRight, MapPin, Eye, X, Download,
   CheckSquare, Square, FileText, Activity, User, Menu,
 } from 'lucide-react';
+import AgencyVerificationBanner from '@/components/layout/AgencyVerificationBanner';
 
 const RED    = '#C8202A';
 const GOLD   = '#D4A64A';
@@ -22,6 +25,15 @@ const BG4    = '#1C2030';
 const BEBAS  = "'Bebas Neue', sans-serif";
 const BARLOW = "'Barlow Condensed', sans-serif";
 
+function getIsApproved(): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
+    const ps = u?.profileStatus ?? 'pending';
+    return ps === 'approved' || ps === 'active';
+  } catch { return true; }
+}
+
 const NAV_PRIMARY = [
   { icon: LayoutDashboard, label: 'Dashboard',              href: '/agency/dashboard' },
   { icon: PlusCircle,      label: 'Create Casting Call',    href: '/agency/create-casting' },
@@ -31,11 +43,14 @@ const NAV_PRIMARY = [
   { icon: Star,            label: 'Shortlisted Talents',    href: '/agency/shortlisted' },
   { icon: CalendarCheck,   label: 'Audition Management',    href: '/agency/auditions' },
   { icon: Bookmark,        label: 'Saved Talents',          href: '/agency/saved-talents' },
-  { icon: MessageSquare,   label: 'Messages',  badge: 12,   href: '/agency/messages' },
-  { icon: Bell,            label: 'Notifications', badge: 3, href: '/agency/notifications' },
+  { icon: MessageSquare,   label: 'Messages',  href: '/agency/messages' },
+  { icon: Bell,            label: 'Notifications', href: '/agency/notifications' },
 ];
 
 const STATUS_COLORS: Record<string, string> = {
+  'Selected':           '#4AD48A',
+  'Audition Scheduled': '#9B59B6',
+  'On Hold':            GOLD,
   New: BLUE,
   'In Review': GOLD,
   Shortlisted: GREEN,
@@ -54,7 +69,7 @@ interface Applicant {
   castingCall: string;
   projectType: string;
   roleApplied: string;
-  status: 'New' | 'In Review' | 'Shortlisted' | 'Rejected';
+  status: 'New' | 'In Review' | 'Shortlisted' | 'Rejected' | 'Selected' | 'Audition Scheduled' | 'On Hold';
   appliedOn: string;
   appliedTime: string;
   height: string;
@@ -137,7 +152,10 @@ function apiToApplicant(a: any, idx: number): Applicant {
     in_review:   'In Review',
     'in review': 'In Review',
     shortlisted: 'Shortlisted',
-    rejected:    'Rejected',
+    rejected:          'Rejected',
+    selected:          'Selected',
+    audition_scheduled:'Audition Scheduled',
+    on_hold:           'On Hold',
   };
   const status = statusMap[rawStatus] ?? 'New';
 
@@ -175,8 +193,18 @@ function apiToApplicant(a: any, idx: number): Applicant {
   };
 }
 
-export default function ApplicationsManagementPage() {
+export default function ApplicationsManagementPageWrapper() {
+  return (
+    <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#050505', color: 'rgba(255,255,255,0.4)', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16 }}>Loading...</div>}>
+      <ApplicationsManagementPage />
+    </Suspense>
+  );
+}
+
+function ApplicationsManagementPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const castingCallIdParam = searchParams.get('casting_call_id') ?? '';
   const [profileOpen,       setProfileOpen]       = useState(false);
   const [sidebarOpen,       setSidebarOpen]       = useState(false);
   const [activeStatFilter,  setActiveStatFilter]  = useState('All');
@@ -195,6 +223,7 @@ export default function ApplicationsManagementPage() {
   const [castingOptions, setCastingOptions] = useState<string[]>([]);
   const [agencyName,     setAgencyName]     = useState('My Agency');
   const [agencyInitials, setAgencyInitials] = useState('AG');
+  const [scheduledAuditions, setScheduledAuditions] = useState<Set<string>>(new Set());
   const [agencyId,       setAgencyId]       = useState('AGE·········');
   const [agencyType,     setAgencyType]     = useState('Production House');
   const [msgCount,       setMsgCount]       = useState(0);
@@ -215,13 +244,22 @@ export default function ApplicationsManagementPage() {
     async function loadData() {
       const h = await getFreshAuthHeaders();
 
-      fetch('/api/applications?limit=100', { headers: h })
+      const appsUrl = castingCallIdParam
+        ? `/api/applications?limit=200&casting_call_id=${castingCallIdParam}`
+        : '/api/applications?limit=100';
+
+      fetch(appsUrl, { headers: h })
         .then(r => r.ok ? r.json() : null)
         .then(data => {
           if (!data) return;
           const list = data.data?.applications ?? data.applications ?? data.data ?? data;
           if (!Array.isArray(list) || list.length === 0) return;
-          setApplicants(list.map((a: any, i: number) => apiToApplicant(a, i)));
+          const mapped = list.map((a: any, i: number) => apiToApplicant(a, i));
+          setApplicants(mapped);
+          // If filtering by casting call, set the filter to match the first result's casting call title
+          if (castingCallIdParam && mapped.length > 0 && mapped[0].castingCall) {
+            setCastingCallFilter(mapped[0].castingCall);
+          }
         })
         .catch(() => {})
         .finally(() => setLoading(false));
@@ -237,7 +275,8 @@ export default function ApplicationsManagementPage() {
             setAgencyInitials(name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase());
           }
           if (p.profile_number ?? p.profileNumber) setAgencyId(p.profile_number ?? p.profileNumber);
-          if (p.company_type  ?? p.companyType)    setAgencyType(p.company_type ?? p.companyType);
+          if (p.company_type  ?? p.companyType)    setAgencyType(p.company_type ?? p.companyType)
+        const vs=p.verification_status??p.verificationStatus??'pending'; setIsApproved(vs==='approved'||vs==='active');;
         })
         .catch(() => {});
 
@@ -268,6 +307,22 @@ export default function ApplicationsManagementPage() {
           const list = data.data?.conversations ?? data.conversations ?? [];
           if (Array.isArray(list)) setMsgCount(list.filter((c: any) => c.unreadCount > 0).length);
         }).catch(() => {});
+
+      // Fetch scheduled auditions to show badge on applicant rows
+      fetch('/api/auditions?limit=200', { headers: h })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          const list = data?.data?.auditions ?? [];
+          if (Array.isArray(list)) {
+            const ids = new Set<string>(
+              list
+                .filter((a: any) => ['scheduled', 'rescheduled'].includes(a.status))
+                .map((a: any) => a.aspirant_id ?? a.aspirant_profiles?.id)
+                .filter(Boolean)
+            );
+            setScheduledAuditions(ids);
+          }
+        }).catch(() => {});
     }
     loadData();
   }, []);
@@ -295,11 +350,13 @@ export default function ApplicationsManagementPage() {
   };
 
   const liveStats = useMemo(() => [
-    { key: 'All',         label: 'Total Applications', value: applicants.length,                                    color: '#fff', icon: ClipboardList },
-    { key: 'New',         label: 'New',                value: applicants.filter(a => a.status === 'New').length,         color: BLUE,  icon: FileText      },
-    { key: 'In Review',   label: 'In Review',          value: applicants.filter(a => a.status === 'In Review').length,   color: GOLD,  icon: Activity      },
-    { key: 'Shortlisted', label: 'Shortlisted',        value: applicants.filter(a => a.status === 'Shortlisted').length, color: GREEN, icon: Star          },
-    { key: 'Rejected',    label: 'Rejected',           value: applicants.filter(a => a.status === 'Rejected').length,    color: RED,   icon: X             },
+    { key: 'All',                  label: 'Total Applications',  value: applicants.length,                                                       color: '#fff',     icon: ClipboardList },
+    { key: 'New',                  label: 'New',                 value: applicants.filter(a => a.status === 'New').length,                       color: BLUE,       icon: FileText      },
+    { key: 'In Review',            label: 'In Review',           value: applicants.filter(a => a.status === 'In Review').length,                  color: GOLD,       icon: Activity      },
+    { key: 'Shortlisted',          label: 'Shortlisted',         value: applicants.filter(a => a.status === 'Shortlisted').length,                color: GREEN,      icon: Star          },
+    { key: 'Audition Scheduled',   label: 'Audition Scheduled',  value: applicants.filter(a => a.status === 'Audition Scheduled').length,         color: '#9B59B6',  icon: CalendarCheck },
+    { key: 'Selected',             label: 'Selected',            value: applicants.filter(a => a.status === 'Selected').length,                  color: '#4AD48A',  icon: CheckSquare   },
+    { key: 'Rejected',             label: 'Rejected',            value: applicants.filter(a => a.status === 'Rejected').length,                  color: RED,        icon: X             },
   ], [applicants]);
 
   const castingCallOptions = useMemo(() => {
@@ -325,13 +382,14 @@ export default function ApplicationsManagementPage() {
   };
 
   return (
+    <>
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: BG, fontFamily: BARLOW, color: '#F5F5F5' }}>
 
       {/* ══ TOPNAV ══ */}
       <header style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, padding: '0 24px', height: 60, background: BG2, borderBottom: '1px solid rgba(255,255,255,0.06)', position: 'relative', zIndex: 100 }}>
         <SilverScreensLogo size="md" href="/" showTagline={false} />
         <div style={{ flex: 1 }} />
-        <button onClick={() => router.push('/agency/create-casting')} style={{ display: 'flex', alignItems: 'center', gap: 7, background: RED, color: '#fff', border: 'none', borderRadius: 8, padding: '0 18px', height: 36, fontSize: 15, fontWeight: 700, fontFamily: BARLOW, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+        <button onClick={() => { if (!getIsApproved()) return; router.push('/agency/create-casting'); }} title={!getIsApproved() ? 'Available after agency verification' : undefined} style={{ display: 'flex', alignItems: 'center', gap: 7, background: getIsApproved() ? RED : 'rgba(200,32,42,0.3)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 18px', height: 36, fontSize: 15, fontWeight: 700, fontFamily: BARLOW, cursor: getIsApproved() ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap', flexShrink: 0, opacity: getIsApproved() ? 1 : 0.5 }}>
           Post a Casting <span style={{ fontSize: 16, fontWeight: 400 }}>+</span>
         </button>
 
@@ -366,24 +424,15 @@ export default function ApplicationsManagementPage() {
                   <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Agency ID</span>
                   <span style={{ fontSize: 14, fontWeight: 700, color: GOLD }}>{agencyId}</span>
                 </div>
-                {[
-                  { label: 'Reports & Analytics',   href: '/agency/reports'    },
-                  { label: 'Subscription & Billing', href: '/pricing'           },
-                  { label: 'Company Profile',        href: '/agency-profile'    },
-                  { label: 'Documents',              href: '/agency/documents'  },
-                  { label: 'Calendar',               href: '/agency/calendar'   },
-                  { label: 'Settings',               href: '/agency/settings'   },
-                  { label: 'Support',                href: '/contact'           },
-                  { label: 'Logout',                 href: '/login'             },
-                ].map(({ label: item, href: dHref }) => (
-                  <div key={item} onClick={() => {
-                    if (item === 'Logout') { localStorage.removeItem('ss_user'); window.location.replace('/login'); }
-                    else { router.push(dHref); setProfileOpen(false); }
-                  }} style={{ padding: '10px 16px', fontSize: 15, cursor: 'pointer', color: item === 'Logout' ? '#ff6b6b' : '#F5F5F5', borderTop: item === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >{item}</div>
-                ))}
+                {(()=>{
+                  const isApproved=(()=>{try{const u=JSON.parse(localStorage.getItem('ss_user')||'{}');const ps=u?.profileStatus??'pending';return ps==='approved'||ps==='active';}catch{return true;}})();
+                  const menuItems=isApproved
+                    ?[{label:'Reports & Analytics',href:'/agency/reports'},{label:'Subscription & Billing',href:'/pricing'},{label:'Company Profile',href:'/agency-profile'},{label:'Documents',href:'/agency/documents'},{label:'Calendar',href:'/agency/calendar'},{label:'Settings',href:'/agency/settings'},{label:'Support',href:'/agency/support'},{label:'Logout',href:'/login'}]
+                    :[{label:'Company Profile',href:'/create-company-profile'},{label:'Logout',href:'/login'}];
+                  return menuItems.map(({label,href})=>(
+                    <div key={label} onClick={()=>{if(label==='Logout'){localStorage.removeItem('ss_user');window.location.replace('/login');}else{router.push(href);setProfileOpen(false);}}} style={{padding:'10px 16px',fontSize:15,cursor:'pointer',color:label==='Logout'?'#ff6b6b':'#F5F5F5',borderTop:label==='Logout'?'1px solid rgba(255,255,255,0.07)':'none'}} onMouseEnter={e=>(e.currentTarget.style.background='rgba(255,255,255,0.05)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>{label}</div>
+                  ));
+                })()}
               </div>
             </>
           )}
@@ -411,7 +460,9 @@ export default function ApplicationsManagementPage() {
             </div>
           )}
           <nav style={{ flex: 1, padding: sidebarOpen ? '8px 6px' : '8px 4px', overflowY: 'auto', scrollbarWidth: 'none' }}>
-            {NAV_PRIMARY.map(({ icon: Icon, label, active, badge, href }) => (
+            {NAV_PRIMARY.map(({ icon: Icon, label, active, href }) => {
+                const badge = label === 'Messages' ? (msgCount > 0 ? msgCount : undefined) : label === 'Notifications' ? (notifCount > 0 ? notifCount : undefined) : undefined;
+                return (
               <div key={label} onClick={() => href && router.push(href)} title={!sidebarOpen ? label : undefined}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'space-between' : 'center', padding: sidebarOpen ? '8px 10px' : '10px 0', marginBottom: 2, borderRadius: 6, cursor: 'pointer', background: active ? 'rgba(200,32,42,0.12)' : 'transparent', borderLeft: sidebarOpen && active ? `3px solid ${RED}` : sidebarOpen ? '3px solid transparent' : 'none', position: 'relative' }}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
@@ -424,7 +475,8 @@ export default function ApplicationsManagementPage() {
                 {sidebarOpen && badge && <div style={{ background: RED, color: '#fff', borderRadius: 10, fontSize: 14, fontWeight: 700, padding: '1px 6px', minWidth: 18, textAlign: 'center' }}>{badge}</div>}
                 {!sidebarOpen && badge && <div style={{ position: 'absolute', top: 6, right: 4, background: RED, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: '#fff' }}>{badge}</div>}
               </div>
-            ))}
+                );
+              })}
           </nav>
           {sidebarOpen && (
             <div style={{ margin: '8px 10px 14px', borderRadius: 12, background: 'linear-gradient(135deg,#1a1205 0%,#2a1e0a 100%)', border: '1px solid rgba(212,166,74,0.25)', padding: '14px 12px', textAlign: 'center' as const, flexShrink: 0 }}>
@@ -439,11 +491,23 @@ export default function ApplicationsManagementPage() {
         {/* ── CONTENT ── */}
         <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '20px 24px 32px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
+
+          {/* Verification banner */}
+          <AgencyVerificationBanner />
           {/* Page header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <h1 style={{ fontFamily: BEBAS, fontSize: 32, letterSpacing: 1, marginBottom: 4, fontWeight: 400 }}>Application Management</h1>
               <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.45)' }}>Manage and review applications for your casting calls.</p>
+              {castingCallIdParam && castingCallFilter !== 'All Casting Calls' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, padding: '6px 12px', background: 'rgba(212,166,74,0.1)', border: '1px solid rgba(212,166,74,0.25)', borderRadius: 8, width: 'fit-content' }}>
+                  <span style={{ fontSize: 14, color: '#D4A64A', fontFamily: "'Barlow Condensed', sans-serif" }}>
+                    Filtered by: <strong>{castingCallFilter}</strong>
+                  </span>
+                  <span onClick={() => { setCastingCallFilter('All Casting Calls'); router.push('/agency/applications'); }}
+                    style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', cursor: 'pointer', marginLeft: 4 }}>✕ Clear</span>
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
               <button onClick={() => {
@@ -483,6 +547,28 @@ export default function ApplicationsManagementPage() {
             })}
           </div>
 
+          {/* Applications by Status */}
+          <div style={{ background: BG2, border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: '18px 24px', display: 'flex', alignItems: 'center', gap: 24 }}>
+            <div style={{ flexShrink: 0 }}>
+              <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 14 }}>Applications by Status</div>
+              <DonutChart data={liveStats.slice(1).map(s => ({ label: s.label, value: s.value, pct: applicants.length > 0 ? Math.round((s.value / applicants.length) * 100) : 0, color: s.color }))} />
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {liveStats.slice(1).map(s => (
+                <div key={s.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.65)' }}>{s.label}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 14, fontWeight: 700 }}>{s.value}</span>
+                    <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)' }}>({applicants.length > 0 ? Math.round((s.value / applicants.length) * 100) : 0}%)</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Main split */}
           <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
 
@@ -495,7 +581,7 @@ export default function ApplicationsManagementPage() {
               <FilterLabel>Casting Call</FilterLabel>
               <FilterSelect value={castingCallFilter} onChange={setCastingCallFilter} options={castingCallOptions} />
               <FilterLabel>Status</FilterLabel>
-              <FilterSelect value={statusFilter} onChange={setStatusFilter} options={['All Statuses', 'New', 'In Review', 'Shortlisted', 'Rejected']} />
+              <FilterSelect value={statusFilter} onChange={setStatusFilter} options={['All Statuses', 'New', 'In Review', 'Shortlisted', 'Audition Scheduled', 'Selected', 'On Hold', 'Rejected']} />
               <FilterLabel>Search by Name</FilterLabel>
               <div style={{ position: 'relative', marginBottom: 16 }}>
                 <Search size={13} color="rgba(255,255,255,0.4)" style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)' }} />
@@ -505,7 +591,7 @@ export default function ApplicationsManagementPage() {
             </div>
 
             {/* Table */}
-            <div style={{ flex: 1, minWidth: 0, background: BG2, border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, overflow: 'hidden' }}>
+            <div style={{ flex: 1, minWidth: 0, background: BG2, border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, position: 'relative' }}>
 
               {/* Toolbar */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
@@ -529,7 +615,7 @@ export default function ApplicationsManagementPage() {
               </div>
 
               {/* Rows */}
-              <div style={{ maxHeight: 560, overflowY: 'auto' as const }}>
+              <div style={{ maxHeight: 560, overflowY: 'auto' as const, overflowX: 'visible' as const }}>
                 {loading ? (
                   <div style={{ padding: '50px 20px', textAlign: 'center' as const }}>
                     <div style={{ fontSize: 15, fontFamily: BARLOW, color: 'rgba(255,255,255,0.35)' }}>Loading applications…</div>
@@ -571,7 +657,12 @@ export default function ApplicationsManagementPage() {
 
                       <span style={{ fontSize: 14, color: '#fff', fontFamily: BARLOW }}>{a.roleApplied}</span>
 
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 14, fontFamily: BARLOW, fontWeight: 700, color: STATUS_COLORS[a.status], background: `${STATUS_COLORS[a.status]}18`, border: `1px solid ${STATUS_COLORS[a.status]}55`, borderRadius: 14, padding: '3px 10px', width: 'fit-content' }}>{a.status}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 14, fontFamily: BARLOW, fontWeight: 700, color: STATUS_COLORS[a.status], background: `${STATUS_COLORS[a.status]}18`, border: `1px solid ${STATUS_COLORS[a.status]}55`, borderRadius: 14, padding: '3px 10px', width: 'fit-content' }}>{a.status}</span>
+                        {scheduledAuditions.has(a.aspirantProfileId) && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontFamily: BARLOW, fontWeight: 600, color: GREEN, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 10, padding: '2px 8px', width: 'fit-content' }}>🎬 Audition Scheduled</span>
+                        )}
+                      </div>
 
                       <div>
                         <div style={{ fontSize: 14, color: '#fff' }}>{a.appliedOn}</div>
@@ -584,7 +675,11 @@ export default function ApplicationsManagementPage() {
                           <div onClick={e => {
                             if (rowMenuOpen === a.id) { setRowMenuOpen(null); return; }
                             const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                            setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+                            const menuHeight = 280;
+                            const top = (rect.bottom + 4 + menuHeight > window.innerHeight)
+                              ? Math.max(8, rect.top - menuHeight - 4)
+                              : rect.bottom + 4;
+                            setMenuPos({ top, right: window.innerWidth - rect.right });
                             setRowMenuOpen(a.id);
                           }}
                             style={{ cursor: 'pointer', width: 26, height: 26, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', background: rowMenuOpen === a.id ? 'rgba(255,255,255,0.1)' : 'transparent' }}
@@ -593,29 +688,7 @@ export default function ApplicationsManagementPage() {
                           >
                             <MoreVertical size={15} color="rgba(255,255,255,0.5)" />
                           </div>
-                          {rowMenuOpen === a.id && (
-                            <>
-                              <div onClick={() => setRowMenuOpen(null)} style={{ position: 'fixed', inset: 0, zIndex: 150 }} />
-                              <div style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, width: 200, background: BG4, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', zIndex: 200, boxShadow: '0 12px 32px rgba(0,0,0,0.7)' }}>
-                                <RowMenuItem icon={<Eye size={13} />}          label="View Application"  onClick={() => { router.push(`/agency/applications/${a.id}`); setRowMenuOpen(null); }} />
-                                <RowMenuItem icon={<User size={13} />}         label="View Full Profile" onClick={() => { router.push(`/agency/talent/${a.aspirantProfileId || a.id}`); setRowMenuOpen(null); }} />
-                                <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '3px 0' }} />
-                                <RowMenuItem icon={<Activity size={13} />}    label="Move to In Review"  color={GOLD}  onClick={() => { updateAppStatus(a.id, 'In Review');   setRowMenuOpen(null); }} />
-                                <RowMenuItem icon={<Star size={13} />}        label="Shortlist"          color={GREEN} onClick={() => { updateAppStatus(a.id, 'Shortlisted'); setRowMenuOpen(null); }} />
-                                <RowMenuItem icon={<CalendarCheck size={13} />} label="Schedule Audition" color={BLUE}  onClick={() => { router.push(`/agency/auditions/schedule?applicationId=${a.id}`); setRowMenuOpen(null); }} />
-                                <RowMenuItem icon={<MessageSquare size={13} />} label="Send Message"      color={BLUE}  onClick={() => {
-                                  const params = new URLSearchParams({
-                                    recipient_id:   a.aspirantUserId || a.aspirantProfileId,
-                                    recipient_name: a.name,
-                                  });
-                                  router.push(`/agency/messages?${params.toString()}`);
-                                  setRowMenuOpen(null);
-                                }} />
-                                <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '3px 0' }} />
-                                <RowMenuItem icon={<X size={13} />}           label="Reject Application" color={RED}   onClick={() => { updateAppStatus(a.id, 'Rejected');    setRowMenuOpen(null); }} />
-                              </div>
-                            </>
-                          )}
+
                         </div>
                       </div>
                     </div>
@@ -639,7 +712,62 @@ export default function ApplicationsManagementPage() {
           </div>
         </div>
       </div>
+
     </div>
+
+    {rowMenuOpen && (() => {
+      const a = filteredApplicants.find(x => x.id === rowMenuOpen);
+      if (!a) return null;
+      return (
+        <>
+          <div onClick={() => setRowMenuOpen(null)} style={{ position: 'fixed', inset: 0, zIndex: 9990 }} />
+          <div style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, width: 210, background: BG4, border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, overflow: 'hidden', zIndex: 9999, boxShadow: '0 12px 40px rgba(0,0,0,0.8)' }}>
+            <RowMenuItem icon={<Eye size={13} />}            label="View Application"   onClick={() => { router.push(`/agency/applications/${a.id}`); setRowMenuOpen(null); }} />
+            <RowMenuItem icon={<User size={13} />}           label="View Full Profile"  onClick={() => { router.push(`/agency/talent/${a.aspirantProfileId || a.id}`); setRowMenuOpen(null); }} />
+            <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '3px 0' }} />
+            <RowMenuItem icon={<Activity size={13} />}       label="Move to In Review"  color={GOLD}  onClick={() => { updateAppStatus(a.id, 'In Review');   setRowMenuOpen(null); }} />
+            <RowMenuItem icon={<Star size={13} />}           label="Shortlist"          color={GREEN} onClick={() => { updateAppStatus(a.id, 'Shortlisted'); setRowMenuOpen(null); }} />
+            <RowMenuItem icon={<CalendarCheck size={13} />}  label={scheduledAuditions.has(a.aspirantProfileId) ? 'Audition Scheduled ✓' : 'Schedule Audition'} color={scheduledAuditions.has(a.aspirantProfileId) ? GREEN : BLUE} onClick={() => { if (!scheduledAuditions.has(a.aspirantProfileId)) router.push(`/agency/auditions/schedule?applicationId=${a.id}`); setRowMenuOpen(null); }} />
+            <RowMenuItem icon={<MessageSquare size={13} />}  label="Send Message"       color={BLUE}  onClick={() => { const p = new URLSearchParams({ recipient_id: a.aspirantUserId || a.aspirantProfileId, recipient_name: a.name }); router.push(`/agency/messages?${p.toString()}`); setRowMenuOpen(null); }} />
+            <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '3px 0' }} />
+            <RowMenuItem icon={<X size={13} />}              label="Reject Application" color={RED}   onClick={() => { updateAppStatus(a.id, 'Rejected');    setRowMenuOpen(null); }} />
+          </div>
+        </>
+      );
+    })()}
+    </>
+  );
+}
+
+function DonutChart({ data }: { data: { label: string; value: number; pct: number; color: string }[] }) {
+  const cx = 70, cy = 70, R = 58, r = 38;
+  const total = data.reduce((s, d) => s + d.value, 0);
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const pt = (ang: number, radius: number) => [
+    cx + radius * Math.cos(toRad(ang)),
+    cy + radius * Math.sin(toRad(ang)),
+  ];
+  let startAngle = -90;
+  const nonZero = data.filter(d => d.value > 0);
+  const arcs = nonZero.map(seg => {
+    const sweep = Math.min((seg.value / total) * 360, 359.99);
+    const end = startAngle + sweep;
+    const large = sweep > 180 ? 1 : 0;
+    const [x1, y1] = pt(startAngle, R); const [x2, y2] = pt(end, R);
+    const [x3, y3] = pt(end, r);       const [x4, y4] = pt(startAngle, r);
+    const d = `M ${x1.toFixed(4)} ${y1.toFixed(4)} A ${R} ${R} 0 ${large} 1 ${x2.toFixed(4)} ${y2.toFixed(4)} L ${x3.toFixed(4)} ${y3.toFixed(4)} A ${r} ${r} 0 ${large} 0 ${x4.toFixed(4)} ${y4.toFixed(4)} Z`;
+    startAngle = end;
+    return { ...seg, d };
+  });
+  return (
+    <svg viewBox="0 0 140 140" style={{ width: 140, height: 140, flexShrink: 0 }}>
+      {total === 0
+        ? <circle cx={cx} cy={cy} r={(R + r) / 2} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={R - r} />
+        : arcs.map(a => <path key={a.label} d={a.d} fill={a.color} />)
+      }
+      <text x={cx} y={cy - 6}  textAnchor="middle" fill="#F5F5F5" fontSize={20} fontWeight={800} fontFamily="'Bebas Neue', sans-serif">{total}</text>
+      <text x={cx} y={cy + 13} textAnchor="middle" fill="rgba(255,255,255,0.38)" fontSize={10} fontFamily="'Barlow Condensed', sans-serif">Total</text>
+    </svg>
   );
 }
 

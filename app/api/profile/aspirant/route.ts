@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
 
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const token = req.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return errorResponse('Authentication required', 401)
 
-    const { data: { user }, error } = await supabase.auth.getUser(token)
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
     if (error || !user) return errorResponse('Invalid session', 401)
 
     // ─── 2. Fetch full aspirant profile ───────────────────────
@@ -64,7 +64,7 @@ export async function PUT(req: NextRequest) {
     const token = req.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return errorResponse('Authentication required', 401)
 
-    const { data: { user }, error } = await supabase.auth.getUser(token)
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
     if (error || !user) return errorResponse('Invalid session', 401)
 
     // ─── 2. Verify this is an aspirant ────────────────────────
@@ -110,6 +110,7 @@ export async function PUT(req: NextRequest) {
       experience_level,
       social_links,
       is_available,
+      skills,
     } = body
 
     // ─── 4. Validate required fields ──────────────────────────
@@ -160,28 +161,40 @@ export async function PUT(req: NextRequest) {
     if (experience_level !== undefined) updateData.experience_level = experience_level
     if (social_links   !== undefined) updateData.social_links   = social_links
     if (is_available   !== undefined) updateData.is_available   = is_available
+    if (skills         !== undefined) updateData.skills         = skills
 
     // ─── 6. Calculate profile completion percentage ────────────
     const currentProfile = await prisma.aspirant_profiles.findUnique({
       where:   { user_id: user.id },
       include: { aspirant_media: true },
     })
-
-    if (!currentProfile) {
-      return errorResponse('Profile not found', 404)
-    }
-
-    const merged = { ...currentProfile, ...updateData }
+    // currentProfile may be null for first-time submit (shell removed from register route)
+    const merged = { ...(currentProfile ?? {}), ...updateData }
     const completion = calculateCompletion(merged)
     updateData.profile_completion = completion
 
-    // ─── 7. Update profile ────────────────────────────────────
-    const updated = await prisma.aspirant_profiles.update({
-      where: { user_id: user.id },
-      data:  updateData as never,
+    // ─── 7. Get profile number for upsert ─────────────────────
+    // Needed when creating the row for the first time
+    const profileRecord = await prisma.profiles.findUnique({
+      where:  { id: user.id },
+      select: { profile_number: true, name: true },
     })
 
-    // ─── 8. Also update name in profiles table if name changed
+    // ─── 8. Upsert profile (create on first submit, update thereafter) ───
+    const updated = await prisma.aspirant_profiles.upsert({
+      where:  { user_id: user.id },
+      create: {
+        user_id:            user.id,
+        profile_number:     profileRecord?.profile_number ?? '',
+        first_name:         (updateData.first_name as string) ?? '',
+        last_name:          (updateData.last_name  as string) ?? '',
+        verification_status: 'pending',
+        ...updateData,
+      } as never,
+      update: updateData as never,
+    })
+
+    // ─── 9. Also update name in profiles table if name changed
     if (first_name !== undefined || last_name !== undefined) {
       const fullName = `${first_name ?? currentProfile.first_name} ${last_name ?? currentProfile.last_name}`.trim()
       await prisma.profiles.update({
@@ -190,7 +203,7 @@ export async function PUT(req: NextRequest) {
       })
     }
 
-    // ─── 9. Log the update (non-blocking) ────────────────────
+    // ─── 10. Log the update (non-blocking) ───────────────────
     prisma.audit_logs.create({
       data: {
         user_id:     user.id,
@@ -237,6 +250,7 @@ function calculateCompletion(profile: Record<string, unknown>): number {
     { key: 'intro_video_url', weight: 5  },
     { key: 'resume_url',      weight: 5  },
     { key: 'social_links',    weight: 2  },
+    { key: 'skills',          weight: 5  },
   ]
 
   let total = 0

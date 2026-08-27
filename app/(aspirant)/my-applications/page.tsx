@@ -2,7 +2,8 @@
 
 import AspirantHeader from '@/components/layout/AspirantHeader'
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation'
+
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
 
@@ -26,7 +27,7 @@ const BARLOW   = "'Barlow Condensed', sans-serif";
 const sidebarItems = [
   { icon: LayoutDashboard, label: 'Dashboard',            href: '/dashboard' },
   { icon: FileText,        label: 'My Applications',      href: '/my-applications', active: true },
-  { icon: MessageSquare,   label: 'Messages',             href: '/messages',    badge: 2 },
+  { icon: MessageSquare,   label: 'Messages',             href: '/messages' },
   { icon: Mic2,            label: 'Auditions',            href: '/auditions' },
   { icon: Bookmark,        label: 'Saved Castings',       href: '/saved-castings' },
   { icon: Star,            label: 'Recommended Castings', href: '/recommended' },
@@ -50,7 +51,7 @@ const NAV_LINKS = [
   ]},
   { label: 'Casting Calls',   href: '/casting-calls' },
   { label: 'Pricing Plans',   href: '/pricing' },
-  { label: 'FAQs',            href: '/faq' },
+  { label: 'FAQs',            href: '/settings?tab=support' },
   { label: 'Contact Us',      href: '/contact' },
 ];
 
@@ -105,12 +106,19 @@ const APP_OVERVIEW = [
   { icon: XCircle,  iconBg: 'rgba(239,68,68,0.15)',  iconColor: '#F87171', value: 1,  label: 'Rejected'    },
 ];
 
-const QUICK_ACTIONS = [
-  { icon: Clock,      label: 'Update Availability', sub: 'Keep your schedule updated', href: '/settings'              },
-  { icon: Upload,     label: 'Upload New Media',    sub: 'Increase your visibility',   href: '/my-profile?tab=media'  },
-  { icon: PlusCircle, label: 'Add New Skill',       sub: 'Showcase your talents',      href: '/my-profile?tab=skills' },
-  { icon: Eye,        label: 'View My Profile',     sub: 'See how you appear',         href: '/profile'    },
-  { icon: FolderOpen, label: 'Manage Documents',    sub: 'Update your documents',      href: '/my-profile?tab=documents' },
+const QUICK_ACTIONS_APPROVED = [
+  { icon: Clock,      label: 'Update Availability', sub: 'Keep your schedule updated', href: '/settings?tab=preferences'  },
+  { icon: Upload,     label: 'Upload New Media',    sub: 'Increase your visibility',   href: '/edit-profile?section=media' },
+  { icon: PlusCircle, label: 'Add New Skill',       sub: 'Showcase your talents',      href: '/settings?tab=skills'        },
+  { icon: Eye,        label: 'View My Profile',     sub: 'See how you appear',         href: '/my-profile'                 },
+  { icon: FolderOpen, label: 'Manage Documents',    sub: 'Update your documents',      href: '/settings?tab=documents'     },
+];
+const QUICK_ACTIONS_PENDING = [
+  { icon: Clock,      label: 'Update Availability', sub: 'Complete your profile first', href: '/create-profile' },
+  { icon: Upload,     label: 'Upload New Media',    sub: 'Complete your profile first', href: '/create-profile' },
+  { icon: PlusCircle, label: 'Add New Skill',       sub: 'Complete your profile first', href: '/create-profile' },
+  { icon: Eye,        label: 'View My Profile',     sub: 'Complete your profile first', href: '/create-profile' },
+  { icon: FolderOpen, label: 'Manage Documents',    sub: 'Complete your profile first', href: '/create-profile' },
 ];
 
 const TIPS = [
@@ -134,8 +142,16 @@ function getAuthHeaders(): Record<string, string> {
 }
 
 export default function MyApplicationsPage() {
-  const router = useRouter();
+  const router = useRouter()
   const [sidebarOpen,  setSidebarOpen]  = useState(false);
+  const [isApproved, setIsApproved] = useState(false);
+  useEffect(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
+      const ps = u?.profileStatus;
+      setIsApproved(ps === 'approved' || ps === 'active');
+    } catch {}
+  }, []);
   const [activeTab,    setActiveTab]    = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [openNav,      setOpenNav]      = useState<string | null>(null);
@@ -150,8 +166,15 @@ export default function MyApplicationsPage() {
   const [loading,      setLoading]      = useState(true);
   const [userName,     setUserName]     = useState('My Account');
   const [avatarUrl,    setAvatarUrl]    = useState('');
-  const [msgCount,     setMsgCount]     = useState(2);
+  const [msgCount,     setMsgCount]     = useState(0);
+  const [notifCount,   setNotifCount]   = useState(0);
   const [profileMediaCount, setProfileMediaCount] = useState(0);
+
+  const liveSidebarItems = sidebarItems.map((item: any) => {
+    if (item.label === 'Messages')      return { ...item, badge: msgCount   || undefined }
+    if (item.label === 'Notifications') return { ...item, badge: notifCount || undefined }
+    return item
+  })
 
   const SB_W = sidebarOpen ? 220 : 52;
 
@@ -163,7 +186,6 @@ export default function MyApplicationsPage() {
   useEffect(() => {
     try {
       const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
-      if (u.name)         setUserName(u.name);
       if (u.profilePhoto) setAvatarUrl(u.profilePhoto);
     } catch {}
   }, []);
@@ -292,7 +314,7 @@ export default function MyApplicationsPage() {
           </div>
 
           <nav style={{ flex: 1, padding: '10px 0' }}>
-            {sidebarItems.map(({ icon: Icon, label, active, badge, href }) => (
+            {liveSidebarItems.map(({ icon: Icon, label, active, badge, href }) => (
               <div key={label} title={!sidebarOpen ? label : undefined} style={{
                 display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'space-between' : 'center',
                 padding: sidebarOpen ? '9px 16px' : '10px 0', cursor: 'pointer',
@@ -325,6 +347,21 @@ export default function MyApplicationsPage() {
 
         {/* ── SCROLLABLE CONTENT — single scroll for both columns ── */}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex' }}>
+      {/* Profile incomplete banner */}
+      {!isApproved && (
+        <div style={{ margin: '16px 24px 0', padding: '14px 20px', background: 'rgba(212,166,74,0.08)', border: '1px solid rgba(212,166,74,0.25)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 22 }}>🎬</span>
+            <div>
+              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 17, letterSpacing: 1, color: '#D4A64A' }}>COMPLETE YOUR PROFILE TO UNLOCK THIS SECTION</div>
+              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 14, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>Submit your profile, choose a plan, complete payment and get admin approval to access all features.</div>
+            </div>
+          </div>
+          <button onClick={() => router.push('/create-profile')} style={{ padding: '9px 20px', background: '#D4A64A', border: 'none', borderRadius: 7, color: '#050505', fontFamily: "'Bebas Neue', sans-serif", fontSize: 15, letterSpacing: 1, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            CREATE PROFILE →
+          </button>
+        </div>
+      )}
 
         {/* MAIN CONTENT */}
         <div style={{ flex: '0 0 62%', padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -436,7 +473,7 @@ export default function MyApplicationsPage() {
                     </div>
                   </div>
                   <div style={{ width: 190, flexShrink: 0, padding: '10px 14px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4, borderLeft: '1px solid rgba(255,255,255,0.05)' }}>
-                    <span style={{ alignSelf: 'flex-start', fontSize: 15, fontWeight: 700, padding: '4px 12px', borderRadius: 20, background: sCfg.bg, color: sCfg.color, border: `1px solid ${sCfg.border}` }}>{app.status}</span>
+                    <span style={{ alignSelf: 'flex-start', fontSize: 15, fontWeight: 700, padding: '4px 12px', borderRadius: 20, background: (sCfg?.bg ?? 'rgba(255,255,255,0.1)'), color: (sCfg?.color ?? '#F5F5F5'), border: `1px solid ${(sCfg?.border ?? 'rgba(255,255,255,0.2)')}` }}>{app.status}</span>
                     <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)' }}>Last updated</div>
                     <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)' }}>{app.updatedDate}</div>
                   </div>
@@ -500,7 +537,7 @@ export default function MyApplicationsPage() {
           <div>
             <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>Quick Actions</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {QUICK_ACTIONS.map(({ icon: Icon, label, sub, href }) => (
+              {(isApproved ? QUICK_ACTIONS_APPROVED : QUICK_ACTIONS_PENDING).map(({ icon: Icon, label, sub, href }) => (
                 <div key={label} onClick={() => router.push(href)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 9, background: BG3, border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer' }}
                   onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
                   onMouseLeave={e => e.currentTarget.style.background = BG3}

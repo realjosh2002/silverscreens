@@ -22,7 +22,7 @@ const BEBAS  = "'Bebas Neue', sans-serif";
 const SIDEBAR_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard',            href: '/dashboard'      },
   { icon: FileText,        label: 'My Applications',      href: '/my-applications'},
-  { icon: MessageSquare,   label: 'Messages',             href: '/messages',       badge: 2 },
+  { icon: MessageSquare,   label: 'Messages',             href: '/messages',       },
   { icon: Mic2,            label: 'Auditions',            href: '/auditions'      },
   { icon: Bookmark,        label: 'Saved Castings',       href: '/saved-castings' },
   { icon: Star,            label: 'Recommended Castings', href: '/recommended'    },
@@ -167,10 +167,18 @@ export default function NotificationDetailPage() {
 
   // ── Layout state ──
   const [sidebarOpen,  setSidebarOpen]  = useState(false);
+  const [notifCount,   setNotifCount]   = useState(0);
+  const [msgCount,     setMsgCount]     = useState(0);
+
+  // Inject live badge counts into sidebar items
+  const navItems = SIDEBAR_ITEMS.map(item => {
+    if (item.label === 'Messages')      return { ...item, badge: msgCount     || undefined }
+    if (item.label === 'Notifications') return { ...item, badge: notifCount   || undefined }
+    return item
+  })
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [userName,     setUserName]     = useState('My Account');
   const [avatarUrl,    setAvatarUrl]    = useState('');
-  const [msgCount,     setMsgCount]     = useState(0);
   const [notif,        setNotif]        = useState<NotifRecord | null | undefined>(undefined); // undefined = loading
   const dropRef = useRef<HTMLDivElement>(null);
 
@@ -193,6 +201,32 @@ export default function NotificationDetailPage() {
       if (u.profilePhoto) setAvatarUrl(u.profilePhoto);
     } catch {}
   }, []);
+
+  // Fetch live badge counts
+  useEffect(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
+      const token = u.token
+      if (!token) return
+      const h = { Authorization: `Bearer ${token}` }
+      fetch('/api/notifications', { headers: h })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return
+          const count = data.data?.unread_count ?? data.unread_count
+          if (count != null) { setNotifCount(count); return }
+          const list = data.data?.notifications ?? data.notifications ?? []
+          if (Array.isArray(list)) setNotifCount(list.filter((n: any) => !n.is_read).length)
+        }).catch(() => {})
+      fetch('/api/messages/conversations', { headers: h })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return
+          const list = data.data?.conversations ?? data.conversations ?? []
+          if (Array.isArray(list)) setMsgCount(list.filter((c: any) => c.unreadCount > 0).length)
+        }).catch(() => {})
+    } catch {}
+  }, [])
 
   // Fetch real notification from API
   useEffect(() => {

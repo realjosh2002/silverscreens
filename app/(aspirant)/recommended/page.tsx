@@ -2,7 +2,8 @@
 
 import AspirantHeader from '@/components/layout/AspirantHeader'
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation'
+
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
 
@@ -25,7 +26,7 @@ const BEBAS  = "'Bebas Neue', sans-serif";
 const SIDEBAR_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard',            href: '/dashboard'      },
   { icon: FileText,        label: 'My Applications',      href: '/my-applications'},
-  { icon: MessageSquare,   label: 'Messages',             href: '/messages',       badge: 2 },
+  { icon: MessageSquare,   label: 'Messages',             href: '/messages' },
   { icon: Mic2,            label: 'Auditions',            href: '/auditions'      },
   { icon: Bookmark,        label: 'Saved Castings',       href: '/saved-castings' },
   { icon: Star,            label: 'Recommended Castings', href: '/recommended',    active: true },
@@ -35,13 +36,7 @@ const SIDEBAR_ITEMS = [
 const DROPDOWN_LINKS = ['Subscription', 'Analytics', 'Calendar', 'Settings', 'Support', 'Logout'];
 
 /* ─── Data ───────────────────────────────────────────────────── */
-const CAST_TABS = [
-  { label: 'All',        count: 12 },
-  { label: 'Film',       count: 5  },
-  { label: 'Web Series', count: 4  },
-  { label: 'TV',         count: 2  },
-  { label: 'Ad Films',   count: 1  },
-];
+const CAST_TAB_LABELS = ['All', 'Film', 'Web Series', 'TV', 'Ad Films'];
 
 const SORT_OPTIONS = ['Most Relevant', 'Newest First', 'Deadline Soonest', 'Most Applied'];
 
@@ -111,9 +106,41 @@ const TIPS = [
 ];
 
 const CATEGORIES = ['Film', 'Web Series', 'TV', 'Ad Films', 'Others'];
-const ROLE_TYPES  = ['Lead Role', 'Supporting Role', 'Featured Extra', 'Voice Over', 'Junior Artiste'];
-const LANGUAGES   = ['Hindi', 'English', 'Tamil', 'Telugu', 'Kannada', 'Malayalam', 'Bengali'];
-const LOCATIONS   = ['Mumbai', 'Delhi', 'Hyderabad', 'Chennai', 'Kolkata', 'Bangalore', 'Pune'];
+
+const DEPARTMENTS_AND_ROLES = [
+  { department: 'Acting',            roles: ['Hero', 'Heroine', 'Villain', 'Comedian', 'Character Artist', 'Supporting Roles', 'Child Artist'] },
+  { department: 'Direction',         roles: ['Director', 'Assistant Director'] },
+  { department: 'Production Office', roles: ['Line Producer', 'Production Assistant', 'Production Manager', 'Asst. Production Manager', 'Unit Manager', 'Production Coordinator', 'First Assistant Director', 'Second Assistant Director'] },
+  { department: 'Accounting',        roles: ['Production Accountant'] },
+  { department: 'Locations',         roles: ['Location Manager', 'Asst. Location Manager', 'Location Scout', 'Location Assistant', 'Location Production Assistant'] },
+  { department: 'Continuity',        roles: ['Script Supervisor'] },
+  { department: 'Casting',           roles: ['Casting Director', 'Casting PA'] },
+  { department: 'Camera & Lighting', roles: ['Director of Photography', 'Camera Operator', 'First Assistant Camera', 'Second Assistant Camera', 'Film Loader', 'Digital Imaging Technician', 'Motion Control Technician', 'Gaffer', 'Best Boy', 'Lighting Technician'] },
+  { department: 'Grip',              roles: ['Key Grip', 'Best Boy', 'Dolly Grip', 'Grips', 'Sound Grip'] },
+  { department: 'Sound',             roles: ['Production Sound Mixer', 'Boom Operator', 'Second Assistant Sound'] },
+  { department: 'Art',               roles: ['Production Designer', 'Art Director', 'Standby Art Director', 'Assistant Art Director', 'Set Designer', 'Illustrator', 'Graphic Artist'] },
+  { department: 'Sets',              roles: ['Set Decorator', 'Buyer', 'Leadman', 'Set Dresser', 'Greensman'] },
+  { department: 'Construction',      roles: ['Construction Coordinator', 'Head Carpenter', 'Propmaker'] },
+  { department: 'Scenic',            roles: ['Key Scenic', 'Head of Plaster'] },
+  { department: 'Property',          roles: ['Propmaster', 'Weapons Master'] },
+  { department: 'Costume',           roles: ['Costume Designer', 'Costume Supervisor', 'Key Costumer', 'Costume Standby', 'Breakdown Artist', 'Costume Buyer', 'Cutter'] },
+  { department: 'Hair & Make Up',    roles: ['Key Make Up Artist', 'Special Make Up Effects', 'Make Up Supervisor', 'Make Up Artist', 'Key Hair', 'Hair Stylist'] },
+  { department: 'Special Effects',   roles: ['Special Effects Supervisor', 'Special Effects Assistant'] },
+  { department: 'Stunt',             roles: ['Stunt Master', 'Stunt Coordinator'] },
+  { department: 'Post Production',   roles: ['Post Production Supervisor'] },
+  { department: 'Editorial',         roles: ['Film Editor', 'Negative Cutter', 'Colorist', 'Telecine Colorist'] },
+  { department: 'Visual Effects',    roles: ['Visual Effects Producer', 'VFX Creative Director', 'VFX Supervisor', 'VFX Editor', 'Composer', 'Rotoscope Artist', 'Paint Artist', 'Matte Painter'] },
+  { department: 'Sound & Music',     roles: ['Sound Designer', 'Dialogue Editor', 'Sound Editor', 'Re-Recording Mixer', 'Music Supervisor', 'Music Composer / Director', 'Foley Artist', 'Conductor / Orchestrator', 'Sound Recorder / Mixer', 'Music Preparation', 'Music Editor'] },
+  { department: 'Animation',         roles: ['Animation Artist'] },
+  { department: 'Electrical',        roles: ['Electrician', 'Digital Intermediate Technician'] },
+  { department: 'Singing',           roles: ['Singer'] },
+  { department: 'Dancing',           roles: ['Dancer'] },
+  { department: 'Dubbing',           roles: ['Dubbing Artist'] },
+  { department: 'Story',             roles: ['Story Writer'] },
+  { department: 'Television',        roles: ['Anchoring', 'Newsreader', 'Talk Show', 'Stage Show', 'Drama', 'Production Crew'] },
+  { department: 'Modelling',         roles: ['Model', 'Advertisement'] },
+  { department: 'Advertisement',     roles: ['Advertisement'] },
+];
 
 /* ─── Rail dropdown ──────────────────────────────────────────── */
 function RailDropdown({ label, value, options, open, onToggle, onSelect, containerRef }: {
@@ -135,7 +162,7 @@ function RailDropdown({ label, value, options, open, onToggle, onSelect, contain
       {open && (
         <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: BG3, border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, overflow: 'hidden', zIndex: 300, boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
           {options.map(opt => (
-            <div key={opt} onClick={() => { onSelect(opt === value ? '' : opt); onToggle(); }} style={{
+            <div key={opt} onClick={() => { onSelect(opt === value ? '' : opt); }} style={{
               padding: '9px 14px', fontSize: 15, fontFamily: BARLOW, cursor: 'pointer',
               color: opt === value ? GOLD : 'rgba(255,255,255,0.7)',
               background: opt === value ? 'rgba(212,166,74,0.08)' : 'transparent',
@@ -152,41 +179,68 @@ function RailDropdown({ label, value, options, open, onToggle, onSelect, contain
 
 /* ─── Page ───────────────────────────────────────────────────── */
 export default function RecommendedCastingsPage() {
-  const router = useRouter();
+  const router = useRouter()
 
   const [sidebarOpen,   setSidebarOpen]   = useState(false);
-  const [userName,   setUserName]   = useState('My Account');
-  const [avatarUrl,  setAvatarUrl]  = useState('');
-
+  const [isApproved, setIsApproved] = useState(false);
   useEffect(() => {
     try {
       const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
-      if (u.name)         setUserName(u.name);
-      if (u.profilePhoto) setAvatarUrl(u.profilePhoto);
+      const ps = u?.profileStatus;
+      setIsApproved(ps === 'approved' || ps === 'active');
     } catch {}
   }, []);
-
+  const [authReady,     setAuthReady]     = useState(false);
+  const [userName,      setUserName]      = useState('My Account');
+  const [avatarUrl,     setAvatarUrl]     = useState('');
   const [dropdownOpen,  setDropdownOpen]  = useState(false);
   const [activeCastTab, setActiveCastTab] = useState(0);
   const [sortLabel,     setSortLabel]     = useState('Most Relevant');
   const [sortOpen,      setSortOpen]      = useState(false);
-  const [castings,      setCastings]      = useState(CASTINGS);
+  const [castings,      setCastings]      = useState<typeof CASTINGS>([]);
   const [loading,       setLoading]       = useState(true);
+  const [savedIds,      setSavedIds]      = useState<Set<string>>(new Set());
+  const [catFilters,    setCatFilters]    = useState<Set<string>>(new Set());
+  const [department,    setDepartment]    = useState('');
+  const [role,          setRole]          = useState('');
+  const [language,      setLanguage]      = useState('');
+  const [location,      setLocation]      = useState('');
+  const [ageMin,        setAgeMin]        = useState(18);
+  const [ageMax,        setAgeMax]        = useState(60);
+  const [deptOpen,      setDeptOpen]      = useState(false);
+  const [roleOpen,      setRoleOpen]      = useState(false);
+  const [langOpen,      setLangOpen]      = useState(false);
+  const [locOpen,       setLocOpen]       = useState(false);
 
-  const SB_W = sidebarOpen ? 240 : 56;
-  const [savedIds,     setSavedIds]     = useState<Set<string>>(new Set());
-  const [catFilters,   setCatFilters]   = useState<Set<string>>(new Set());
-  const [roleType,     setRoleType]     = useState('');
-  const [language,     setLanguage]     = useState('');
-  const [location,     setLocation]     = useState('');
-  const [ageMin,       setAgeMin]       = useState(18);
-  const [ageMax,       setAgeMax]       = useState(60);
-  const [roleOpen,     setRoleOpen]     = useState(false);
-  const [langOpen,     setLangOpen]     = useState(false);
-  const [locOpen,      setLocOpen]      = useState(false);
+  // Cascading role options based on selected department
+  const roleOptions = department
+    ? (DEPARTMENTS_AND_ROLES.find(d => d.department === department)?.roles ?? [])
+    : DEPARTMENTS_AND_ROLES.flatMap(d => d.roles);
+  const deptOptions = DEPARTMENTS_AND_ROLES.map(d => d.department);
+
+  // Dynamic filter options (languages + locations stay as static master lists)
+  const [languages,     setLanguages]     = useState<string[]>([]);
+  const [locations,     setLocations]     = useState<string[]>([]);
+
+  // Profile strength from API
+  const [profilePct,    setProfilePct]    = useState<number | null>(null);
+
+  // ── Profile approval guard ──
+  useEffect(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
+      if (!u?.loggedIn) { window.location.replace('/login'); return; }
+      const ps = u?.profileStatus;
+      const approved = ps === 'approved' || ps === 'active';
+      // unapproved users can view page (empty) — no redirect
+      if (u.profilePhoto) setAvatarUrl(u.profilePhoto);
+      setAuthReady(true); // always show page
+    } catch { window.location.replace('/login'); }
+  }, []);
 
   const dropRef = useRef<HTMLDivElement>(null);
   const sortRef = useRef<HTMLDivElement>(null);
+  const deptRef = useRef<HTMLDivElement>(null);
   const roleRef = useRef<HTMLDivElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
   const locRef  = useRef<HTMLDivElement>(null);
@@ -195,6 +249,7 @@ export default function RecommendedCastingsPage() {
     const handler = (e: MouseEvent) => {
       if (dropRef.current && !dropRef.current.contains(e.target as Node)) setDropdownOpen(false);
       if (sortRef.current && !sortRef.current.contains(e.target as Node)) setSortOpen(false);
+      if (deptRef.current && !deptRef.current.contains(e.target as Node)) setDeptOpen(false);
       if (roleRef.current && !roleRef.current.contains(e.target as Node)) setRoleOpen(false);
       if (langRef.current && !langRef.current.contains(e.target as Node)) setLangOpen(false);
       if (locRef.current  && !locRef.current.contains(e.target as Node))  setLocOpen(false);
@@ -248,6 +303,42 @@ export default function RecommendedCastingsPage() {
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
+  // Static master lists — Indian film industry
+  useEffect(() => {
+    setLanguages([
+      'Hindi', 'English', 'Tamil', 'Telugu', 'Kannada',
+      'Malayalam', 'Bengali', 'Marathi', 'Gujarati', 'Punjabi',
+      'Odia', 'Assamese', 'Bhojpuri', 'Rajasthani', 'Urdu',
+      'Tulu', 'Konkani', 'Maithili', 'Chhattisgarhi', 'Haryanvi',
+    ]);
+    setLocations([
+      'Mumbai', 'Delhi', 'Hyderabad', 'Chennai', 'Bangalore',
+      'Kolkata', 'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow',
+      'Bhopal', 'Chandigarh', 'Kochi', 'Guwahati', 'Bhubaneswar',
+      'Patna', 'Indore', 'Nagpur', 'Surat', 'Vadodara',
+      'Mysore', 'Coimbatore', 'Vizag', 'Noida', 'Gurugram',
+    ]);
+  }, []);
+
+  // Profile strength from API
+  useEffect(() => {
+    const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
+    const token = u.token;
+    if (!token) { setProfilePct(0); return; }
+    const h = { Authorization: `Bearer ${token}` };
+    fetch('/api/profile/aspirant', { headers: h })
+      .then(r => {
+        if (r.status === 404) { setProfilePct(0); return null; }
+        return r.ok ? r.json() : null;
+      })
+      .then(data => {
+        if (!data) return;
+        const p = data.data?.profile ?? data.profile ?? data;
+        setProfilePct(Number(p.profile_completion ?? p.profileCompletion ?? 0));
+      })
+      .catch(() => { setProfilePct(0); });
+  }, []);
+
   const toggleSave = async (castingId: string) => {
     const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
     const token = u.token;
@@ -263,20 +354,29 @@ export default function RecommendedCastingsPage() {
     } catch {}
   };
 
+  // Live tab counts from actual castings data
+  const castTabCounts = useMemo(() => {
+    return CAST_TAB_LABELS.map((label, i) => ({
+      label,
+      count: i === 0 ? castings.length : castings.filter(c => c.type === label).length,
+    }))
+  }, [castings])
+
   const visibleCastings = useMemo(() => {
     return castings.filter(c => {
-      if (activeCastTab !== 0 && c.type !== CAST_TABS[activeCastTab].label) return false;
+      if (activeCastTab !== 0 && c.type !== CAST_TAB_LABELS[activeCastTab]) return false;
       if (catFilters.size > 0 && !catFilters.has(c.type)) return false;
       if (language && !c.language.split(',').map((l: string) => l.trim()).includes(language)) return false;
       if (location && c.location !== location) return false;
-      if (roleType) {
-        const rl = roleType.toLowerCase();
-        const cl = c.role.toLowerCase();
-        if (rl === 'lead role' && !cl.includes('lead')) return false;
-        if (rl === 'supporting role' && !cl.includes('supporting')) return false;
-        if (rl === 'featured extra' && !cl.includes('extra')) return false;
-        if (rl === 'voice over' && !cl.includes('voice')) return false;
-        if (rl === 'junior artiste' && !cl.includes('junior')) return false;
+      // Department filter — matches against category field in DB
+      if (department) {
+        const cd = (c as any).category ?? '';
+        if (!cd.toLowerCase().includes(department.toLowerCase())) return false;
+      }
+      // Role filter — matches against role field in DB
+      if (role) {
+        const cr = c.role.toLowerCase();
+        if (!cr.includes(role.toLowerCase())) return false;
       }
       const ageMatch = c.ageRange.match(/(\d+)\s*-\s*(\d+)/);
       if (ageMatch) {
@@ -286,16 +386,18 @@ export default function RecommendedCastingsPage() {
       }
       return true;
     });
-  }, [activeCastTab, castings, catFilters, language, location, roleType, ageMin, ageMax]);
+  }, [activeCastTab, castings, catFilters, language, location, department, role, ageMin, ageMax]);
 
-  
   function toggleCat(cat: string) {
     setCatFilters(prev => { const n = new Set(prev); n.has(cat) ? n.delete(cat) : n.add(cat); return n; });
   }
   function resetFilters() {
-    setCatFilters(new Set()); setRoleType(''); setLanguage(''); setLocation(''); setAgeMin(18); setAgeMax(60);
-    setAppliedFilters({ catFilters: new Set(), language: '', location: '', roleType: '', ageMin: 18, ageMax: 60 });
+    setCatFilters(new Set()); setDepartment(''); setRole(''); setLanguage(''); setLocation(''); setAgeMin(18); setAgeMax(60);
   }
+
+  const SB_W = sidebarOpen ? 240 : 56;
+
+  if (!authReady) return null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: BG, color: '#F5F5F5', fontFamily: BARLOW }}>
@@ -354,6 +456,21 @@ export default function RecommendedCastingsPage() {
 
           {/* ── MAIN CONTENT ── */}
           <div style={{ flex: 1, minWidth: 0, padding: '20px 16px 20px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Profile incomplete banner */}
+      {!isApproved && (
+        <div style={{ margin: '16px 24px 0', padding: '14px 20px', background: 'rgba(212,166,74,0.08)', border: '1px solid rgba(212,166,74,0.25)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 22 }}>🎬</span>
+            <div>
+              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 17, letterSpacing: 1, color: '#D4A64A' }}>COMPLETE YOUR PROFILE TO UNLOCK THIS SECTION</div>
+              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 14, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>Submit your profile, choose a plan, complete payment and get admin approval to access all features.</div>
+            </div>
+          </div>
+          <button onClick={() => router.push('/create-profile')} style={{ padding: '9px 20px', background: '#D4A64A', border: 'none', borderRadius: 7, color: '#050505', fontFamily: "'Bebas Neue', sans-serif", fontSize: 15, letterSpacing: 1, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            CREATE PROFILE →
+          </button>
+        </div>
+      )}
 
             {/* Page title */}
             <div>
@@ -363,7 +480,7 @@ export default function RecommendedCastingsPage() {
 
             {/* Filter tabs + sort */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              {CAST_TABS.map((tab, i) => {
+              {castTabCounts.map((tab, i) => {
                 const active = activeCastTab === i;
                 return (
                   <button key={i} onClick={() => setActiveCastTab(i)} style={{
@@ -548,25 +665,39 @@ export default function RecommendedCastingsPage() {
                 </div>
               </div>
 
-              {/* Role Type */}
+              {/* Department */}
               <div style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', fontFamily: BARLOW, marginBottom: 6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Role Type</div>
-                <RailDropdown label="Select role type" value={roleType} options={ROLE_TYPES}
-                  open={roleOpen} onToggle={() => setRoleOpen(v => !v)} onSelect={setRoleType} containerRef={roleRef} />
+                <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', fontFamily: BARLOW, marginBottom: 6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Department</div>
+                <RailDropdown label="Select department" value={department} options={deptOptions}
+                  open={deptOpen} onToggle={() => setDeptOpen(v => !v)}
+                  onSelect={v => { setDepartment(v); setRole(''); setDeptOpen(false); }}
+                  containerRef={deptRef} />
+              </div>
+
+              {/* Role — cascades from Department */}
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', fontFamily: BARLOW, marginBottom: 6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Role {department && <span style={{ color: GOLD, fontSize: 12, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>({department})</span>}
+                </div>
+                <RailDropdown
+                  label={department ? `Select role in ${department}` : 'Select department first'}
+                  value={role} options={roleOptions}
+                  open={roleOpen} onToggle={() => { if (roleOptions.length) setRoleOpen(v => !v); }}
+                  onSelect={v => { setRole(v); setRoleOpen(false); }} containerRef={roleRef} />
               </div>
 
               {/* Language */}
               <div style={{ marginBottom: 12 }}>
                 <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', fontFamily: BARLOW, marginBottom: 6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Language</div>
-                <RailDropdown label="Select language" value={language} options={LANGUAGES}
-                  open={langOpen} onToggle={() => setLangOpen(v => !v)} onSelect={setLanguage} containerRef={langRef} />
+                <RailDropdown label={languages.length ? 'Select language' : 'Loading...'} value={language} options={languages}
+                  open={langOpen} onToggle={() => setLangOpen(v => !v)} onSelect={v => { setLanguage(v); setLangOpen(false); }} containerRef={langRef} />
               </div>
 
               {/* Location */}
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', fontFamily: BARLOW, marginBottom: 6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Location</div>
-                <RailDropdown label="Select location" value={location} options={LOCATIONS}
-                  open={locOpen} onToggle={() => setLocOpen(v => !v)} onSelect={setLocation} containerRef={locRef} />
+                <RailDropdown label={locations.length ? 'Select location' : 'Loading...'} value={location} options={locations}
+                  open={locOpen} onToggle={() => setLocOpen(v => !v)} onSelect={v => { setLocation(v); setLocOpen(false); }} containerRef={locRef} />
               </div>
 
               {/* Age Range */}
@@ -625,13 +756,21 @@ export default function RecommendedCastingsPage() {
                 ))}
               </div>
               <div style={{ background: BG3, borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.06)' }}
-                onClick={() => router.push('/profile')}
+                onClick={() => router.push('/my-profile')}
                 onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'}
                 onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'}
               >
                 <div>
                   <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', fontFamily: BARLOW, marginBottom: 2 }}>View Profile Strength</div>
-                  <div style={{ fontSize: 16, fontFamily: BARLOW, fontWeight: 700, color: '#4ADE80' }}>Excellent (98%)</div>
+                  {profilePct === null ? (
+                    <div style={{ fontSize: 16, fontFamily: BARLOW, fontWeight: 700, color: 'rgba(255,255,255,0.3)' }}>Loading...</div>
+                  ) : profilePct >= 80 ? (
+                    <div style={{ fontSize: 16, fontFamily: BARLOW, fontWeight: 700, color: '#4ADE80' }}>Excellent ({profilePct}%)</div>
+                  ) : profilePct >= 50 ? (
+                    <div style={{ fontSize: 16, fontFamily: BARLOW, fontWeight: 700, color: GOLD }}>Good ({profilePct}%)</div>
+                  ) : (
+                    <div style={{ fontSize: 16, fontFamily: BARLOW, fontWeight: 700, color: RED }}>Incomplete ({profilePct}%)</div>
+                  )}
                 </div>
                 <ChevronRight size={16} color="rgba(255,255,255,0.3)" />
               </div>

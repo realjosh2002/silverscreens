@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import Razorpay from 'razorpay'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse, calculateGST } from '@/lib/api-helpers'
 
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
       return errorResponse('Authentication required', 401)
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
 
     if (authError || !user) {
       return errorResponse('Invalid or expired session', 401)

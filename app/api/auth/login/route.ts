@@ -1,6 +1,6 @@
 // app/api/auth/login/route.ts
 import { NextRequest } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse, isValidEmail } from '@/lib/api-helpers'
 import { createServerClient } from '@supabase/ssr'
@@ -118,6 +118,29 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    // ─── 6b. Non-blocking cleanup of old records ───────────────
+    const ninetyDaysAgo = new Date(Date.now() - 90  * 24 * 60 * 60 * 1000)
+    const oneYearAgo    = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)
+
+    prisma.$executeRaw`
+      DELETE FROM notifications
+      WHERE user_id = ${userId}::uuid
+      AND is_read = true
+      AND created_at < ${ninetyDaysAgo}
+    `.catch((e) => console.error('[CLEANUP] notifications:', e.message))
+
+    prisma.$executeRaw`
+      DELETE FROM messages
+      WHERE sender_id = ${userId}::uuid
+      AND created_at < ${oneYearAgo}
+    `.catch((e) => console.error('[CLEANUP] messages:', e.message))
+
+    prisma.$executeRaw`
+      DELETE FROM conversations
+      WHERE (participant_1_id = ${userId}::uuid OR participant_2_id = ${userId}::uuid)
+      AND last_message_at < ${oneYearAgo}
+    `.catch((e) => console.error('[CLEANUP] conversations:', e.message)) // Silent — never block login
+
     // ─── 7. Build response ─────────────────────────────────────
     const activeSubscription = profile.subscriptions?.[0] || null
 
@@ -159,4 +182,4 @@ export async function POST(req: NextRequest) {
     const message = error instanceof Error ? error.message : 'Internal server error'
     return errorResponse(message, 500)
   }
-}
+}	

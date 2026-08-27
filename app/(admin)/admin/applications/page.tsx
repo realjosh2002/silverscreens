@@ -1,6 +1,7 @@
 'use client';
+import AdminSidebar from '@/components/layout/AdminSidebar';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Users, Building2, Megaphone, FileText,
@@ -13,121 +14,136 @@ import {
   CheckSquare, Square, Lock, Activity,
   BarChart, X, Info, ShieldAlert, Zap,
 } from 'lucide-react';
-import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
+import AdminTopnav from '@/components/layout/AdminTopnav';
 
 /* ─── Design tokens — identical to admin dashboard ──────────── */
-const BG       = '#0D1117';
-const BG2      = '#131720';
-const BG3      = '#181E2A';
-const BG4      = '#1C2338';
+const BG       = '#050505';
+const BG2      = '#0B0F14';
+const BG3      = '#121821';
+const BG4      = 'rgba(255,255,255,0.03)';
 const GOLD     = '#D4A64A';
 const GOLD_DIM = 'rgba(212,166,74,0.12)';
 const GOLD_BDR = 'rgba(212,166,74,0.22)';
 const BEBAS    = "'Bebas Neue', sans-serif";
 const BARLOW   = "'Barlow Condensed', sans-serif";
 const GREEN    = '#22C55E';
-const RED      = '#EF4444';
+const RED      = '#C8202A';
 const BLUE     = '#3B82F6';
 const PURPLE   = '#8B5CF6';
 const ORANGE   = '#F97316';
 const TEAL     = '#14B8A6';
 
 /* ─── Sidebar nav ────────────────────────────────────────────── */
-const NAV_ITEMS = [
-  { icon: LayoutDashboard, label: 'Dashboard',                href: '/admin/dashboard'           },
-  { icon: Users,           label: 'User Management',          href: '/admin/users'               },
-  { icon: UserCheck,       label: 'Talent Verification',      href: '/admin/talent-verification' },
-  { icon: Building2,       label: 'Agency Verification',      href: '/admin/agency-verification' },
-  { icon: FileText,        label: 'Applications Monitoring',  href: '/admin/applications', active: true },
-  { icon: Flag,            label: 'Reports & Complaints',     href: '/admin/reports'             },
-  { icon: ShieldCheck,     label: 'Fraud Detection',          href: '/admin/fraud'               },
-  { icon: CreditCard,      label: 'Subscription Management',  href: '/admin/subscriptions'       },
-  { icon: Megaphone,       label: 'Advertisement Management', href: '/admin/advertisements'      },
-  { icon: Database,        label: 'CMS Management',           href: '/admin/cms'                 },
-  { icon: BellRing,        label: 'Notifications Management', href: '/admin/notifications'       },
-  { icon: BarChart2,       label: 'Analytics & Reports',      href: '/admin/analytics'           },
-  { icon: Ticket,          label: 'Support Tickets',          href: '/admin/support'             },
-  { icon: ScrollText,      label: 'Audit Logs',               href: '/admin/audit'               },
-  { icon: KeyRound,        label: 'Roles & Permissions',      href: '/admin/roles'               },
-  { icon: Settings,        label: 'Settings',                 href: '/admin/settings'            },
-];
 
 const PROFILE_MENU = [
-  { label: 'My Profile',               href: '/admin/profile'       },
-  { label: 'Account Settings',         href: '/admin/settings'      },
-  { label: 'Security Settings',        href: '/admin/settings'      },
-  { label: 'Notification Preferences', href: '/admin/notifications' },
-  { label: 'Activity Logs',            href: '/admin/audit'         },
-  { label: 'Help & Support',           href: '/contact'             },
-  { label: 'Logout',                   href: '/login'               },
+  { label: 'My Profile',               href: '/admin/profile'          },
+  { label: 'Account Settings',         href: '/admin/account-settings' },
+  { label: 'Security & Login',         href: '/admin/security-login'   },
+  { label: 'Notification Preferences', href: '/admin/notifications'    },
+  { label: 'Activity Log',             href: '/admin/activity-log'     },
+  { label: 'Help & Support',           href: '/admin/help-support'     },
+  { label: 'Logout',                   href: '/admin/login'            },
 ];
 
-/* ─── Stat cards ─────────────────────────────────────────────── */
-const STATS = [
-  { label: 'Total Applications',  value: '18,742', delta: '+12.6%', sub: 'from last 7 days', iconColor: BLUE,   positive: true  },
-  { label: 'Unique Applicants',   value: '9,856',  delta: '+8.3%',  sub: 'from last 7 days', iconColor: PURPLE, positive: true  },
-  { label: 'Applications Today',  value: '2,847',  delta: '+15.4%', sub: 'from yesterday',   iconColor: TEAL,   positive: true  },
-  { label: 'Flagged Applications',value: '346',    delta: '+23.7%', sub: 'from last 7 days', iconColor: ORANGE, positive: false },
-  { label: 'Spam Detected',       value: '128',    delta: '+18.9%', sub: 'from last 7 days', iconColor: RED,    positive: false },
-  { label: 'Auto Blocked',        value: '57',     delta: '+6.7%',  sub: 'from last 7 days', iconColor: PURPLE, positive: false },
+/* ─── Fallback stat cards (shown while loading) ──────────────── */
+const STATS_FALLBACK = [
+  { label: 'Total Applications',  value: '—',  delta: '—', sub: 'from last 7 days', iconColor: BLUE,   positive: true  },
+  { label: 'Unique Applicants',   value: '—',  delta: '—', sub: 'from last 7 days', iconColor: PURPLE, positive: true  },
+  { label: 'Applications Today',  value: '—',  delta: '—', sub: 'from yesterday',   iconColor: TEAL,   positive: true  },
+  { label: 'Flagged Applications',value: '—',  delta: '—', sub: 'from last 7 days', iconColor: ORANGE, positive: false },
+  { label: 'Spam Detected',       value: '—',  delta: '—', sub: 'from last 7 days', iconColor: RED,    positive: false },
+  { label: 'Auto Blocked',        value: '—',  delta: '—', sub: 'from last 7 days', iconColor: PURPLE, positive: false },
 ];
 
-/* ─── Chart data ─────────────────────────────────────────────── */
-const CHART_LABELS = ['May 15','May 16','May 17','May 18','May 19','May 20','May 21'];
-const CHART_DATA   = [1100, 1600, 2200, 2700, 2400, 3100, 2850];
+/* ─── Fallback chart data ─────────────────────────────────────── */
+const CHART_LABELS_FALLBACK = ['—','—','—','—','—','—','—'];
+const CHART_DATA_FALLBACK   = [0, 0, 0, 0, 0, 0, 0];
 
-/* ─── Donuts ─────────────────────────────────────────────────── */
-const STATUS_DATA = [
-  { label: 'Submitted',  value: 14256, pct: 76.0, color: BLUE   },
-  { label: 'Reviewed',   value: 2842,  pct: 15.2, color: GREEN  },
-  { label: 'Shortlisted',value: 1024,  pct: 5.5,  color: GOLD   },
-  { label: 'Rejected',   value: 620,   pct: 3.3,  color: RED    },
+/* ─── Fallback donuts ─────────────────────────────────────────── */
+const STATUS_DATA_FALLBACK = [
+  { label: 'Submitted',  value: 0, pct: 76.0, color: BLUE   },
+  { label: 'Reviewed',   value: 0, pct: 15.2, color: GREEN  },
+  { label: 'Shortlisted',value: 0, pct: 5.5,  color: GOLD   },
+  { label: 'Rejected',   value: 0, pct: 3.3,  color: RED    },
 ];
 
-const RISK_DATA = [
-  { label: 'High Risk',   value: 89,  pct: 25.7, color: RED    },
-  { label: 'Medium Risk', value: 147, pct: 42.5, color: ORANGE },
-  { label: 'Low Risk',    value: 110, pct: 31.8, color: GREEN  },
+const RISK_DATA_FALLBACK = [
+  { label: 'High Risk',  value: 0, pct: 33.3, color: RED    },
+  { label: 'Medium Risk',value: 0, pct: 33.3, color: ORANGE },
+  { label: 'Low Risk',   value: 0, pct: 33.4, color: GREEN  },
 ];
 
-/* ─── Insights ───────────────────────────────────────────────── */
-const INSIGHTS = [
-  { icon: ShieldAlert, iconBg: 'rgba(239,68,68,0.15)',   iconColor: RED,    title: 'Multiple applications from same device/IP', sub: '23 applications flagged',            href: '/admin/fraud'     },
-  { icon: Zap,         iconBg: 'rgba(249,115,22,0.15)', iconColor: ORANGE, title: 'Bulk applications detected',               sub: '5 users submitted 50+ applications',  href: '/admin/fraud'     },
-  { icon: Activity,    iconBg: 'rgba(139,92,246,0.15)', iconColor: PURPLE, title: 'Unusual activity spike',                   sub: '35% more applications from new users', href: '/admin/analytics' },
+/* ─── Fallback insights ───────────────────────────────────────── */
+const INSIGHTS_FALLBACK = [
+  { icon: ShieldAlert, iconBg: 'rgba(239,68,68,0.15)',   iconColor: RED,    title: 'Multiple applications from same device/IP', sub: 'Loading…', href: '/admin/fraud'     },
+  { icon: Zap,         iconBg: 'rgba(249,115,22,0.15)', iconColor: ORANGE, title: 'Bulk applications detected',               sub: 'Loading…', href: '/admin/fraud'     },
+  { icon: Activity,    iconBg: 'rgba(139,92,246,0.15)', iconColor: PURPLE, title: 'Unusual activity spike',                   sub: 'Loading…', href: '/admin/analytics' },
 ];
 
-/* ─── Table data ─────────────────────────────────────────────── */
-const FLAGGED_APPS = [
-  { id:'APP-245689', date:'May 21, 2025', time:'10:32 AM', applicant:'Rohit Verma',    uid:'ASP052500001', casting:'Lead Role – Web Series',     project:'DreamWorks Films',       risk:'High',   reason:'Multiple submissions from same device',       img:'photo-1472099645785-5658abf4ff4e' },
-  { id:'APP-245688', date:'May 21, 2025', time:'09:58 AM', applicant:'Neha Iyer',      uid:'ASP052500002', casting:'Supporting Role – Film',      project:'NextGen Studios',        risk:'Medium', reason:'Bulk applications (25+ in 10 mins)',          img:'photo-1494790108377-be9c29b29330' },
-  { id:'APP-245687', date:'May 21, 2025', time:'09:41 AM', applicant:'Arjun Malhotra', uid:'ASP052500003', casting:'Dancer – Music Video',        project:'BeatBox Creations',      risk:'High',   reason:'IP address flagged for suspicious activity',  img:'photo-1507003211169-0a1dd7228f2d' },
-  { id:'APP-245686', date:'May 20, 2025', time:'11:15 PM', applicant:'Karan Mehta',    uid:'ASP052500004', casting:'Child Artist – Short Film',   project:'Indie Frames',           risk:'Low',    reason:'New account with high frequency',             img:'photo-1500648767791-00dcc994a43e' },
-  { id:'APP-245685', date:'May 20, 2025', time:'10:42 PM', applicant:'Pooja Sharma',   uid:'ASP052500005', casting:'Lead Role – Feature Film',    project:'Royal Reels Productions',risk:'Medium', reason:'Similar documents uploaded multiple times',    img:'photo-1529626455594-4ff0802cfb7e' },
-  { id:'APP-245684', date:'May 20, 2025', time:'08:20 PM', applicant:'Vikram Nair',    uid:'ASP052500006', casting:'Villain – OTT Series',        project:'WebStream Originals',    risk:'High',   reason:'Account linked to 3 suspended profiles',      img:'photo-1463453091185-61582044d556' },
-  { id:'APP-245683', date:'May 20, 2025', time:'06:55 PM', applicant:'Divya Menon',    uid:'ASP052500007', casting:'Model – Fashion Ad',          project:'GlamShoot Agency',       risk:'Low',    reason:'Duplicate portfolio images detected',         img:'photo-1438761681033-6461ffad8d80' },
-  { id:'APP-245682', date:'May 19, 2025', time:'03:30 PM', applicant:'Siddharth Rao',  uid:'ASP052500008', casting:'Background Artist',           project:'Epic Frames Pvt Ltd',    risk:'Medium', reason:'VPN usage detected during application',       img:'photo-1507003211169-0a1dd7228f2d' },
-  { id:'APP-245681', date:'May 19, 2025', time:'01:10 PM', applicant:'Ananya Singh',   uid:'ASP052500009', casting:'Singer – Reality Show',       project:'StarVoice Productions',  risk:'Low',    reason:'Inconsistent profile details',                img:'photo-1573496359142-b8d87734a5a2' },
-  { id:'APP-245680', date:'May 19, 2025', time:'11:05 AM', applicant:'Raj Kapoor',     uid:'ASP052500010', casting:'Comedian – Web Series',       project:'LaughHub Studios',       risk:'High',   reason:'Reported by agency for abusive messages',     img:'photo-1472099645785-5658abf4ff4e' },
-];
-
+/* ─── Risk styling ────────────────────────────────────────────── */
 const RISK_COLOR: Record<string,string> = { High: RED, Medium: ORANGE, Low: GREEN };
 const RISK_BG:    Record<string,string> = { High: 'rgba(239,68,68,0.12)', Medium: 'rgba(249,115,22,0.12)', Low: 'rgba(34,197,94,0.12)' };
 const PER_PAGE = 5;
 const TIME_FILTERS = ['Today','Last 7 Days','Last 30 Days','Custom Range'];
 const RISK_FILTERS = ['All Risk Levels','High','Medium','Low'];
 
+/* ─── Types ───────────────────────────────────────────────────── */
+type StatCard = { label: string; value: string; delta: string; sub: string; iconColor: string; positive: boolean };
+type StatusRow = { label: string; value: number; pct: number; color: string };
+type RiskRow   = { label: string; value: number; pct: number; color: string };
+type InsightRow = { icon: typeof ShieldAlert; iconBg: string; iconColor: string; title: string; sub: string; href: string };
+type FlaggedApp = {
+  id: string; date: string; time: string; applicant: string;
+  uid: string; casting: string; project: string;
+  risk: string; reason: string; img: string;
+};
+
+/* ─── Auth helper ─────────────────────────────────────────────── */
+function getToken(): string {
+  try { const raw = localStorage.getItem('ss_user') || sessionStorage.getItem('ss_user') || '{}'; return JSON.parse(raw).token || ''; }
+  catch { return ''; }
+}
+
 /* ─── SVG Line Chart ─────────────────────────────────────────── */
-function AppOverTimeChart({ period }: { period: string }) {
+function AppOverTimeChart({ labels, data, period }: { labels: string[]; data: number[]; period: string }) {
   const W = 420, H = 180;
   const pl = 40, pb = 155, pr = W-10, pt = 14;
   const pw = pr-pl, ph = pb-pt;
-  const maxY = 4000;
-  const gridY = [0,1000,2000,3000,4000];
-  const mult = period==='Today' ? 0.3 : period==='Last 30 Days' ? 2.1 : 1;
-  const data = CHART_DATA.map(v => Math.round(v*mult));
-  const mx = (i: number) => pl + (i/(CHART_LABELS.length-1))*pw;
+
+  const mx = (i: number) => pl + (i/(labels.length-1||1))*pw;
+
+  // All zeros — show friendly empty state with X-axis labels
+  const allZero = !data.length || data.every(v=>v===0);
+  if(allZero) return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{width:'100%',height:'100%',overflow:'visible'}}>
+      <line x1={pl} y1={pb} x2={pr} y2={pb} stroke="rgba(255,255,255,0.07)" strokeWidth={1}/>
+      {labels.map((l,i)=><text key={i} x={mx(i)} y={pb+16} fill="rgba(255,255,255,0.3)" fontSize={9} textAnchor="middle" fontFamily={BARLOW}>{l}</text>)}
+      <text x={W/2} y={pb-50} textAnchor="middle" fill="rgba(255,255,255,0.25)" fontSize={11} fontFamily={BARLOW}>No applications in this period</text>
+    </svg>
+  );
+
+  // Smart maxY: scale to actual data so small values are visible
+  const rawMax = Math.max(...data);
+  const niceMax = (n:number): number => {
+    if(n <= 5)   return 10;
+    if(n <= 10)  return 15;
+    if(n <= 20)  return 25;
+    if(n <= 50)  return 60;
+    if(n <= 100) return 120;
+    if(n <= 500) return Math.ceil(n*1.2/100)*100;
+    if(n <= 1000) return Math.ceil(n*1.2/200)*200;
+    const mag = Math.pow(10, Math.floor(Math.log10(n)));
+    return Math.ceil(n*1.2/mag)*mag;
+  };
+  const maxY = niceMax(rawMax);
+
+  // Nice grid: 5 lines, formatted labels
+  const gridStep = maxY/4;
+  const gridY = [0,gridStep,gridStep*2,gridStep*3,maxY];
+  const fmtY = (v:number) => v>=1000 ? `${(v/1000).toFixed(v%1000===0?0:1)}K` : String(Math.round(v));
+
   const my = (v: number) => pb - (v/maxY)*ph;
+
   function smooth(pts: [number,number][]): string {
     let d = `M ${pts[0][0]} ${pts[0][1]}`;
     for (let i=0;i<pts.length-1;i++) {
@@ -142,21 +158,21 @@ function AppOverTimeChart({ period }: { period: string }) {
     return d;
   }
   const pts: [number,number][] = data.map((v,i)=>[mx(i),my(v)]);
-  const path = smooth(pts);
-  const area = `${path} L ${pts[pts.length-1][0]} ${pb} L ${pts[0][0]} ${pb} Z`;
+  const path = pts.length > 1 ? smooth(pts) : `M ${pts[0]?.[0]??pl} ${pts[0]?.[1]??pb}`;
+  const area = pts.length > 1 ? `${path} L ${pts[pts.length-1][0]} ${pb} L ${pts[0][0]} ${pb} Z` : '';
   return (
     <svg viewBox={`0 0 ${W} ${H}`} style={{width:'100%',height:'100%',overflow:'visible'}}>
       <defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={BLUE} stopOpacity={0.18}/><stop offset="100%" stopColor={BLUE} stopOpacity={0.01}/></linearGradient></defs>
       {gridY.map(v=>(
         <g key={v}>
           <line x1={pl} y1={my(v)} x2={pr} y2={my(v)} stroke="rgba(255,255,255,0.05)" strokeWidth={1} strokeDasharray="3 3"/>
-          <text x={pl-6} y={my(v)+4} fill="rgba(255,255,255,0.28)" fontSize={9} textAnchor="end" fontFamily={BARLOW}>{v===0?'0':`${v/1000}K`}</text>
+          <text x={pl-6} y={my(v)+4} fill="rgba(255,255,255,0.28)" fontSize={9} textAnchor="end" fontFamily={BARLOW}>{fmtY(v)}</text>
         </g>
       ))}
       <line x1={pl} y1={pb} x2={pr} y2={pb} stroke="rgba(255,255,255,0.07)" strokeWidth={1}/>
-      {CHART_LABELS.map((l,i)=><text key={i} x={mx(i)} y={pb+16} fill="rgba(255,255,255,0.3)" fontSize={9} textAnchor="middle" fontFamily={BARLOW}>{l}</text>)}
-      <path d={area} fill="url(#ag)"/>
-      <path d={path} fill="none" stroke={BLUE} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round"/>
+      {labels.map((l,i)=><text key={i} x={mx(i)} y={pb+16} fill="rgba(255,255,255,0.3)" fontSize={9} textAnchor="middle" fontFamily={BARLOW}>{l}</text>)}
+      {area && <path d={area} fill="url(#ag)"/>}
+      {pts.length > 1 && <path d={path} fill="none" stroke={BLUE} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round"/>}
       {pts.map(([cx,cy],i)=><circle key={i} cx={cx} cy={cy} r={3} fill={BLUE} stroke={BG3} strokeWidth={1.5}/>)}
     </svg>
   );
@@ -167,16 +183,43 @@ function DonutChart({data,total,label,size=160}:{data:{label:string;pct:number;c
   const cx=size/2,cy=size/2,R=size*0.44,r=size*0.28;
   const toRad=(deg:number)=>(deg*Math.PI)/180;
   const pt=(ang:number,rad:number)=>[cx+rad*Math.cos(toRad(ang)),cy+rad*Math.sin(toRad(ang))];
-  let start=-90;
   const sum=data.reduce((s,d)=>s+d.pct,0);
-  const arcs=data.map(seg=>{
+
+  // All zero — show a single grey ring
+  if (!sum) {
+    return (
+      <svg viewBox={`0 0 ${size} ${size}`} style={{width:size,height:size,flexShrink:0}}>
+        <circle cx={cx} cy={cy} r={R} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={R-r}/>
+        <circle cx={cx} cy={cy} r={r-2} fill={BG3}/>
+        <text x={cx} y={cy-8} textAnchor="middle" fill="rgba(255,255,255,0.45)" fontSize={size*0.065} fontFamily={BARLOW}>{label}</text>
+        <text x={cx} y={cy+10} textAnchor="middle" fill="#F5F5F5" fontSize={size*0.13} fontWeight={800} fontFamily={BEBAS} letterSpacing={1}>{total}</text>
+      </svg>
+    );
+  }
+
+  // Single non-zero segment — draw a full circle instead of arc (arc math breaks at 360°)
+  const nonZero = data.filter(d=>d.pct>0);
+  if (nonZero.length===1) {
+    return (
+      <svg viewBox={`0 0 ${size} ${size}`} style={{width:size,height:size,flexShrink:0}}>
+        <circle cx={cx} cy={cy} r={(R+r)/2} fill="none" stroke={nonZero[0].color} strokeWidth={R-r}/>
+        <circle cx={cx} cy={cy} r={r-2} fill={BG3}/>
+        <text x={cx} y={cy-8} textAnchor="middle" fill="rgba(255,255,255,0.45)" fontSize={size*0.065} fontFamily={BARLOW}>{label}</text>
+        <text x={cx} y={cy+10} textAnchor="middle" fill="#F5F5F5" fontSize={size*0.13} fontWeight={800} fontFamily={BEBAS} letterSpacing={1}>{total}</text>
+      </svg>
+    );
+  }
+
+  // Multiple segments — normal arc drawing
+  let start=-90;
+  const arcs=data.filter(d=>d.pct>0).map(seg=>{
     const sweep=(seg.pct/sum)*360;
-    const end=start+sweep;
+    const end=start+sweep-1; // -1 gap between segments
     const large=sweep>180?1:0;
     const [x1,y1]=pt(start,R);const [x2,y2]=pt(end,R);
     const [x3,y3]=pt(end,r);const [x4,y4]=pt(start,r);
     const d=`M ${x1} ${y1} A ${R} ${R} 0 ${large} 1 ${x2} ${y2} L ${x3} ${y3} A ${r} ${r} 0 ${large} 0 ${x4} ${y4} Z`;
-    start=end+1.5;
+    start=end+1;
     return {...seg,d};
   });
   return (
@@ -207,122 +250,137 @@ export default function ApplicationMonitoringPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [toast,       setToast]       = useState('');
 
-  const SB_W = sidebarOpen ? 220 : 52;
+  /* ── Advanced filter state ── */
+  const [advRisk,    setAdvRisk]    = useState('All');
+  const [advStatus,  setAdvStatus]  = useState('All');
+  const [advPeriod,  setAdvPeriod]  = useState('Last 7 Days');
+  // Applied values (set when user clicks Apply Filters)
+  const [appliedRisk,   setAppliedRisk]   = useState('All');
+  const [appliedStatus, setAppliedStatus] = useState('All');
+
+  /* ── Real data state ── */
+  const [adminName,    setAdminName]    = useState('Administrator');
+  const [adminAvatar,  setAdminAvatar]  = useState('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face');
+  const [adminId,      setAdminId]      = useState('Admin');
+  const [notifCount,   setNotifCount]   = useState(12);
+  const [stats,        setStats]        = useState<StatCard[]>(STATS_FALLBACK);
+  const [chartLabels,  setChartLabels]  = useState<string[]>(CHART_LABELS_FALLBACK);
+  const [chartData,    setChartData]    = useState<number[]>(CHART_DATA_FALLBACK);
+  const [statusData,   setStatusData]   = useState<StatusRow[]>(STATUS_DATA_FALLBACK);
+  const [riskData,     setRiskData]     = useState<RiskRow[]>(RISK_DATA_FALLBACK);
+  const [insights,     setInsights]     = useState<InsightRow[]>(INSIGHTS_FALLBACK);
+  const [flaggedApps,  setFlaggedApps]  = useState<FlaggedApp[]>([]);
+  const [totalFlagged, setTotalFlagged] = useState(0);
+  const [totalPages,   setTotalPages]   = useState(1);
+  const [statusTotal,  setStatusTotal]  = useState('0');
 
   const showToast = (msg:string) => { setToast(msg); setTimeout(()=>setToast(''),2800); };
 
-  const filtered = FLAGGED_APPS.filter(a => {
-    const q = search.toLowerCase();
-    const ms = !q || a.applicant.toLowerCase().includes(q) || a.id.toLowerCase().includes(q) || a.casting.toLowerCase().includes(q) || a.project.toLowerCase().includes(q);
-    const mr = riskFilter==='All Risk Levels' || a.risk===riskFilter;
-    return ms && mr;
-  });
-  const totalPages = Math.max(1,Math.ceil(filtered.length/PER_PAGE));
-  const paged = filtered.slice((page-1)*PER_PAGE, page*PER_PAGE);
-  const allSelected = paged.length>0 && paged.every(a=>selected.includes(a.id));
+  /* ── Load admin profile ── */
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    fetch('/api/admin/dashboard', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => {
+        if (d.admin) {
+          setAdminName(d.admin.full_name || 'Administrator');
+          if (d.admin.avatar_url) setAdminAvatar(d.admin.avatar_url);
+          if (d.admin.admin_id)   setAdminId(d.admin.admin_id);
+        }
+      }).catch(() => {});
+  }, []);
 
+  /* ── Load notification count ── */
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    fetch('/api/notifications?unread=true&limit=1', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => { if (typeof d.total === 'number') setNotifCount(d.total); })
+      .catch(() => {});
+  }, []);
+
+  /* ── Load stats, charts, donuts, insights ── */
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    fetch(`/api/admin/applications?type=stats&period=${encodeURIComponent(timePeriod)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(d => {
+        const r = d.data ?? d;
+        if (r.stats)      setStats(r.stats);
+        if (r.chartLabels) setChartLabels(r.chartLabels);
+        if (r.chartData)   setChartData(r.chartData);
+        if (r.statusData)  { setStatusData(r.statusData); setStatusTotal(r.statusTotal || '0'); }
+        if (r.riskData)    setRiskData(r.riskData);
+        if (r.insights)    setInsights(r.insights.map((ins: any) => ({
+          ...ins,
+          icon: ins.icon === 'ShieldAlert' ? ShieldAlert : ins.icon === 'Zap' ? Zap : Activity,
+        })));
+      }).catch(() => {});
+  }, [timePeriod]);
+
+  /* ── Load flagged applications table ── */
+  const loadApps = useCallback(() => {
+    const token = getToken();
+    if (!token) return;
+    // Merge inline risk filter with advanced filter (inline takes priority if set)
+    const effectiveRisk   = riskFilter !== 'All Risk Levels' ? riskFilter : appliedRisk !== 'All' ? appliedRisk : '';
+    const effectiveStatus = appliedStatus !== 'All' ? appliedStatus : '';
+    const effectivePeriod = timePeriod;
+    const params = new URLSearchParams({
+      page: String(page),
+      per_page: String(PER_PAGE),
+      period: effectivePeriod,
+      ...(effectiveRisk   && { risk:   effectiveRisk   }),
+      ...(effectiveStatus && { status: effectiveStatus }),
+      ...(search          && { q:      search          }),
+    });
+    fetch(`/api/admin/applications?${params}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => {
+        const r = d.data ?? d;
+        if (r.applications) setFlaggedApps(r.applications);
+        if (typeof r.total === 'number') {
+          setTotalFlagged(r.total);
+          setTotalPages(Math.max(1, Math.ceil(r.total / PER_PAGE)));
+        }
+      }).catch(() => {});
+  }, [page, timePeriod, riskFilter, search, appliedRisk, appliedStatus]);
+
+  useEffect(() => { loadApps(); }, [loadApps]);
+
+  /* ── Table helpers (same logic as original) ── */
+  const allSelected = flaggedApps.length>0 && flaggedApps.every(a=>selected.includes(a.id));
   const toggleSelect = (id:string) => setSelected(prev=>prev.includes(id)?prev.filter(x=>x!==id):[...prev,id]);
-  const toggleAll = () => setSelected(allSelected?selected.filter(id=>!paged.find(a=>a.id===id)):[...new Set([...selected,...paged.map(a=>a.id)])]);
-  const handleBulk = (action:string) => { showToast(`${action} applied to ${selected.length} application(s)`); setSelected([]); setShowBulk(false); };
+  const toggleAll = () => setSelected(allSelected?selected.filter(id=>!flaggedApps.find(a=>a.id===id)):[...new Set([...selected,...flaggedApps.map(a=>a.id)])]);
+  const handleBulk = (action:string) => {
+    if (selected.length === 0) { showToast('Select at least one application'); setShowBulk(false); return; }
+    const token = getToken();
+    fetch('/api/admin/applications/bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ ids: selected, action }),
+    }).catch(() => {});
+    showToast(`${action} applied to ${selected.length} application(s)`);
+    setSelected([]);
+    setShowBulk(false);
+    loadApps();
+  };
 
   return (
     <div style={{display:'flex',flexDirection:'column',height:'100vh',overflow:'hidden',background:BG,fontFamily:BARLOW,color:'#F5F5F5'}}>
 
-      {/* ══ TOPNAV ══ */}
-      <header style={{display:'flex',alignItems:'center',gap:14,flexShrink:0,padding:'0 24px',height:60,background:BG2,borderBottom:'1px solid rgba(255,255,255,0.06)',zIndex:100}}>
-        <SilverScreensLogo size="md" href="/" showTagline={false}/>
-        <div style={{padding:'3px 10px',background:'rgba(239,68,68,0.15)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:5}}>
-          <span style={{fontFamily:BARLOW,fontSize:14,fontWeight:700,color:RED,letterSpacing:1}}>ADMIN PANEL</span>
-        </div>
-        <div style={{flex:1,maxWidth:440,position:'relative'}}>
-          <Search size={14} color="rgba(255,255,255,0.3)" style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)'}}/>
-          <input placeholder="Search applications, casting, users, agencies…"
-            style={{width:'100%',background:BG3,border:'1px solid rgba(255,255,255,0.08)',borderRadius:8,padding:'8px 40px 8px 34px',color:'#F5F5F5',fontFamily:BARLOW,fontSize:14,outline:'none',boxSizing:'border-box'}}/>
-          <span style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',fontSize:14,color:'rgba(255,255,255,0.25)',background:BG4,borderRadius:4,padding:'1px 6px',border:'1px solid rgba(255,255,255,0.1)'}}>⌘K</span>
-        </div>
-        <div style={{flex:1}}/>
-        <div onClick={()=>router.push('/admin/notifications')} style={{position:'relative',cursor:'pointer'}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'rgba(255,255,255,0.07)',display:'flex',alignItems:'center',justifyContent:'center'}}>
-            <Bell size={15} color="rgba(255,255,255,0.7)"/>
-          </div>
-          <div style={{position:'absolute',top:-5,right:-5,background:RED,borderRadius:'50%',width:18,height:18,display:'flex',alignItems:'center',justifyContent:'center',fontSize: 14,fontWeight:700,color:'#fff'}}>12</div>
-        </div>
-        <div onClick={()=>router.push('/admin/support')} style={{cursor:'pointer'}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'rgba(255,255,255,0.07)',display:'flex',alignItems:'center',justifyContent:'center'}}>
-            <Info size={15} color="rgba(255,255,255,0.7)"/>
-          </div>
-        </div>
-        <div style={{position:'relative'}}>
-          <div style={{display:'flex',alignItems:'center',gap:9,cursor:'pointer'}} onClick={()=>setProfileOpen(v=>!v)}>
-            <div style={{width:36,height:36,borderRadius:'50%',overflow:'hidden',border:'2px solid rgba(212,166,74,0.38)',flexShrink:0}}>
-              <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face" alt="Admin" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-            </div>
-            <div><div style={{fontSize:15,fontWeight:700,lineHeight:1.2}}>Super Admin</div></div>
-            <ChevronDown size={12} color="rgba(255,255,255,0.4)"/>
-          </div>
-          {profileOpen && (
-            <>
-              <div onClick={()=>setProfileOpen(false)} style={{position:'fixed',inset:0,zIndex:150}}/>
-              <div style={{position:'absolute',top:46,right:0,width:210,background:BG3,border:'1px solid rgba(255,255,255,0.1)',borderRadius:10,overflow:'hidden',zIndex:200,boxShadow:'0 8px 32px rgba(0,0,0,0.6)'}}>
-                <div style={{padding:'10px 16px',borderBottom:'1px solid rgba(255,255,255,0.07)',display:'flex',justifyContent:'space-between'}}>
-                  <span style={{fontSize:14,color:'rgba(255,255,255,0.4)'}}>Admin ID</span>
-                  <span style={{fontSize:14,fontWeight:700,color:RED}}>ADM000001</span>
-                </div>
-                {PROFILE_MENU.map(({label,href})=>(
-                  <div key={label} onClick={()=>{router.push(href);setProfileOpen(false);}}
-                    style={{padding:'10px 16px',fontSize:15,cursor:'pointer',color:label==='Logout'?'#ff6b6b':'#F5F5F5',borderTop:label==='Logout'?'1px solid rgba(255,255,255,0.07)':'none'}}
-                    onMouseEnter={e=>(e.currentTarget.style.background='rgba(255,255,255,0.05)')}
-                    onMouseLeave={e=>(e.currentTarget.style.background='transparent')}
-                  >{label}</div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </header>
+      <AdminTopnav />
 
       {/* ══ BODY ══ */}
       <div style={{display:'flex',flex:1,overflow:'hidden'}}>
 
         {/* ── SIDEBAR ── */}
-        <aside style={{width:SB_W,flexShrink:0,background:BG2,borderRight:'1px solid rgba(255,255,255,0.06)',display:'flex',flexDirection:'column',overflowY:'auto',overflowX:'hidden',transition:'width 0.2s ease',scrollbarWidth:'none'}}>
-          <div style={{height:52,display:'flex',alignItems:'center',justifyContent:sidebarOpen?'flex-end':'center',padding:sidebarOpen?'0 12px':0,borderBottom:'1px solid rgba(255,255,255,0.06)',flexShrink:0}}>
-            <button onClick={()=>setSidebarOpen(v=>!v)} style={{background:'none',border:'none',cursor:'pointer',width:30,height:30,borderRadius:6,display:'flex',alignItems:'center',justifyContent:'center',color:'rgba(255,255,255,0.5)'}}
-              onMouseEnter={e=>(e.currentTarget.style.background='rgba(255,255,255,0.07)')}
-              onMouseLeave={e=>(e.currentTarget.style.background='none')}
-            >{sidebarOpen?<ChevronLeft size={16}/>:<Menu size={16}/>}</button>
-          </div>
-          {sidebarOpen && (
-            <div style={{padding:'14px 16px',borderBottom:'1px solid rgba(255,255,255,0.06)',display:'flex',alignItems:'center',gap:12}}>
-              <div style={{width:38,height:38,borderRadius:9,overflow:'hidden',border:'1px solid rgba(212,166,74,0.25)',flexShrink:0}}>
-                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face" style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>
-              </div>
-              <div style={{minWidth:0}}>
-                <div style={{fontSize:14,fontWeight:700,color:'#F5F5F5',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>Super Admin</div>
-                <div style={{fontSize:14,color:RED,fontWeight:600}}>ADM000001</div>
-              </div>
-            </div>
-          )}
-          <nav style={{flex:1,padding:sidebarOpen?'8px 6px':'8px 4px',overflowY:'auto',scrollbarWidth:'none'}}>
-            {NAV_ITEMS.map(({icon:Icon,label,href,active})=>(
-              <div key={label} onClick={()=>router.push(href)} title={!sidebarOpen?label:undefined}
-                style={{display:'flex',alignItems:'center',justifyContent:sidebarOpen?'flex-start':'center',padding:sidebarOpen?'8px 10px':'10px 0',marginBottom:2,borderRadius:6,cursor:'pointer',background:active?'rgba(239,68,68,0.12)':'transparent',border:active&&sidebarOpen?'1px solid rgba(239,68,68,0.25)':'1px solid transparent',borderLeft:sidebarOpen&&active?`3px solid ${RED}`:sidebarOpen?'3px solid transparent':'none',gap:sidebarOpen?9:0}}
-                onMouseEnter={e=>{if(!active)e.currentTarget.style.background='rgba(255,255,255,0.04)';}}
-                onMouseLeave={e=>{if(!active)e.currentTarget.style.background=active?'rgba(239,68,68,0.12)':'transparent';}}
-              >
-                <Icon size={15} color={active?RED:'rgba(255,255,255,0.42)'} strokeWidth={active?2.5:1.8}/>
-                {sidebarOpen&&<span style={{fontSize:14,color:active?'#F5F5F5':'rgba(255,255,255,0.6)',fontWeight:active?700:400,whiteSpace:'nowrap',flex:1}}>{label}</span>}
-                {sidebarOpen&&active&&<ChevronRight size={12} color={RED} opacity={0.7}/>}
-              </div>
-            ))}
-          </nav>
-          {sidebarOpen&&(
-            <div onClick={()=>router.push('/login')} style={{padding:'14px 16px',borderTop:'1px solid rgba(255,255,255,0.06)',display:'flex',alignItems:'center',gap:9,cursor:'pointer',color:'rgba(255,255,255,0.45)',fontSize:14}}
-              onMouseEnter={e=>(e.currentTarget.style.color='#ff6b6b')}
-              onMouseLeave={e=>(e.currentTarget.style.color='rgba(255,255,255,0.45)')}
-            ><ChevronRight size={14} style={{transform:'rotate(180deg)'}}/>Logout</div>
-          )}
-        </aside>
+        <AdminSidebar onCollapse={(c) => setSidebarOpen(!c)} />
 
         {/* ── MAIN CONTENT ── */}
         <div style={{flex:1,overflowY:'auto',padding:'20px 22px 40px',display:'flex',flexDirection:'column',gap:16}}>
@@ -346,7 +404,7 @@ export default function ApplicationMonitoringPage() {
                 <Filter size={13}/> Filters
               </button>
               <div style={{position:'relative'}}>
-                <select value={timePeriod} onChange={e=>setTimePeriod(e.target.value)}
+                <select value={timePeriod} onChange={e=>{setTimePeriod(e.target.value);setPage(1);}}
                   style={{appearance:'none',padding:'8px 36px 8px 14px',background:BG3,border:'1px solid rgba(255,255,255,0.1)',borderRadius:8,color:'#F5F5F5',fontFamily:BARLOW,fontSize:14,cursor:'pointer',outline:'none'}}>
                   {TIME_FILTERS.map(t=><option key={t}>{t}</option>)}
                 </select>
@@ -357,7 +415,7 @@ export default function ApplicationMonitoringPage() {
 
           {/* ── STAT CARDS ── */}
           <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:10}}>
-            {STATS.map((s,i)=>(
+            {stats.map((s,i)=>(
               <div key={i} style={{borderRadius:12,padding:'14px 16px',background:BG3,border:'1px solid rgba(255,255,255,0.06)',display:'flex',flexDirection:'column',gap:8}}>
                 <div style={{width:36,height:36,borderRadius:'50%',background:`${s.iconColor}22`,display:'flex',alignItems:'center',justifyContent:'center'}}>
                   <Activity size={16} color={s.iconColor}/>
@@ -388,16 +446,18 @@ export default function ApplicationMonitoringPage() {
                   <ChevronDown size={11} color="rgba(255,255,255,0.4)" style={{position:'absolute',right:7,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}/>
                 </div>
               </div>
-              <div style={{width:'100%',height:170}}><AppOverTimeChart period={timePeriod}/></div>
+              <div style={{width:'100%',height:170}}>
+                <AppOverTimeChart labels={chartLabels} data={chartData} period={timePeriod}/>
+              </div>
             </div>
 
             {/* Applications by Status */}
             <div style={{borderRadius:12,background:BG3,border:'1px solid rgba(255,255,255,0.06)',padding:'16px 18px'}}>
               <div style={{fontSize:16,fontWeight:700,marginBottom:14}}>Applications by Status</div>
               <div style={{display:'flex',alignItems:'center',gap:12}}>
-                <DonutChart data={STATUS_DATA} total="18,742" label="Total" size={145}/>
+                <DonutChart data={statusData} total={statusTotal} label="Total" size={145}/>
                 <div style={{flex:1,display:'flex',flexDirection:'column',gap:8}}>
-                  {STATUS_DATA.map(d=>(
+                  {statusData.map(d=>(
                     <div key={d.label} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:6}}>
                       <div style={{display:'flex',alignItems:'center',gap:6}}>
                         <div style={{width:8,height:8,borderRadius:'50%',background:d.color,flexShrink:0}}/>
@@ -414,9 +474,9 @@ export default function ApplicationMonitoringPage() {
             <div style={{borderRadius:12,background:BG3,border:'1px solid rgba(255,255,255,0.06)',padding:'16px 18px'}}>
               <div style={{fontSize:16,fontWeight:700,marginBottom:14}}>Risk Level Distribution</div>
               <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:12}}>
-                <DonutChart data={RISK_DATA} total="346" label="Flagged" size={145}/>
+                <DonutChart data={riskData} total={String(totalFlagged||riskData.reduce((s,d)=>s+d.value,0))} label="Flagged" size={145}/>
                 <div style={{width:'100%',display:'flex',flexDirection:'column',gap:8}}>
-                  {RISK_DATA.map(d=>(
+                  {riskData.map(d=>(
                     <div key={d.label} style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                       <div style={{display:'flex',alignItems:'center',gap:6}}>
                         <div style={{width:8,height:8,borderRadius:'50%',background:d.color}}/>
@@ -438,8 +498,10 @@ export default function ApplicationMonitoringPage() {
               {/* Toolbar */}
               <div style={{display:'flex',alignItems:'center',gap:10,padding:'14px 18px',borderBottom:'1px solid rgba(255,255,255,0.06)',flexWrap:'wrap' as const}}>
                 <span style={{fontSize:15,fontWeight:700,flex:1}}>
-                  Suspicious / Flagged Applications
-                  <span style={{marginLeft:8,background:'rgba(239,68,68,0.15)',color:RED,border:'1px solid rgba(239,68,68,0.25)',borderRadius:12,fontSize:14,fontWeight:700,padding:'2px 8px'}}>346</span>
+                  All Applications
+                  <span style={{marginLeft:8,background:'rgba(239,68,68,0.15)',color:RED,border:'1px solid rgba(239,68,68,0.25)',borderRadius:12,fontSize:14,fontWeight:700,padding:'2px 8px'}}>
+                    {totalFlagged}
+                  </span>
                 </span>
                 <div style={{position:'relative'}}>
                   <Search size={13} color="rgba(255,255,255,0.3)" style={{position:'absolute',left:9,top:'50%',transform:'translateY(-50%)'}}/>
@@ -479,23 +541,23 @@ export default function ApplicationMonitoringPage() {
               </div>
 
               {/* Column headers */}
-              <div style={{display:'grid',gridTemplateColumns:'36px 1.8fr 1.8fr 2fr 95px 2fr 1.3fr 88px',padding:'10px 18px',borderBottom:'1px solid rgba(255,255,255,0.06)',background:'rgba(255,255,255,0.02)',gap:8}}>
+              <div style={{display:'grid',gridTemplateColumns:'36px 1.8fr 1.8fr 2fr 85px 110px 1.3fr 88px',padding:'10px 18px',borderBottom:'1px solid rgba(255,255,255,0.06)',background:'rgba(255,255,255,0.02)',gap:8}}>
                 <div onClick={toggleAll} style={{cursor:'pointer',display:'flex',alignItems:'center'}}>
                   {allSelected?<CheckSquare size={15} color={RED}/>:<Square size={15} color="rgba(255,255,255,0.3)"/>}
                 </div>
-                {['Application','Applicant','Casting / Project','Risk Level','Reason','Detected On','Actions'].map(h=>(
+                {['Project / Title','Applicant','Role / Agency','Risk Level','Status','Applied On','Actions'].map(h=>(
                   <div key={h} style={{fontSize:14,fontWeight:700,color:'rgba(255,255,255,0.4)',letterSpacing:0.5}}>{h}</div>
                 ))}
               </div>
 
               {/* Rows */}
-              {paged.length===0?(
+              {flaggedApps.length===0?(
                 <div style={{padding:'32px 18px',textAlign:'center',color:'rgba(255,255,255,0.35)',fontSize:14}}>No applications match your filters.</div>
-              ):paged.map((app,i)=>{
+              ):flaggedApps.map((app,i)=>{
                 const isSel=selected.includes(app.id);
                 return (
                   <div key={app.id}
-                    style={{display:'grid',gridTemplateColumns:'36px 1.8fr 1.8fr 2fr 95px 2fr 1.3fr 88px',padding:'11px 18px',borderBottom:i<paged.length-1?'1px solid rgba(255,255,255,0.04)':'none',alignItems:'center',gap:8,background:isSel?'rgba(239,68,68,0.05)':'transparent',transition:'background 0.15s'}}
+                    style={{display:'grid',gridTemplateColumns:'36px 1.8fr 1.8fr 2fr 85px 110px 1.3fr 88px',padding:'11px 18px',borderBottom:i<flaggedApps.length-1?'1px solid rgba(255,255,255,0.04)':'none',alignItems:'center',gap:8,background:isSel?'rgba(239,68,68,0.05)':'transparent',transition:'background 0.15s'}}
                     onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background='rgba(255,255,255,0.02)';}}
                     onMouseLeave={e=>{e.currentTarget.style.background=isSel?'rgba(239,68,68,0.05)':'transparent';}}
                   >
@@ -503,12 +565,12 @@ export default function ApplicationMonitoringPage() {
                       {isSel?<CheckSquare size={15} color={RED}/>:<Square size={15} color="rgba(255,255,255,0.25)"/>}
                     </div>
                     <div>
-                      <div style={{fontSize:14,fontWeight:600}}>{app.id}</div>
-                      <div style={{fontSize:14,color:'rgba(255,255,255,0.4)'}}>Submitted on {app.date}</div>
+                      <div style={{fontSize:14,fontWeight:700,color:'#F5F5F5'}}>{app.app_id}</div>
+                      <div style={{fontSize:12,color:'rgba(255,255,255,0.4)',marginTop:2}}>Applied {app.date}</div>
                     </div>
                     <div style={{display:'flex',alignItems:'center',gap:8}}>
                       <div style={{width:28,height:28,borderRadius:'50%',overflow:'hidden',flexShrink:0,border:'1px solid rgba(255,255,255,0.1)'}}>
-                        <img src={`https://images.unsplash.com/${app.img}?w=60&h=60&fit=crop&crop=face`} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                        <img src={app.img} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
                       </div>
                       <div>
                         <div style={{fontSize:14,fontWeight:600}}>{app.applicant}</div>
@@ -522,13 +584,31 @@ export default function ApplicationMonitoringPage() {
                     <div>
                       <span style={{fontSize:14,fontWeight:700,padding:'3px 9px',borderRadius:5,background:RISK_BG[app.risk],color:RISK_COLOR[app.risk],border:`1px solid ${RISK_COLOR[app.risk]}33`}}>{app.risk}</span>
                     </div>
-                    <div style={{fontSize:14,color:'rgba(255,255,255,0.6)',lineHeight:1.4}}>{app.reason}</div>
+                    <div style={{display:'flex',alignItems:'center'}}>
+                      {(()=>{
+                        const statusStyles: Record<string,{bg:string;color:string;label:string}> = {
+                          applied:     {bg:'rgba(59,130,246,0.12)',  color:'#3B82F6', label:'Submitted'  },
+                          in_review:   {bg:'rgba(249,115,22,0.12)',  color:'#F97316', label:'In Review'  },
+                          shortlisted: {bg:'rgba(212,166,74,0.12)',  color:'#D4A64A', label:'Shortlisted'},
+                          rejected:    {bg:'rgba(239,68,68,0.12)',   color:'#EF4444', label:'Rejected'   },
+                          on_hold:     {bg:'rgba(139,92,246,0.12)',  color:'#8B5CF6', label:'On Hold'    },
+                          withdrawn:   {bg:'rgba(255,255,255,0.07)', color:'rgba(255,255,255,0.4)', label:'Withdrawn'},
+                          selected:    {bg:'rgba(34,197,94,0.12)',   color:'#22C55E', label:'Selected'   },
+                        };
+                        const s = statusStyles[app.status] ?? {bg:'rgba(255,255,255,0.07)',color:'rgba(255,255,255,0.4)',label:app.status};
+                        return (
+                          <span style={{fontSize:13,fontWeight:700,padding:'3px 10px',borderRadius:5,background:s.bg,color:s.color,border:`1px solid ${s.color}33`,whiteSpace:'nowrap'}}>
+                            {s.label}
+                          </span>
+                        );
+                      })()}
+                    </div>
                     <div>
                       <div style={{fontSize: 14}}>{app.date}</div>
                       <div style={{fontSize:14,color:'rgba(255,255,255,0.4)'}}>{app.time}</div>
                     </div>
                     <div style={{display:'flex',alignItems:'center',gap:5}}>
-                      <button onClick={()=>router.push(`/agency/applications/${app.uid}`)} title="View Profile"
+                      <button onClick={()=>router.push(`/admin/aspirant-profile?uid=${app.uid}`)} title="View Profile"
                         style={{width:26,height:26,borderRadius:6,background:'rgba(59,130,246,0.12)',border:'1px solid rgba(59,130,246,0.2)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
                         <Eye size={12} color={BLUE}/>
                       </button>
@@ -548,7 +628,7 @@ export default function ApplicationMonitoringPage() {
               {/* Pagination */}
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 18px',borderTop:'1px solid rgba(255,255,255,0.06)'}}>
                 <span style={{fontSize:14,color:'rgba(255,255,255,0.45)'}}>
-                  Showing {Math.min((page-1)*PER_PAGE+1,filtered.length)} to {Math.min(page*PER_PAGE,filtered.length)} of {filtered.length} entries
+                  Showing {totalFlagged===0?0:Math.min((page-1)*PER_PAGE+1,totalFlagged)} to {Math.min(page*PER_PAGE,totalFlagged)} of {totalFlagged} entries
                 </span>
                 <div style={{display:'flex',alignItems:'center',gap:4}}>
                   <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1}
@@ -569,7 +649,7 @@ export default function ApplicationMonitoringPage() {
             <div style={{borderRadius:12,background:BG3,border:'1px solid rgba(255,255,255,0.06)',padding:'16px 18px',display:'flex',flexDirection:'column'}}>
               <div style={{fontSize:16,fontWeight:700,marginBottom:14}}>Monitoring Insights</div>
               <div style={{display:'flex',flexDirection:'column',gap:12,flex:1}}>
-                {INSIGHTS.map((ins,i)=>(
+                {insights.map((ins,i)=>(
                   <div key={i} style={{display:'flex',gap:12,padding:'12px',borderRadius:10,background:BG4,border:'1px solid rgba(255,255,255,0.05)'}}>
                     <div style={{width:38,height:38,borderRadius:9,background:ins.iconBg,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                       <ins.icon size={17} color={ins.iconColor}/>
@@ -599,10 +679,18 @@ export default function ApplicationMonitoringPage() {
           <div onClick={()=>setMenuApp('')} style={{position:'fixed',inset:0,zIndex:300}}/>
           <div style={{position:'fixed',top:menuPos.top,right:menuPos.right,width:190,background:BG2,border:'1px solid rgba(255,255,255,0.1)',borderRadius:9,overflow:'hidden',zIndex:400,boxShadow:'0 8px 24px rgba(0,0,0,0.6)'}}>
             {[
-              {label:'View Details',      icon:Eye,          color:'#F5F5F5', action:()=>{const a=FLAGGED_APPS.find(x=>x.id===menuApp);if(a)router.push(`/agency/applications/${a.uid}`);setMenuApp('');}},
-              {label:'Mark as Safe',      icon:ShieldCheck,  color:GREEN,     action:()=>{showToast('Marked as safe');setMenuApp('');}},
+              {label:'View Details',      icon:Eye,          color:'#F5F5F5', action:()=>{const a=flaggedApps.find(x=>x.id===menuApp);if(a)router.push(`/admin/aspirant-profile?uid=${a.uid}`);setMenuApp('');}},
+              {label:'Mark as Safe',      icon:ShieldCheck,  color:GREEN,     action:()=>{
+                const token=getToken();
+                fetch('/api/admin/applications/bulk',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({ids:[menuApp],action:'Mark as Safe'})}).catch(()=>{});
+                showToast('Marked as safe');setMenuApp('');loadApps();
+              }},
               {label:'Investigate',       icon:Search,       color:BLUE,      action:()=>{router.push('/admin/fraud');setMenuApp('');}},
-              {label:'Block User',        icon:Lock,         color:ORANGE,    action:()=>{showToast('User blocked successfully');setMenuApp('');}},
+              {label:'Block User',        icon:Lock,         color:ORANGE,    action:()=>{
+                const token=getToken();const a=flaggedApps.find(x=>x.id===menuApp);
+                if(a){fetch('/api/admin/users',{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({userId:a.uid,action:'suspend'})}).catch(()=>{});}
+                showToast('User blocked successfully');setMenuApp('');loadApps();
+              }},
               {label:'Escalate to Fraud', icon:AlertTriangle,color:RED,       action:()=>{router.push('/admin/fraud');setMenuApp('');}},
             ].map(({label,icon:Icon,color,action})=>(
               <div key={label} onClick={action} style={{display:'flex',alignItems:'center',gap:9,padding:'10px 14px',fontSize:14,cursor:'pointer',color}}
@@ -651,22 +739,37 @@ export default function ApplicationMonitoringPage() {
               <div style={{fontFamily:BEBAS,fontSize:20,letterSpacing:1}}>ADVANCED FILTERS</div>
               <button onClick={()=>setShowFilters(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,0.5)',cursor:'pointer'}}><X size={18}/></button>
             </div>
-            {[
-              {label:'Risk Level',        options:['All','High','Medium','Low']},
-              {label:'Application Status',options:['All','Submitted','Reviewed','Shortlisted','Rejected']},
-              {label:'Detection Method',  options:['All','IP Tracking','Bulk Detection','Duplicate Media','Behavioural']},
-              {label:'Date Range',        options:['Today','Last 7 Days','Last 30 Days','Custom Range']},
-            ].map(f=>(
-              <div key={f.label} style={{marginBottom:14}}>
-                <label style={{display:'block',fontSize:14,color:'rgba(255,255,255,0.5)',marginBottom:5}}>{f.label}</label>
-                <select style={{width:'100%',background:BG3,border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'9px 12px',color:'#F5F5F5',fontFamily:BARLOW,fontSize:14,outline:'none'}}>
-                  {f.options.map(o=><option key={o}>{o}</option>)}
-                </select>
+            <div style={{marginBottom:14}}>
+              <label style={{display:'block',fontSize:14,color:'rgba(255,255,255,0.5)',marginBottom:5}}>Risk Level</label>
+              <select value={advRisk} onChange={e=>setAdvRisk(e.target.value)} style={{width:'100%',background:BG3,border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'9px 12px',color:'#F5F5F5',fontFamily:BARLOW,fontSize:14,outline:'none'}}>
+                {['All','High','Medium','Low'].map(o=><option key={o}>{o}</option>)}
+              </select>
+            </div>
+            <div style={{marginBottom:14}}>
+              <label style={{display:'block',fontSize:14,color:'rgba(255,255,255,0.5)',marginBottom:5}}>Application Status</label>
+              <select value={advStatus} onChange={e=>setAdvStatus(e.target.value)} style={{width:'100%',background:BG3,border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'9px 12px',color:'#F5F5F5',fontFamily:BARLOW,fontSize:14,outline:'none'}}>
+                {['All','applied','in_review','shortlisted','rejected','on_hold','withdrawn'].map(o=>(
+                  <option key={o} value={o}>{o==='All'?'All':o==='applied'?'Submitted':o==='in_review'?'In Review':o==='shortlisted'?'Shortlisted':o==='rejected'?'Rejected':o==='on_hold'?'On Hold':'Withdrawn'}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{marginBottom:14}}>
+              <label style={{display:'block',fontSize:14,color:'rgba(255,255,255,0.5)',marginBottom:5}}>Date Range</label>
+              <select value={advPeriod} onChange={e=>setAdvPeriod(e.target.value)} style={{width:'100%',background:BG3,border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'9px 12px',color:'#F5F5F5',fontFamily:BARLOW,fontSize:14,outline:'none'}}>
+                {['Today','Last 7 Days','Last 30 Days','All Time'].map(o=><option key={o}>{o}</option>)}
+              </select>
+            </div>
+            {(appliedRisk!=='All'||appliedStatus!=='All')&&(
+              <div style={{marginBottom:12}}>
+                <button onClick={()=>{setAdvRisk('All');setAdvStatus('All');setAdvPeriod('Last 7 Days');setAppliedRisk('All');setAppliedStatus('All');setPage(1);setShowFilters(false);showToast('Filters cleared');}}
+                  style={{width:'100%',padding:'8px',background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.2)',borderRadius:7,color:RED,fontFamily:BARLOW,fontSize:14,cursor:'pointer'}}>
+                  Clear Active Filters
+                </button>
               </div>
-            ))}
+            )}
             <div style={{display:'flex',gap:10,marginTop:6}}>
               <button onClick={()=>setShowFilters(false)} style={{flex:1,padding:10,background:BG3,border:'1px solid rgba(255,255,255,0.1)',borderRadius:7,color:'rgba(255,255,255,0.6)',fontFamily:BARLOW,fontSize:15,cursor:'pointer'}}>Cancel</button>
-              <button onClick={()=>{showToast('Filters applied');setShowFilters(false);}}
+              <button onClick={()=>{setAppliedRisk(advRisk);setAppliedStatus(advStatus);setTimePeriod(advPeriod);setPage(1);setShowFilters(false);showToast('Filters applied');}}
                 style={{flex:2,padding:10,background:RED,border:'none',borderRadius:7,color:'#fff',fontFamily:BEBAS,fontSize:18,letterSpacing:1,cursor:'pointer'}}>Apply Filters</button>
             </div>
           </div>
@@ -680,6 +783,7 @@ export default function ApplicationMonitoringPage() {
         </div>
       )}
 
+      <style>{`select option { background: #121821; color: #F5F5F5; }`}</style>
     </div>
   );
 }

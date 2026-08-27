@@ -1,15 +1,17 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
+
   LayoutDashboard, Megaphone, PlusCircle, ClipboardList,
   UserSearch, Star, CalendarCheck, MessageSquare, Bell,
   Bookmark, ChevronDown, ChevronLeft, Menu,
   Search, Send, MoreHorizontal, Check, CheckCheck,
   Phone, Video, Info, Paperclip, Smile,
 } from 'lucide-react';
+import AgencyVerificationBanner from '@/components/layout/AgencyVerificationBanner';
 
 const RED    = '#C8202A';
 const GOLD   = '#D4A64A';
@@ -21,6 +23,15 @@ const BG3    = '#121821';
 const BG4    = '#1C2030';
 const BEBAS  = "'Bebas Neue', sans-serif";
 const BARLOW = "'Barlow Condensed', sans-serif";
+
+function getIsApproved(): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
+    const ps = u?.profileStatus ?? 'pending';
+    return ps === 'approved' || ps === 'active';
+  } catch { return true; }
+}
 
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard',               href: '/agency/dashboard' },
@@ -37,7 +48,7 @@ const NAV_ITEMS = [
 
 interface Conversation {
   id: string; name: string; role: string; avatar: string; gradient: string;
-  lastMsg: string; time: string; unread: number; online: boolean;
+  lastMsg: string; time: string; unread: number; online: boolean; otherPartyId: string; phone: string;
 }
 
 interface Message {
@@ -72,7 +83,9 @@ function apiToConversation(c: any, idx: number): Conversation {
       ? new Date(c.lastMessageAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
       : c.time ?? '',
     unread:   c.unreadCount ?? c.unread ?? 0,
-    online:   other.isOnline ?? c.online ?? false,
+    online:      other.isOnline ?? c.online ?? false,
+    otherPartyId: String(other.aspirantProfileId ?? other.id ?? c.otherPartyId ?? ''),
+    phone:        String(other.phone ?? ''),
   };
 }
 
@@ -98,8 +111,10 @@ function makePlaceholder(recipientId: string, recipientName: string): Conversati
     gradient: GRADIENTS[0],
     lastMsg:  'Start a conversation',
     time:     '',
-    unread:   0,
-    online:   false,
+    unread:       0,
+    online:       false,
+    otherPartyId: recipientId,
+    phone:        '',
   };
 }
 
@@ -112,6 +127,7 @@ export default function MessagesPage() {
   const recipientName = searchParams.get('recipient_name') ?? '';
 
   const [sidebarOpen,    setSidebarOpen]    = useState(false);
+  const [isApproved,     setIsApproved]     = useState(true);
   const [profileOpen,    setProfileOpen]    = useState(false);
   const [searchQuery,    setSearchQuery]    = useState('');
   const [newMessage,     setNewMessage]     = useState('');
@@ -133,6 +149,9 @@ export default function MessagesPage() {
   const [msgCount,       setMsgCount]       = useState(0);
   const [notifCount,     setNotifCount]     = useState(0);
   const [currentUserId,  setCurrentUserId]  = useState('');
+  const [moreOpen,       setMoreOpen]       = useState(false);
+  const [callOpen,       setCallOpen]       = useState(false);
+  const [videoOpen,      setVideoOpen]      = useState(false);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const SB_W = sidebarOpen ? 230 : 52;
@@ -169,16 +188,18 @@ export default function MessagesPage() {
         setMsgCount(normalised.filter((c: Conversation) => c.unread > 0).length);
 
         if (recipientId) {
-          // Check if a real conversation already exists with this recipient
-          const existing = normalised.find((c: Conversation, i: number) => {
-            const raw = list[i];
-            return (
-              raw?.aspirant_id === recipientId ||
-              raw?.agency_id   === recipientId ||
-              raw?.otherParty?.id === recipientId ||
-              c.name.toLowerCase() === recipientName.toLowerCase()
-            );
-          });
+          // Decode URL-encoded name (+ → space)
+          const decodedName = recipientName.replace(/\+/g, ' ').toLowerCase();
+          // Search raw list directly by otherParty.id or participant ids
+          const existingRaw = list.find((raw: any) =>
+            raw?.otherParty?.id === recipientId ||
+            raw?.participant_1_id === recipientId ||
+            raw?.participant_2_id === recipientId ||
+            (raw?.otherParty?.name ?? '').toLowerCase() === decodedName
+          );
+          const existing = existingRaw
+            ? normalised.find((n: Conversation) => n.id === String(existingRaw.id))
+            : null;
 
           if (existing) {
             // Replace placeholder with real conversation
@@ -224,18 +245,40 @@ export default function MessagesPage() {
       }).catch(() => {});
   }, []);
 
-  // Fetch messages when active conversation changes
+  // Fetch messages when active conversation changes, poll every 5s for new ones
   useEffect(() => {
     if (!activeConv || activeConv.startsWith('new_')) return;
     const h = getAuthHeaders();
-    fetch(`/api/messages/${activeConv}`, { headers: h })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (!data) return;
-        const list = data.data?.messages ?? data.messages ?? [];
-        if (!Array.isArray(list)) return;
-        setMessagesState(prev => ({ ...prev, [activeConv]: apiToMessages(list, currentUserId) }));
-      }).catch(() => {});
+
+    const fetchMsgs = () => {
+      fetch(`/api/messages/${activeConv}`, { headers: h })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return;
+          const list = data.data?.messages ?? data.messages ?? [];
+          if (!Array.isArray(list)) return;
+          setMessagesState(prev => ({ ...prev, [activeConv]: apiToMessages(list, currentUserId) }));
+        }).catch(() => {});
+    };
+
+    // ── Mark conversation as read when opened ────────────────
+    // Clears the unread badge for this conversation immediately
+    fetch(`/api/messages/${activeConv}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...h },
+    }).then(r => {
+      if (r.ok) {
+        // Clear unread count locally so badge updates instantly
+        setConversations(prev =>
+          prev.map(c => c.id === activeConv ? { ...c, unread: 0 } : c)
+        );
+        setMsgCount(prev => Math.max(0, prev - 1));
+      }
+    }).catch(() => {});
+
+    fetchMsgs();
+    const poll = setInterval(fetchMsgs, 5000);
+    return () => clearInterval(poll);
   }, [activeConv, currentUserId]);
 
   const conv     = conversations.find(c => c.id === activeConv) ?? null;
@@ -309,7 +352,10 @@ export default function MessagesPage() {
       <header style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, padding: '0 24px', height: 60, background: BG2, borderBottom: '1px solid rgba(255,255,255,0.06)', zIndex: 100 }}>
         <SilverScreensLogo size="md" href="/" showTagline={false} />
         <div style={{ flex: 1 }} />
-        <button onClick={() => router.push('/agency/create-casting')} style={{ display: 'flex', alignItems: 'center', gap: 7, background: RED, color: '#fff', border: 'none', borderRadius: 8, padding: '0 18px', height: 36, fontSize: 15, fontWeight: 700, fontFamily: BARLOW, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+        <button
+          onClick={() => { if (!getIsApproved()) return; router.push('/agency/create-casting'); }}
+          title={!getIsApproved() ? 'Available after agency verification' : undefined}
+          style={{ display: 'flex', alignItems: 'center', gap: 7, background: getIsApproved() ? RED : 'rgba(200,32,42,0.3)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 18px', height: 36, fontSize: 15, fontWeight: 700, fontFamily: BARLOW, cursor: getIsApproved() ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap', opacity: getIsApproved() ? 1 : 0.5 }}>
           Post a Casting <span style={{ fontSize: 16, fontWeight: 400 }}>+</span>
         </button>
         <div onClick={() => router.push('/agency/messages')} style={{ position: 'relative', cursor: 'pointer' }}>
@@ -341,25 +387,15 @@ export default function MessagesPage() {
                   <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Agency ID</span>
                   <span style={{ fontSize: 14, fontWeight: 700, color: GOLD }}>{agencyId}</span>
                 </div>
-                {[
-                  { label: 'Reports & Analytics',   href: '/agency/reports'   },
-                  { label: 'Subscription & Billing', href: '/pricing'          },
-                  { label: 'Company Profile',        href: '/agency-profile'   },
-                  { label: 'Documents',              href: '/agency/documents' },
-                  { label: 'Calendar',               href: '/agency/calendar'  },
-                  { label: 'Settings',               href: '/agency/settings'  },
-                  { label: 'Support',                href: '/contact'          },
-                  { label: 'Logout',                 href: '/login'            },
-                ].map(({ label, href }) => (
-                  <div key={label} onClick={() => {
-                    if (label === 'Logout') { localStorage.removeItem('ss_user'); window.location.replace('/login'); }
-                    else { router.push(href); setProfileOpen(false); }
-                  }}
-                    style={{ padding: '10px 16px', fontSize: 15, cursor: 'pointer', color: label === 'Logout' ? '#ff6b6b' : '#F5F5F5', borderTop: label === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >{label}</div>
-                ))}
+                {(()=>{
+                  const isApproved=(()=>{try{const u=JSON.parse(localStorage.getItem('ss_user')||'{}');const ps=u?.profileStatus??'pending';return ps==='approved'||ps==='active';}catch{return true;}})();
+                  const menuItems=isApproved
+                    ?[{label:'Reports & Analytics',href:'/agency/reports'},{label:'Subscription & Billing',href:'/pricing'},{label:'Company Profile',href:'/agency-profile'},{label:'Documents',href:'/agency/documents'},{label:'Calendar',href:'/agency/calendar'},{label:'Settings',href:'/agency/settings'},{label:'Support',href:'/agency/support'},{label:'Logout',href:'/login'}]
+                    :[{label:'Company Profile',href:'/create-company-profile'},{label:'Logout',href:'/login'}];
+                  return menuItems.map(({label,href})=>(
+                    <div key={label} onClick={()=>{if(label==='Logout'){localStorage.removeItem('ss_user');window.location.replace('/login');}else{router.push(href);setProfileOpen(false);}}} style={{padding:'10px 16px',fontSize:15,cursor:'pointer',color:label==='Logout'?'#ff6b6b':'#F5F5F5',borderTop:label==='Logout'?'1px solid rgba(255,255,255,0.07)':'none'}} onMouseEnter={e=>(e.currentTarget.style.background='rgba(255,255,255,0.05)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>{label}</div>
+                  ));
+                })()}
               </div>
             </>
           )}
@@ -405,6 +441,8 @@ export default function MessagesPage() {
 
         {/* ── MESSAGES PANEL ── */}
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+          <AgencyVerificationBanner />
+
 
           {/* Conversations list */}
           <div style={{ width: 300, flexShrink: 0, borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', background: BG2 }}>
@@ -475,18 +513,96 @@ export default function MessagesPage() {
                       </div>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    {[
-                      { icon: <Phone size={15} />,          label: 'Call'    },
-                      { icon: <Video size={15} />,          label: 'Video'   },
-                      { icon: <Info size={15} />,           label: 'Profile' },
-                      { icon: <MoreHorizontal size={15} />, label: 'More'    },
-                    ].map(({ icon, label }) => (
-                      <button key={label} title={label} style={{ width: 34, height: 34, borderRadius: 8, background: BG3, border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.6)' }}
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    {/* Call — show phone number modal */}
+                    <div style={{ position: 'relative' }}>
+                      {callOpen && <div onClick={() => setCallOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 150 }} />}
+                      <button title="Call" onClick={() => { setCallOpen(v => !v); setVideoOpen(false); }}
+                        style={{ width: 34, height: 34, borderRadius: 8, background: callOpen ? BG4 : BG3, border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.6)' }}
                         onMouseEnter={e => (e.currentTarget.style.background = BG4)}
-                        onMouseLeave={e => (e.currentTarget.style.background = BG3)}
-                      >{icon}</button>
-                    ))}
+                        onMouseLeave={e => { if (!callOpen) e.currentTarget.style.background = BG3; }}
+                      ><Phone size={15} /></button>
+                      {callOpen && (
+                        <div style={{ position: 'absolute', top: 38, right: 0, width: 240, background: BG4, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '14px 16px', zIndex: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
+                          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 8, fontFamily: BARLOW }}>Contact Number</div>
+                          {conv?.phone ? (
+                            <>
+                              <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', fontFamily: BARLOW, marginBottom: 12 }}>{conv.phone}</div>
+                              <a href={`tel:${conv.phone}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', background: GREEN, color: '#fff', border: 'none', borderRadius: 8, padding: '9px 0', fontSize: 15, fontFamily: BARLOW, fontWeight: 700, cursor: 'pointer', textDecoration: 'none' }}>
+                                <Phone size={14} /> Call Now
+                              </a>
+                            </>
+                          ) : (
+                            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', fontFamily: BARLOW }}>Phone number not available</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Video — show video calling apps modal */}
+                    <div style={{ position: 'relative' }}>
+                      {videoOpen && <div onClick={() => setVideoOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 150 }} />}
+                      <button title="Video Call" onClick={() => { setVideoOpen(v => !v); setCallOpen(false); }}
+                        style={{ width: 34, height: 34, borderRadius: 8, background: videoOpen ? BG4 : BG3, border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.6)' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = BG4)}
+                        onMouseLeave={e => { if (!videoOpen) e.currentTarget.style.background = BG3; }}
+                      ><Video size={15} /></button>
+                      {videoOpen && (
+                        <div style={{ position: 'absolute', top: 38, right: 0, width: 220, background: BG4, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '14px 16px', zIndex: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
+                          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 12, fontFamily: BARLOW }}>Start Video Call via</div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {[
+                              { label: 'WhatsApp',    emoji: '💬', href: conv?.phone ? `https://wa.me/${conv.phone.replace(/[^0-9]/g, '')}` : 'https://web.whatsapp.com', color: '#25D366' },
+                              { label: 'Telegram',    emoji: '✈️',  href: conv?.phone ? `https://t.me/${conv.phone.replace(/[^0-9]/g, '')}` : 'https://web.telegram.org', color: '#2AABEE' },
+                              { label: 'Google Meet', emoji: '📹', href: 'https://meet.google.com/new', color: '#00897B' },
+                              { label: 'Zoom',        emoji: '🎥', href: 'https://zoom.us/start/videomeeting', color: '#2D8CFF' },
+                              { label: 'IMO',         emoji: '📱', href: 'https://imo.im', color: '#00BFFF' },
+                            ].map(({ label, emoji, href, color }) => (
+                              <a key={label} href={href} target='_blank' rel='noopener noreferrer'
+                                onClick={() => setVideoOpen(false)}
+                                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', textDecoration: 'none', cursor: 'pointer', transition: 'background 0.15s' }}
+                                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.09)')}
+                                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
+                              >
+                                <span style={{ fontSize: 18 }}>{emoji}</span>
+                                <span style={{ fontSize: 14, fontFamily: BARLOW, fontWeight: 600, color: color }}>{label}</span>
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Profile — navigate to talent profile */}
+                    <button title="Profile" onClick={() => conv?.otherPartyId && router.push(`/agency/talent/${conv.otherPartyId}`)}
+                      style={{ width: 34, height: 34, borderRadius: 8, background: BG3, border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.6)' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = BG4)}
+                      onMouseLeave={e => (e.currentTarget.style.background = BG3)}
+                    ><Info size={15} /></button>
+
+                    {/* More — dropdown */}
+                    <div style={{ position: 'relative' }}>
+                      {moreOpen && <div onClick={() => setMoreOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 150 }} />}
+                      <button title="More" onClick={() => setMoreOpen(v => !v)}
+                        style={{ width: 34, height: 34, borderRadius: 8, background: moreOpen ? BG4 : BG3, border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.6)' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = BG4)}
+                        onMouseLeave={e => { if (!moreOpen) e.currentTarget.style.background = BG3; }}
+                      ><MoreHorizontal size={15} /></button>
+                      {moreOpen && (
+                        <div style={{ position: 'absolute', top: 38, right: 0, width: 200, background: BG4, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', zIndex: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
+                          {[
+                            { label: 'View Profile',  action: () => { conv?.otherPartyId && router.push(`/agency/talent/${conv.otherPartyId}`); setMoreOpen(false); } },
+                            { label: 'Block User',    action: () => { setMoreOpen(false); }, color: RED },
+                          ].map(({ label, action, color }, mi) => (
+                            <div key={label} onClick={action}
+                              style={{ padding: '10px 16px', fontSize: 15, fontFamily: BARLOW, cursor: 'pointer', color: color || '#F5F5F5', borderTop: mi > 0 ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
+                              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+                              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                            >{label}</div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 

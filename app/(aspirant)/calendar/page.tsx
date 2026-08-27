@@ -41,7 +41,7 @@ const dropdownLinks = [
   { label: 'Analytics',    href: '/analytics' },
   { label: 'Calendar',     href: '/calendar' },
   { label: 'Settings',     href: '/settings' },
-  { label: 'Support',      href: '/contact' },
+  { label: 'Help & Support',      href: '/settings?tab=support' },
   { label: 'Logout',       href: '/login' },
 ]
 
@@ -548,7 +548,7 @@ export default function CalendarPage() {
               <div style={{ background: BG2, border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '16px' }}>
                 <div style={{ fontSize: 16, fontFamily: BARLOW, fontWeight: 700, color: '#fff', marginBottom: 6 }}>Need Help?</div>
                 <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', fontFamily: BARLOW, lineHeight: 1.6, marginBottom: 12 }}>Sync your calendar or learn how to manage your schedule.</div>
-                <button onClick={() => router.push('/faq')} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: `1px solid ${GOLD}`, borderRadius: 7, padding: '8px 14px', color: GOLD, fontSize: 14, fontFamily: BARLOW, fontWeight: 700, cursor: 'pointer' }}>
+                <button onClick={() => router.push('/settings?tab=support')} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: `1px solid ${GOLD}`, borderRadius: 7, padding: '8px 14px', color: GOLD, fontSize: 14, fontFamily: BARLOW, fontWeight: 700, cursor: 'pointer' }}>
                   Visit Help Center <ExternalLink size={12} />
                 </button>
               </div>

@@ -1,17 +1,20 @@
 'use client';
 
 import AgencyTopnav from '@/components/layout/AgencyTopnav'
-import { useState } from 'react';
+import ProtectedMedia from '@/components/ui/ProtectedMedia'
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
 
+
   LayoutDashboard, Megaphone, PlusCircle, ClipboardList,
   UserSearch, Star, CalendarCheck, MessageSquare, Bell,
   Bookmark, ChevronDown, ChevronLeft, ChevronRight, Menu,
-  Search, Download, Plus, MoreVertical, FolderOpen,
+  Search, Download, Plus, MoreVertical,
   CheckSquare, Square, X, Filter, List, Grid,
 } from 'lucide-react';
+import AgencyVerificationBanner from '@/components/layout/AgencyVerificationBanner';
 
 /* ─── Design tokens ───────────────────────────────────────────── */
 const RED    = '#C8202A';
@@ -52,28 +55,13 @@ interface SavedTalent {
   id: string; name: string; age: number; gender: string;
   talentId: string; type: TalentType; city: string; state: string;
   addedOn: string; rating: number; img: string;
-  priority?: boolean; recentlyViewed?: boolean;
+  priority?: boolean; recentlyViewed?: boolean; skills?: string[]; lists?: string[];
+  saved_id?: string; avatar?: string;
 }
 
-const TALENTS: SavedTalent[] = [
-  { id: 'a1',  name: 'Priya Sharma',   age: 24, gender: 'Female', talentId: 'ASP062600001', type: 'ACTOR',    city: 'Chennai',    state: 'TN', addedOn: '10 Jun 2026', rating: 4.8, img: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&h=80&fit=crop&crop=face', priority: true },
-  { id: 'a2',  name: 'Arjun Verma',    age: 28, gender: 'Male',   talentId: 'ASP062600002', type: 'ACTOR',    city: 'Mumbai',     state: 'MH', addedOn: '09 Jun 2026', rating: 4.6, img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face', recentlyViewed: true },
-  { id: 'a3',  name: 'Meera Nair',     age: 26, gender: 'Female', talentId: 'ASP062600003', type: 'MODEL',    city: 'Kochi',      state: 'KL', addedOn: '08 Jun 2026', rating: 4.7, img: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&h=80&fit=crop&crop=face' },
-  { id: 'a4',  name: 'Rahul Iyer',     age: 30, gender: 'Male',   talentId: 'ASP062500004', type: 'ACTOR',    city: 'Bengaluru',  state: 'KA', addedOn: '07 Jun 2026', rating: 4.5, img: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&h=80&fit=crop&crop=face', recentlyViewed: true },
-  { id: 'a5',  name: 'Ananya Patel',   age: 22, gender: 'Female', talentId: 'ASP062600005', type: 'ACTOR',    city: 'Ahmedabad',  state: 'GJ', addedOn: '06 Jun 2026', rating: 4.6, img: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=80&h=80&fit=crop&crop=face', priority: true },
-  { id: 'a6',  name: 'Karan Malhotra', age: 27, gender: 'Male',   talentId: 'ASP062500006', type: 'MODEL',    city: 'Delhi',      state: 'DL', addedOn: '05 Jun 2026', rating: 4.4, img: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=80&h=80&fit=crop&crop=face' },
-  { id: 'a7',  name: 'Sneha Reddy',    age: 25, gender: 'Female', talentId: 'ASP062600007', type: 'DANCER',   city: 'Hyderabad',  state: 'TG', addedOn: '04 Jun 2026', rating: 4.7, img: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=80&h=80&fit=crop&crop=face', priority: true },
-  { id: 'a8',  name: 'Vikram Nair',    age: 32, gender: 'Male',   talentId: 'ASP062500008', type: 'ACTOR',    city: 'Pune',       state: 'MH', addedOn: '03 Jun 2026', rating: 4.3, img: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=80&h=80&fit=crop&crop=face' },
-  { id: 'a9',  name: 'Divya Menon',    age: 23, gender: 'Female', talentId: 'ASP062600009', type: 'SINGER',   city: 'Thiruvananthapuram', state: 'KL', addedOn: '02 Jun 2026', rating: 4.9, img: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=80&h=80&fit=crop&crop=face', priority: true },
-  { id: 'a10', name: 'Rohit Kapoor',   age: 29, gender: 'Male',   talentId: 'ASP062500010', type: 'DIRECTOR', city: 'Mumbai',     state: 'MH', addedOn: '01 Jun 2026', rating: 4.8, img: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=80&h=80&fit=crop&crop=face' },
-];
+const TALENTS: SavedTalent[] = [];
 
-const LISTS = [
-  { name: 'Top Picks – Lead Roles', count: 32 },
-  { name: 'Dance Talent Pool',       count: 18 },
-  { name: 'Future Projects',         count: 56 },
-  { name: 'Brand Collaborations',    count: 23 },
-];
+
 
 const SUB_TABS = ['All Talents', 'Recently Added', 'Recently Viewed', 'High Priority'];
 
@@ -138,6 +126,77 @@ export default function SavedTalentsPage() {
   const [menuPos,      setMenuPos]      = useState<{top:number;right:number}>({top:0,right:0});
   const [page,         setPage]         = useState(1);
   const [viewMode,     setViewMode]     = useState<'list'|'grid'>('list');
+  const [msgCount,     setMsgCount]     = useState(0);
+  const [notifCount,   setNotifCount]   = useState(0);
+  const [talents,      setTalents]      = useState<SavedTalent[]>([]);
+
+  const [loadingData,  setLoadingData]  = useState(true);
+
+  function getAuthHeaders() {
+    try { const u = JSON.parse(localStorage.getItem('ss_user') || '{}'); const token = u.token ?? u.access_token ?? ''; return token ? { Authorization: `Bearer ${token}` } : {}; } catch { return {}; }
+  }
+
+  useEffect(() => {
+    const h = getAuthHeaders();
+
+    // Fetch saved talents from /api/saved-talents
+    fetch('/api/saved-talents', { headers: h })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        const list = data.data?.saved ?? data.saved ?? [];
+        if (Array.isArray(list)) {
+          setTalents(list.map((t: any) => ({
+            id:       t.aspirant_profile_id ?? t.aspirant_id ?? t.id,
+            saved_id: t.id,
+            name:     t.name ?? 'Unknown',
+            age:      t.age ?? 0,
+            img:      t.avatar ?? '',
+            gender:   t.gender ?? '—',
+            talentId: t.talentId ?? '—',
+            type:     t.category ?? t.role ?? 'TALENT',
+            city:     t.city ?? '—',
+            state:    t.state ?? '—',
+            addedOn:  t.created_at ? new Date(t.created_at).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '—',
+            avatar:   t.avatar ?? '',
+            img:      t.avatar ?? '',
+            priority: false,
+            skills:   t.languages ?? [],
+            lists:    [],
+          })));
+        }
+      }).catch(() => {})
+      .finally(() => setLoadingData(false));
+
+    // Fetch notifications + messages counts
+    fetch('/api/notifications', { headers: h })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        const count = data.data?.unread_count ?? data.unread_count;
+        if (count != null) { setNotifCount(count); return; }
+        const list = data.data?.notifications ?? data.notifications ?? [];
+        if (Array.isArray(list)) setNotifCount(list.filter((n: any) => !n.is_read).length);
+      }).catch(() => {});
+
+    fetch('/api/messages/conversations', { headers: h })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        const list = data.data?.conversations ?? data.conversations ?? [];
+        if (Array.isArray(list)) setMsgCount(list.filter((c: any) => c.unreadCount > 0 || c.unread_count > 0).length);
+      }).catch(() => {});
+
+    const interval = setInterval(() => {
+      fetch('/api/notifications', { headers: getAuthHeaders() }).then(r => r.ok ? r.json() : null).then(data => {
+        if (!data) return;
+        const count = data.data?.unread_count ?? data.unread_count;
+        if (count != null) setNotifCount(count);
+      }).catch(() => {});
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   /* Filter state */
   const [fType,        setFType]        = useState('All Types');
   const [fGender,      setFGender]      = useState('All');
@@ -149,7 +208,7 @@ export default function SavedTalentsPage() {
   const PER_PAGE = 10;
 
   /* Filter talents */
-  const filtered = TALENTS.filter(t => {
+  const filtered = talents.filter(t => {
     const tabMatch =
       activeTab === 'All Talents'     ? true :
       activeTab === 'Recently Added'  ? true :
@@ -202,7 +261,9 @@ export default function SavedTalentsPage() {
             </div>
           )}
           <nav style={{ flex: 1, padding: sidebarOpen ? '8px 6px' : '8px 4px', overflowY: 'auto', scrollbarWidth: 'none' }}>
-            {NAV_ITEMS.map(({ icon: Icon, label, active, badge, href }) => (
+            {NAV_ITEMS.map(({ icon: Icon, label, active, href }) => {
+                const badge = label === 'Messages' ? (msgCount > 0 ? msgCount : undefined) : label === 'Notifications' ? (notifCount > 0 ? notifCount : undefined) : undefined;
+                return (
               <div key={label} onClick={() => router.push(href)} title={!sidebarOpen ? label : undefined}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'space-between' : 'center', padding: sidebarOpen ? '8px 10px' : '10px 0', marginBottom: 2, borderRadius: 6, cursor: 'pointer', background: active ? 'rgba(200,32,42,0.12)' : 'transparent', borderLeft: sidebarOpen && active ? `3px solid ${RED}` : sidebarOpen ? '3px solid transparent' : 'none', position: 'relative' }}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
@@ -215,7 +276,8 @@ export default function SavedTalentsPage() {
                 {sidebarOpen && badge && <div style={{ background: RED, color: '#fff', borderRadius: 10, fontSize: 14, fontWeight: 700, padding: '1px 6px', minWidth: 18, textAlign: 'center' }}>{badge}</div>}
                 {!sidebarOpen && badge && <div style={{ position: 'absolute', top: 6, right: 4, background: RED, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff' }}>{badge}</div>}
               </div>
-            ))}
+                );
+              })}
           </nav>
           {sidebarOpen && (
             <div style={{ margin: '8px 10px 14px', borderRadius: 12, background: 'linear-gradient(135deg,#1a1205,#2a1e0a)', border: '1px solid rgba(212,166,74,0.25)', padding: '14px 12px', textAlign: 'center', flexShrink: 0 }}>
@@ -234,7 +296,10 @@ export default function SavedTalentsPage() {
           <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', scrollbarWidth: 'none', display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '20px 24px 0', flexShrink: 0 }}>
 
-              {/* Page header */}
+    
+          {/* Verification banner */}
+          <AgencyVerificationBanner />
+          {/* Page header */}
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
                 <div>
                   <h1 style={{ fontFamily: BEBAS, fontSize: 28, letterSpacing: 1, color: GOLD, margin: '0 0 4px' }}>Saved Talents</h1>
@@ -244,9 +309,7 @@ export default function SavedTalentsPage() {
                   <button style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'none', border: `1px solid rgba(255,255,255,0.2)`, borderRadius: 8, padding: '8px 16px', color: '#fff', fontSize: 15, fontFamily: BARLOW, fontWeight: 600, cursor: 'pointer' }}>
                     <Download size={14} /> Export List
                   </button>
-                  <button style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'none', border: `1px solid rgba(255,255,255,0.2)`, borderRadius: 8, padding: '8px 16px', color: '#fff', fontSize: 15, fontFamily: BARLOW, fontWeight: 600, cursor: 'pointer' }}>
-                    <Plus size={14} /> Create New List
-                  </button>
+                  
                   <button onClick={() => router.push('/agency/talent-search')} style={{ display: 'flex', alignItems: 'center', gap: 7, background: GOLD, border: 'none', borderRadius: 8, padding: '8px 16px', color: '#000', fontSize: 15, fontFamily: BARLOW, fontWeight: 700, cursor: 'pointer' }}>
                     <Plus size={14} /> Add Talent
                   </button>
@@ -256,10 +319,9 @@ export default function SavedTalentsPage() {
               {/* Stat cards */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
                 {[
-                  { label: 'Total Saved Talents', value: 236, icon: <Bookmark size={22} color={GOLD} /> },
-                  { label: 'New This Month',       value: 28,  icon: <span style={{ fontSize: 20 }}>👥</span> },
-                  { label: 'Highly Rated',         value: 72,  icon: <Star size={22} color={GOLD} fill={GOLD} /> },
-                  { label: 'Lists Created',        value: 8,   icon: <FolderOpen size={22} color={GOLD} /> },
+                  { label: 'Total Saved Talents', value: talents.length,                                                              icon: <Bookmark size={22} color={GOLD} /> },
+                  { label: 'New This Month',       value: talents.filter(t => { const d = new Date(t.addedOn); const now = new Date(); return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear(); }).length, icon: <span style={{ fontSize: 20 }}>👥</span> },
+                  { label: 'Highly Rated',         value: talents.filter(t => (t as any).rating >= 4).length,                 icon: <Star size={22} color={GOLD} fill={GOLD} /> },
                 ].map(({ label, value, icon }) => (
                   <div key={label} style={{ background: BG2, border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
                     <div style={{ width: 46, height: 46, borderRadius: 10, background: `${GOLD}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{icon}</div>
@@ -362,7 +424,7 @@ export default function SavedTalentsPage() {
                 {/* Rows */}
                 {paged.map((t, idx) => {
                   const checked = selectedIds.includes(t.id);
-                  const tcfg = TYPE_COLORS[t.type];
+                  const tcfg = TYPE_COLORS[t.type] ?? { color: "#A8B0BD", bg: "rgba(168,176,189,0.1)" };
                   return (
                     <div key={t.id} style={{ display: 'grid', gridTemplateColumns: '36px 2fr 0.8fr 0.7fr 1fr 1fr 0.8fr 100px', alignItems: 'center', padding: '12px 16px', borderBottom: idx < paged.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none', transition: 'background 0.12s', cursor: 'pointer' }}
                       onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
@@ -376,7 +438,7 @@ export default function SavedTalentsPage() {
                       {/* Talent */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                         {t.priority && <div style={{ width: 6, height: 6, borderRadius: '50%', background: GOLD, flexShrink: 0 }} title="High Priority" />}
-                        <img src={t.img} alt={t.name} style={{ width: 38, height: 38, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                        <ProtectedMedia type="image" src={t.img} alt={t.name} width={38} height={38} style={{ borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
                         <div>
                           <div style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>{t.name}</div>
                           <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)' }}>{t.age} · {t.gender}</div>
@@ -444,13 +506,29 @@ export default function SavedTalentsPage() {
               {/* Pagination */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0 4px', flexWrap: 'wrap', gap: 10 }}>
                 <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>
-                  Showing {(page-1)*PER_PAGE+1} to {Math.min(page*PER_PAGE, filtered.length)} of 236 talents
+                  Showing {filtered.length === 0 ? 0 : Math.min((page-1)*PER_PAGE+1, filtered.length)} to {Math.min(page*PER_PAGE, filtered.length)} of {filtered.length} talents
                 </div>
                 <div style={{ display: 'flex', gap: 4 }}>
                   <PBtn onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1}><ChevronLeft size={13} /></PBtn>
-                  {[1,2,3].map(n => <PBtn key={n} onClick={() => setPage(n)} active={page===n}>{n}</PBtn>)}
-                  <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14, padding: '0 4px', display: 'flex', alignItems: 'center' }}>...</span>
-                  <PBtn onClick={() => setPage(24)} active={page===24}>24</PBtn>
+                  {(() => {
+                    const pages: number[] = [];
+                    if (totalPages <= 7) {
+                      for (let i = 1; i <= totalPages; i++) pages.push(i);
+                      return pages.map(n => <PBtn key={n} onClick={() => setPage(n)} active={page===n}>{n}</PBtn>);
+                    }
+                    // show first, last, current and neighbours with ellipsis
+                    const show = new Set([1, totalPages, page, page-1, page+1].filter(n => n >= 1 && n <= totalPages));
+                    const sorted = Array.from(show).sort((a,b) => a-b);
+                    return sorted.map((n, i) => {
+                      const prev = sorted[i-1];
+                      return (
+                        <>
+                          {prev && n - prev > 1 && <span key={`e${n}`} style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14, padding: '0 4px', display: 'flex', alignItems: 'center' }}>...</span>}
+                          <PBtn key={n} onClick={() => setPage(n)} active={page===n}>{n}</PBtn>
+                        </>
+                      );
+                    });
+                  })()}
                   <PBtn onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page===totalPages}><ChevronRight size={13} /></PBtn>
                 </div>
               </div>
@@ -468,7 +546,7 @@ export default function SavedTalentsPage() {
               </div>
 
               <FLabel>Talent Type</FLabel>
-              <FSelect value={fType} onChange={setFType} options={['All Types','Actor','Model','Dancer','Singer','Director']} />
+              <FSelect value={fType} onChange={setFType} options={['All Types','Acting','Direction','Production Office','Camera & Lighting','Sound & Music','Art','Costume','Hair & Make Up','Editing','Visual Effects','Animation','Stunt','Modelling','Dancing','Singing','Dubbing','Television','Advertisement','Story','Grip','Sets','Construction','Post Production','Accounting','Locations','Continuity','Casting','Special Effects','Electrical']} />
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, margin: '10px 0' }}>
                 <div>
@@ -486,41 +564,17 @@ export default function SavedTalentsPage() {
 
               <div style={{ marginTop: 10 }}>
                 <FLabel>City</FLabel>
-                <FSelect value={fCity} onChange={setFCity} options={['All Cities','Mumbai','Delhi','Chennai','Bengaluru','Hyderabad','Kochi','Pune','Ahmedabad']} />
+                <FSelect value={fCity} onChange={setFCity} options={['All Cities',...[...new Set(talents.map(t => t.city).filter(Boolean))].sort()]} />
               </div>
 
               <div style={{ marginTop: 10, marginBottom: 14 }}>
                 <FLabel>Skills</FLabel>
-                <FSelect value={fSkills} onChange={setFSkills} options={['All Skills','Acting','Dancing','Singing','Modelling','Direction']} />
+                <FSelect value={fSkills} onChange={setFSkills} options={['All Skills','Acting','Dialogue Delivery','Dancing','Action','Singing','Modelling','Yoga','Fighting','Mimicry','Horse Riding','Direction','Photography','Videography','Editing','Choreography','Make Up','Hair Styling','Costume Design','Script Writing','Voice Over','Anchoring','News Reading','Animation','VFX','Sound Design','Music Composition','Stunt','Production Management','Casting','Art Direction','Set Design','Cinematography','Dubbing','Influencing','Fashion Modelling']} />
               </div>
 
               <button onClick={() => { setPage(1); }} style={{ width: '100%', background: GOLD, color: '#000', border: 'none', borderRadius: 8, padding: '10px 0', fontSize: 15, fontFamily: BARLOW, fontWeight: 700, cursor: 'pointer' }}>
                 Apply Filters
               </button>
-            </div>
-
-            <div style={{ height: 1, background: 'rgba(255,255,255,0.07)' }} />
-
-            {/* Your Lists */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                <span style={{ fontSize: 15, fontWeight: 700, color: GOLD, letterSpacing: 0.7, textTransform: 'uppercase' as const }}>Your Lists</span>
-                <span style={{ fontSize: 14, color: GOLD, cursor: 'pointer', fontWeight: 600 }}>View All</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {LISTS.map(l => (
-                  <div key={l.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: BG3, borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer' }}
-                    onMouseEnter={e => (e.currentTarget.style.borderColor = `${GOLD}40`)}
-                    onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)')}
-                  >
-                    <FolderOpen size={16} color={GOLD} style={{ flexShrink: 0 }} />
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.name}</div>
-                      <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>{l.count} Talents</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
 
             <div style={{ height: 1, background: 'rgba(255,255,255,0.07)' }} />

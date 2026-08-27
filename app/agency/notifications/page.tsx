@@ -4,11 +4,13 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
+
   LayoutDashboard, Megaphone, PlusCircle, ClipboardList,
   UserSearch, Star, CalendarCheck, MessageSquare, Bell,
   Bookmark, ChevronDown, ChevronLeft, ChevronRight, Menu,
   CheckCheck, ChevronRight as Arrow, Megaphone as Bullhorn,
 } from 'lucide-react';
+import AgencyVerificationBanner from '@/components/layout/AgencyVerificationBanner';
 
 const RED    = '#C8202A';
 const GOLD   = '#D4A64A';
@@ -22,6 +24,15 @@ const BG3    = '#121821';
 const BG4    = '#1C2030';
 const BEBAS  = "'Bebas Neue', sans-serif";
 const BARLOW = "'Barlow Condensed', sans-serif";
+
+function getIsApproved(): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
+    const ps = u?.profileStatus ?? 'pending';
+    return ps === 'approved' || ps === 'active';
+  } catch { return true; }
+}
 
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard',               href: '/agency/dashboard' },
@@ -120,6 +131,7 @@ function apiToNotification(n: any, idx: number): Notification {
 export default function NotificationsPage() {
   const router = useRouter();
   const [sidebarOpen,    setSidebarOpen]    = useState(false);
+  const [isApproved,     setIsApproved]     = useState(true);
   const [profileOpen,    setProfileOpen]    = useState(false);
   const [activeTab,      setActiveTab]      = useState('all');
   const [rightFilter,    setRightFilter]    = useState('all');
@@ -159,6 +171,22 @@ export default function NotificationsPage() {
         const list = data.data?.notifications ?? data.notifications ?? [];
         if (!Array.isArray(list)) return;
         setNotifications(list.map((n: any, i: number) => apiToNotification(n, i)));
+
+        // ── Mark all as read when page is opened ──────────────
+        // This clears the badge count on the topnav across all pages
+        const hasUnread = list.some((n: any) => !(n.is_read ?? n.isRead ?? n.read ?? false));
+        if (hasUnread) {
+          fetch('/api/notifications', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', ...h },
+            body: JSON.stringify({}), // empty body = mark all read
+          }).then(r => {
+            if (r.ok) {
+              // Update local state so badges clear immediately without reload
+              setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+            }
+          }).catch(() => {});
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -243,7 +271,10 @@ export default function NotificationsPage() {
       <header style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, padding: '0 24px', height: 60, background: BG2, borderBottom: '1px solid rgba(255,255,255,0.06)', zIndex: 100 }}>
         <SilverScreensLogo size="md" href="/" showTagline={false} />
         <div style={{ flex: 1 }} />
-        <button onClick={() => router.push('/agency/create-casting')} style={{ display: 'flex', alignItems: 'center', gap: 7, background: RED, color: '#fff', border: 'none', borderRadius: 8, padding: '0 18px', height: 36, fontSize: 15, fontWeight: 700, fontFamily: BARLOW, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+        <button
+          onClick={() => { if (!getIsApproved()) return; router.push('/agency/create-casting'); }}
+          title={!getIsApproved() ? 'Available after agency verification' : undefined}
+          style={{ display: 'flex', alignItems: 'center', gap: 7, background: getIsApproved() ? RED : 'rgba(200,32,42,0.3)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 18px', height: 36, fontSize: 15, fontWeight: 700, fontFamily: BARLOW, cursor: getIsApproved() ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap', opacity: getIsApproved() ? 1 : 0.5 }}>
           Post a Casting <span style={{ fontSize: 16, fontWeight: 400 }}>+</span>
         </button>
         <div onClick={() => router.push('/agency/messages')} style={{ position: 'relative', cursor: 'pointer' }}>
@@ -275,24 +306,15 @@ export default function NotificationsPage() {
                   <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Agency ID</span>
                   <span style={{ fontSize: 14, fontWeight: 700, color: GOLD }}>{agencyId}</span>
                 </div>
-                {[
-                  { label: 'Reports & Analytics',   href: '/agency/reports'   },
-                  { label: 'Subscription & Billing', href: '/pricing'          },
-                  { label: 'Company Profile',        href: '/agency-profile'   },
-                  { label: 'Documents',              href: '/agency/documents' },
-                  { label: 'Calendar',               href: '/agency/calendar'  },
-                  { label: 'Settings',               href: '/agency/settings'  },
-                  { label: 'Support',                href: '/contact'          },
-                  { label: 'Logout',                 href: '/login'            },
-                ].map(({ label, href }) => (
-                  <div key={label} onClick={() => {
-                    if (label === 'Logout') { localStorage.removeItem('ss_user'); window.location.replace('/login'); }
-                    else { router.push(href); setProfileOpen(false); }
-                  }} style={{ padding: '10px 16px', fontSize: 15, cursor: 'pointer', color: label === 'Logout' ? '#ff6b6b' : '#F5F5F5', borderTop: label === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >{label}</div>
-                ))}
+                {(()=>{
+                  const isApproved=(()=>{try{const u=JSON.parse(localStorage.getItem('ss_user')||'{}');const ps=u?.profileStatus??'pending';return ps==='approved'||ps==='active';}catch{return true;}})();
+                  const menuItems=isApproved
+                    ?[{label:'Reports & Analytics',href:'/agency/reports'},{label:'Subscription & Billing',href:'/pricing'},{label:'Company Profile',href:'/agency-profile'},{label:'Documents',href:'/agency/documents'},{label:'Calendar',href:'/agency/calendar'},{label:'Settings',href:'/agency/settings'},{label:'Support',href:'/agency/support'},{label:'Logout',href:'/login'}]
+                    :[{label:'Company Profile',href:'/create-company-profile'},{label:'Logout',href:'/login'}];
+                  return menuItems.map(({label,href})=>(
+                    <div key={label} onClick={()=>{if(label==='Logout'){localStorage.removeItem('ss_user');window.location.replace('/login');}else{router.push(href);setProfileOpen(false);}}} style={{padding:'10px 16px',fontSize:15,cursor:'pointer',color:label==='Logout'?'#ff6b6b':'#F5F5F5',borderTop:label==='Logout'?'1px solid rgba(255,255,255,0.07)':'none'}} onMouseEnter={e=>(e.currentTarget.style.background='rgba(255,255,255,0.05)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>{label}</div>
+                  ));
+                })()}
               </div>
             </>
           )}
@@ -351,6 +373,8 @@ export default function NotificationsPage() {
           {/* ── MAIN ── */}
           <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '20px 24px 0', flexShrink: 0 }}>
+          <AgencyVerificationBanner />
+
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
                 <div>
                   <h1 style={{ fontFamily: BEBAS, fontSize: 28, letterSpacing: 1, color: '#fff', margin: '0 0 4px' }}>Notifications</h1>
@@ -472,7 +496,7 @@ export default function NotificationsPage() {
                   </div>
                 ))}
               </div>
-              <button style={{ width: '100%', marginTop: 16, background: 'none', border: `1px solid ${RED}`, borderRadius: 8, padding: '9px 0', color: RED, fontSize: 14, fontFamily: BARLOW, fontWeight: 700, cursor: 'pointer' }}>
+              <button onClick={() => router.push('/agency/settings')} style={{ width: '100%', marginTop: 16, background: 'none', border: `1px solid ${RED}`, borderRadius: 8, padding: '9px 0', color: RED, fontSize: 14, fontFamily: BARLOW, fontWeight: 700, cursor: 'pointer' }}>
                 Manage Preferences
               </button>
             </div>
@@ -487,7 +511,7 @@ export default function NotificationsPage() {
                 <span style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>Need Help?</span>
               </div>
               <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 12, lineHeight: 1.5 }}>Learn how notifications work on SilverScreens.</div>
-              <div onClick={() => router.push('/contact')} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 14, color: RED, fontWeight: 600, cursor: 'pointer' }}>
+              <div onClick={() => router.push('/agency/support')} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 14, color: RED, fontWeight: 600, cursor: 'pointer' }}>
                 Visit Help Center <Arrow size={14} color={RED} />
               </div>
             </div>

@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation'
+
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
   LayoutDashboard, FileText, MessageSquare, Mic2, Bookmark, Star, Bell,
-  ChevronRight, ChevronDown, ChevronLeft, Menu, CalendarDays, Clock, MapPin, Headphones,
+  ChevronRight, ChevronDown, ChevronLeft, Menu, CalendarDays, Clock, MapPin, Headphones, LogOut,
 } from 'lucide-react';
 
 /* ─── Design tokens ──────────────────────────────────────────── */
@@ -21,14 +22,24 @@ const BEBAS  = "'Bebas Neue', sans-serif";
 const SIDEBAR_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard',            href: '/dashboard'      },
   { icon: FileText,        label: 'My Applications',      href: '/my-applications'},
-  { icon: MessageSquare,   label: 'Messages',             href: '/messages',       badge: 2 },
+  { icon: MessageSquare,   label: 'Messages',             href: '/messages',       },
   { icon: Mic2,            label: 'Auditions',            href: '/auditions',      active: true },
   { icon: Bookmark,        label: 'Saved Castings',       href: '/saved-castings' },
   { icon: Star,            label: 'Recommended Castings', href: '/recommended'    },
-  { icon: Bell,            label: 'Notifications',        href: '/notifications',  badge: 3 },
+  { icon: Bell,            label: 'Notifications',        href: '/notifications',  },
 ];
 
-const DROPDOWN_LINKS = ['Subscription', 'Analytics', 'Calendar', 'Settings', 'Support', 'Logout'];
+const PROFILE_MENU_APPROVED = [
+  { label: 'My Profile',      href: '/my-profile'             },
+  { label: 'Subscription',    href: '/dashboard/subscription' },
+  { label: 'Analytics',       href: '/analytics'              },
+  { label: 'Calendar',        href: '/calendar'               },
+  { label: 'Settings',        href: '/settings'               },
+  { label: 'Help & Support',  href: '/settings?tab=support'   },
+];
+const PROFILE_MENU_PENDING = [
+  { label: 'My Profile', href: '/create-profile' },
+];
 
 type AuditionStatus = 'Upcoming' | 'Completed' | 'Cancelled';
 
@@ -67,8 +78,28 @@ interface Audition {
 }
 
 export default function AuditionsListPage() {
-  const router = useRouter();
+  const router = useRouter()
   const [sidebarOpen,  setSidebarOpen]  = useState(false);
+  const [profileNumber,  setProfileNumber]  = useState('ASP·······');
+  const [isApproved,   setIsApproved]   = useState(false);
+  useEffect(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
+      const pn = u?.profileNumber ?? u?.profile_number;
+      if (pn) setProfileNumber(pn);
+      const ps = u?.profileStatus;
+      setIsApproved(ps === 'approved' || ps === 'active');
+    } catch {}
+  }, []);
+  const [notifCount,   setNotifCount]   = useState(0);
+  const [msgCount,     setMsgCount]     = useState(0);
+
+  // Inject live badge counts into sidebar items
+  const navItems = SIDEBAR_ITEMS.map(item => {
+    if (item.label === 'Messages')      return { ...item, badge: msgCount     || undefined }
+    if (item.label === 'Notifications') return { ...item, badge: notifCount   || undefined }
+    return item
+  })
   const [userName,     setUserName]     = useState('My Account');
   const [avatarUrl,    setAvatarUrl]    = useState('');
   const [auditions,    setAuditions]    = useState<Audition[]>([]);
@@ -89,10 +120,35 @@ export default function AuditionsListPage() {
   useEffect(() => {
     try {
       const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
-      if (u.name)         setUserName(u.name);
       if (u.profilePhoto) setAvatarUrl(u.profilePhoto);
     } catch {}
   }, []);
+
+  // Fetch live badge counts
+  useEffect(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('ss_user') || '{}')
+      const token = u.token
+      if (!token) return
+      const h = { Authorization: `Bearer ${token}` }
+      fetch('/api/notifications', { headers: h })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return
+          const count = data.data?.unread_count ?? data.unread_count
+          if (count != null) { setNotifCount(count); return }
+          const list = data.data?.notifications ?? data.notifications ?? []
+          if (Array.isArray(list)) setNotifCount(list.filter((n: any) => !n.is_read).length)
+        }).catch(() => {})
+      fetch('/api/messages/conversations', { headers: h })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return
+          const list = data.data?.conversations ?? data.conversations ?? []
+          if (Array.isArray(list)) setMsgCount(list.filter((c: any) => c.unreadCount > 0).length)
+        }).catch(() => {})
+    } catch {}
+  }, [])
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -195,12 +251,7 @@ export default function AuditionsListPage() {
         <SilverScreensLogo size="md" href="/" showTagline={false} />
         <div style={{ flex: 1 }} />
 
-        <button onClick={() => router.push('/casting-calls')} style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          background: 'transparent', border: `1px solid ${GOLD}`,
-          color: GOLD, borderRadius: 8, padding: '0 18px', height: 36,
-          fontSize: 15, fontWeight: 600, fontFamily: BARLOW, cursor: 'pointer', whiteSpace: 'nowrap',
-        }}>+ Find Casting Calls</button>
+        <button onClick={() => isApproved && router.push('/casting-calls')} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: `1px solid ${isApproved ? GOLD : 'rgba(212,166,74,0.3)'}`, color: isApproved ? GOLD : 'rgba(212,166,74,0.35)', borderRadius: 8, padding: '0 18px', height: 36, fontSize: 15, fontWeight: 600, fontFamily: BARLOW, cursor: isApproved ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap', opacity: isApproved ? 1 : 0.6 }}>{isApproved ? '+ Find Casting Calls' : '🔒 Find Casting Calls'}</button>
 
         <div onClick={() => router.push('/notifications')} style={{ position: 'relative', cursor: 'pointer' }}>
           <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -215,30 +266,43 @@ export default function AuditionsListPage() {
         <div ref={dropRef} style={{ position: 'relative' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} onClick={() => setDropdownOpen(v => !v)}>
             <img
-              src={avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=C8202A&color=fff`}
+              src={avatarUrl || undefined}
               alt={userName}
               style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${GOLD}` }}
             />
             <div>
-              <div style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2 }}>{userName}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2 }}>{isApproved ? userName : 'My Account'}</div>
               <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)' }}>Aspirant</div>
             </div>
             <ChevronRight size={12} color="rgba(255,255,255,0.4)" style={{ transform: 'rotate(90deg)' }} />
           </div>
           {dropdownOpen && (
-            <div style={{ position: 'absolute', top: 46, right: 0, width: 190, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', zIndex: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
-              {DROPDOWN_LINKS.map(item => (
-                <div key={item} style={{ padding: '10px 16px', fontSize: 16, cursor: 'pointer', color: item === 'Logout' ? '#ff6b6b' : '#fff', borderTop: item === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
-                  onClick={() => {
-                    setDropdownOpen(false);
-                    if (item === 'Logout') { localStorage.removeItem('ss_user'); router.push('/login'); }
-                    else router.push(`/${item.toLowerCase()}`);
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >{item}</div>
-              ))}
-            </div>
+            <>
+              <div onClick={() => setDropdownOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 150 }} />
+              <div style={{ position: 'absolute', top: 46, right: 0, width: 210, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', zIndex: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
+                {isApproved && (
+                  <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Aspirant ID</span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: GOLD }}>{profileNumber}</span>
+                  </div>
+                )}
+                {(isApproved ? PROFILE_MENU_APPROVED : PROFILE_MENU_PENDING).map(({ label, href }) => (
+                  <div key={label}
+                    onClick={() => { router.push(href); setDropdownOpen(false); }}
+                    style={{ padding: '10px 16px', fontSize: 15, cursor: 'pointer', color: '#F5F5F5', fontFamily: BARLOW }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  >{label}</div>
+                ))}
+                <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+                  <div onClick={() => { localStorage.removeItem('ss_user'); window.location.replace('/login'); }}
+                    style={{ padding: '10px 16px', fontSize: 15, cursor: 'pointer', color: '#ff6b6b', fontFamily: BARLOW, display: 'flex', alignItems: 'center', gap: 8 }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  ><LogOut size={14} /> Logout</div>
+                </div>
+              </div>
+            </>
           )}
         </div>
       </header>
@@ -291,6 +355,19 @@ export default function AuditionsListPage() {
 
           {/* ── MAIN ── */}
           <main style={{ flex: 1, padding: '20px 16px 20px 20px', minWidth: 0 }}>
+
+            {/* Profile incomplete banner */}
+            {!isApproved && (
+              <div style={{ marginBottom: 16, padding: '10px 16px', background: 'rgba(212,166,74,0.08)', border: '1px solid rgba(212,166,74,0.25)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 16 }}>🎬</span>
+                  <span style={{ fontFamily: BARLOW, fontSize: 14, color: 'rgba(255,255,255,0.6)' }}>Complete your profile, choose a plan and get admin approval to unlock full access.</span>
+                </div>
+                <button onClick={() => router.push('/create-profile')} style={{ flexShrink: 0, padding: '6px 14px', background: '#D4A64A', border: 'none', borderRadius: 6, color: '#050505', fontFamily: BEBAS, fontSize: 14, letterSpacing: 1, cursor: 'pointer' }}>
+                  CREATE PROFILE →
+                </button>
+              </div>
+            )}
 
             <div style={{ marginBottom: 16 }}>
               <h1 style={{ fontFamily: BEBAS, fontSize: 32, fontWeight: 400, letterSpacing: 1, marginBottom: 4 }}>My Auditions</h1>

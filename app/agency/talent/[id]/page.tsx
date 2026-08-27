@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import ProtectedMedia from '@/components/ui/ProtectedMedia'
 import { useRouter, useParams } from 'next/navigation';
 import SilverScreensLogo from '@/components/ui/SilverScreensLogo';
 import {
@@ -38,12 +39,23 @@ const NAV_ITEMS = [
   { icon: Star,            label: 'Shortlisted Talents',     href: '/agency/shortlisted' },
   { icon: CalendarCheck,   label: 'Audition Management',     href: '/agency/auditions' },
   { icon: Bookmark,        label: 'Saved Talents',           href: '/agency/saved-talents' },
-  { icon: MessageSquare,   label: 'Messages',  badge: 12,    href: '/agency/messages' },
-  { icon: Bell,            label: 'Notifications', badge: 3, href: '/agency/notifications' },
+  { icon: MessageSquare,   label: 'Messages',  href: '/agency/messages' },
+  { icon: Bell,            label: 'Notifications', href: '/agency/notifications' },
 ];
 
 /* ─── Full mock profile data ──────────────────────────────────── */
-interface Credit  { type: string; year: string; role: string; title: string }
+interface Credit {
+  type:        string;
+  year:        string;
+  role:        string;   // role type e.g. "Lead", "Supporting"
+  title:       string;   // project title
+  character:   string;   // character name
+  director:    string;
+  production:  string;   // production house
+  platform:    string;   // Feature Film, Web Series etc.
+  language:    string;
+  description: string;
+}
 interface Education { type: string; year: string; institution: string; detail: string }
 interface ActivityItem { color: string; text: string; time: string; badge?: string; badgeColor?: string }
 interface MediaItem { title: string; duration: string; hasPlay: boolean; url?: string; mediaType?: string }
@@ -92,7 +104,7 @@ const PROFILES: Record<string, AspProfile> = {
       { label: 'Experience',    done: true },
       { label: 'Skills',        done: true },
       { label: 'Media',         done: true },
-      { label: 'References',    done: false },
+      { label: 'Departments & Roles', done: false },
     ],
     about: 'Passionate actor with 2+ years of experience in theatre, films and web series. Trained in method acting and dialogue delivery. Known for strong screen presence, emotional depth and versatility in diverse roles.',
     languages: 'Hindi, English, Punjabi',
@@ -143,7 +155,7 @@ const PROFILES: Record<string, AspProfile> = {
       { label: 'Experience',    done: true },
       { label: 'Skills',        done: true },
       { label: 'Media',         done: true },
-      { label: 'References',    done: true },
+      { label: 'Departments & Roles', done: true },
     ],
     about: 'Versatile actress with 3 years of experience in Tamil and Hindi cinema. Classical Bharatnatyam dancer with strong screen presence. Trained at Adyar Film Institute.',
     languages: 'Hindi, English, Tamil',
@@ -211,7 +223,7 @@ function buildFallback(id: string): AspProfile {
       { label: 'Experience',    done: true  },
       { label: 'Skills',        done: idx > 1 },
       { label: 'Media',         done: idx > 2 },
-      { label: 'References',    done: false },
+      { label: 'Departments & Roles', done: false },
     ],
     about: `${name} is a professional ${idx % 2 === 0 ? 'actor' : 'actress'} with ${idx + 1} years of experience. Known for dedication and versatility across film and digital formats.`,
     languages: 'Hindi, English', height: "5'8\"", build: 'Average',
@@ -255,21 +267,103 @@ const MEDIA_IMAGES = [
 export default function AspirantProfilePage() {
   const router = useRouter();
   const params = useParams();
+  const [msgCount,   setMsgCount]   = useState(0);
+  const [notifCount, setNotifCount] = useState(0);
+
+  function getAuthHeaders() {
+    try { const u = JSON.parse(localStorage.getItem('ss_user') || '{}'); const token = u.token ?? u.access_token ?? ''; return token ? { Authorization: `Bearer ${token}` } : {}; } catch { return {}; }
+  }
+
+  async function getFreshHeaders(): Promise<Record<string, string>> {
+    try {
+      const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
+      if (u.profileNumber) setAgencyId(u.profileNumber);
+      const st = u.profileStatus ?? 'pending';
+      setIsApproved(st === 'approved' || st === 'active');
+      const rt = u.refreshToken ?? u.refresh_token ?? '';
+      if (rt) {
+        const res = await fetch('/api/auth/refresh', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: rt }),
+        });
+        if (res.ok) {
+          const d = await res.json();
+          const nt = d?.data?.access_token ?? '';
+          if (nt) {
+            localStorage.setItem('ss_user', JSON.stringify({ ...u, token: nt, refreshToken: d?.data?.refresh_token ?? rt }));
+            return { Authorization: `Bearer ${nt}` };
+          }
+        }
+      }
+      if (u.token) return { Authorization: `Bearer ${u.token}` };
+    } catch {}
+    return {};
+  }
+
+
+
+
+  useEffect(() => {
+    function fetchCounts() {
+      const h = getAuthHeaders();
+      fetch('/api/notifications', { headers: h }).then(r => r.ok ? r.json() : null).then(data => {
+        if (!data) return;
+        const count = data.data?.unread_count ?? data.unread_count;
+        if (count != null) { setNotifCount(count); return; }
+        const list = data.data?.notifications ?? data.notifications ?? [];
+        if (Array.isArray(list)) setNotifCount(list.filter((n: any) => !n.is_read).length);
+      }).catch(() => {});
+      fetch('/api/messages/conversations', { headers: h }).then(r => r.ok ? r.json() : null).then(data => {
+        if (!data) return;
+        const list = data.data?.conversations ?? data.conversations ?? [];
+        if (Array.isArray(list)) setMsgCount(list.filter((c: any) => c.unreadCount > 0 || c.unread_count > 0).length);
+      }).catch(() => {});
+    }
+    fetchCounts();
+    const interval = setInterval(fetchCounts, 30000);
+    return () => clearInterval(interval);
+  }, []);
   const rawId  = params?.id;
   const id     = typeof rawId === 'string' ? rawId : Array.isArray(rawId) ? rawId[0] : '';
 
   const p0 = PROFILES[id] ?? buildFallback(id);
   const [p, setP] = useState<AspProfile>(p0);
 
+  const [isLoading,    setIsLoading]    = useState(true);
   const [sidebarOpen,  setSidebarOpen]  = useState(false);
   const [profileOpen,  setProfileOpen]  = useState(false);
+  const [lightbox,     setLightbox]     = useState<{ url: string; type: string; title: string } | null>(null);
   const [agencyName,    setAgencyName]    = useState('Agency');
   const [agencyInitials,setAgencyInitials]= useState('AG');
+  const [agencyType,    setAgencyType]    = useState('Production House');
+  const [agencyId,      setAgencyId]      = useState('AGE·········');
+  const [isApproved,    setIsApproved]    = useState(true);
 
   useEffect(() => {
     try {
       const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
-      if (u.name)  { setAgencyName(u.name); setAgencyInitials(u.name.split(' ').map((w: string) => w[0]).join('').slice(0,2).toUpperCase()); }
+      if (u.name) { setAgencyName(u.name); setAgencyInitials(u.name.split(' ').map((w: string) => w[0]).join('').slice(0,2).toUpperCase()); }
+      if (u.profileNumber) setAgencyId(u.profileNumber);
+      const st = u.profileStatus ?? 'pending';
+      setIsApproved(st === 'approved' || st === 'active');
+    } catch {}
+    // Fetch full agency profile for type + ID
+    try {
+      const u2 = JSON.parse(localStorage.getItem('ss_user') || '{}');
+      const h2 = u2.token ? { Authorization: `Bearer ${u2.token}` } : {};
+      fetch('/api/profile/agency', { headers: h2 })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return;
+          const p = data.data?.profile ?? data.profile ?? data;
+          const name = p.company_name ?? p.name;
+          if (name) { setAgencyName(name); setAgencyInitials(name.split(' ').map((w: string) => w[0]).slice(0,2).join('').toUpperCase()); }
+          const agNum = p.profile_number ?? p.profiles?.profile_number;
+          if (agNum) setAgencyId(agNum);
+          if (p.company_type ?? p.companyType) setAgencyType(p.company_type ?? p.companyType);
+          const vs = p.verification_status ?? 'pending';
+          setIsApproved(vs === 'approved' || vs === 'active');
+        }).catch(() => {});
     } catch {}
   }, []);
   const [activeTab,    setActiveTab]    = useState<'overview' | 'media' | 'auditions' | 'documents' | 'activity'>('overview');
@@ -278,16 +372,45 @@ export default function AspirantProfilePage() {
   const [moreOpen,     setMoreOpen]     = useState(false);
   const [agencyActivity, setAgencyActivity] = useState<ActivityItem[]>([]);
   const [realStats, setRealStats] = useState({ total: 0, shortlisted: 0, inReview: 0, rejected: 0 });
+  const [userId,        setUserId]        = useState('');
+  const [reportOpen,    setReportOpen]    = useState(false);
+  const [hasAudition,   setHasAudition]   = useState(false);
+  const [reportReason,  setReportReason]  = useState('');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportDone,    setReportDone]    = useState(false);
+  const [reportSuccess, setReportSuccess] = useState(false);
 
   useEffect(() => {
     if (!id) return;
-    const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
-    const token = u.token;
-    if (!token) return;
-    fetch(`/api/talents/${id}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : null)
+    (async () => {
+      const h = await getFreshHeaders();
+
+      // Check if audition already scheduled for this candidate
+      fetch(`/api/auditions?limit=100`, { headers: h })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          const list = data?.data?.auditions ?? [];
+          const scheduled = Array.isArray(list) && list.some((a: any) =>
+            (a.aspirant_id === id || a.aspirant_profiles?.id === id) &&
+            ['scheduled', 'rescheduled'].includes(a.status)
+          );
+          setHasAudition(scheduled);
+        }).catch(() => {});
+
+      // Check if already shortlisted
+      fetch('/api/shortlisted?limit=200', { headers: h })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          const list = data?.data?.shortlisted ?? [];
+          const isShortlisted = Array.isArray(list) && list.some((s: any) => s.aspirant_id === id || s.aspirant_profiles?.id === id);
+          setShortlisted(isShortlisted);
+        }).catch(() => {});
+
+      fetch(`/api/talents/${id}`, { headers: h })
+      .then(r => { if (!r.ok) { console.error('[talent] status', r.status); return null; } return r.json(); })
       .then(data => {
         if (!data) return;
+        console.log('[talent] ok name:', data?.data?.talent?.first_name);
         const t = data.data?.talent ?? data.talent ?? data;
         const dob = t.date_of_birth ? new Date(t.date_of_birth) : null;
         const age = dob ? Math.floor((Date.now() - dob.getTime()) / (1000 * 60 * 60 * 24 * 365.25)) : 0;
@@ -295,6 +418,8 @@ export default function AspirantProfilePage() {
         const availMap: Record<string, AspProfile['availability']> = {
           'true': 'Available Now', 'false': 'Not Available',
         };
+        if (t.profiles?.id) setUserId(t.profiles.id);
+        setIsLoading(false);
         setP(prev => ({
           ...prev,
           id:           t.id ?? prev.id,
@@ -307,7 +432,26 @@ export default function AspirantProfilePage() {
           photo:        initials || prev.photo,
           photoUrl:     t.profile_image_url ?? prev.photoUrl,
           profileId:    t.profile_number ?? prev.profileId,
-          profileStrength: t.profile_completion ?? prev.profileStrength,
+          profileStrength: (() => {
+            const items = [
+              !!t.profile_image_url,
+              !!(t.about_me && t.about_me.trim()),
+              !!(t.category || t.role || (Array.isArray(t.rnr_categories) && t.rnr_categories.length > 0)),
+              !!(Array.isArray(t.skills) && t.skills.length > 0),
+              !!(Array.isArray(t.aspirant_media) && t.aspirant_media.length > 0),
+              !!(Array.isArray(t.social_links?.credits) && t.social_links.credits.length > 0),
+            ];
+            const pct = Math.round((items.filter(Boolean).length / items.length) * 100);
+            return Math.min(pct, 100);
+          })(),
+          strengthItems: [
+            { label: 'Profile Photo', done: !!t.profile_image_url },
+            { label: 'About',         done: !!(t.about_me && t.about_me.trim()) },
+            { label: 'Departments & Roles', done: !!(t.category || t.role || (Array.isArray(t.rnr_categories) && t.rnr_categories.length > 0)) },
+            { label: 'Skills',        done: !!(Array.isArray(t.skills) && t.skills.length > 0) },
+            { label: 'Media',         done: !!(Array.isArray(t.aspirant_media) && t.aspirant_media.length > 0) },
+            { label: 'Experience',    done: !!(Array.isArray(t.social_links?.credits) && t.social_links.credits.length > 0) },
+          ],
           about:        t.about_me     ?? prev.about,
           languages:    Array.isArray(t.languages) ? t.languages.join(', ') : (t.languages ?? prev.languages),
           height:       t.height_cm    ? `${t.height_cm} cm`   : prev.height,
@@ -322,15 +466,59 @@ export default function AspirantProfilePage() {
           profileViews: String(t.profile_views ?? prev.profileViews),
           createdOn:    t.profiles?.created_at ? new Date(t.profiles.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : prev.createdOn,
           lastActive:   t.profiles?.last_login_at ? new Date(t.profiles.last_login_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : prev.lastActive,
-          media:        Array.isArray(t.aspirant_media) && t.aspirant_media.length > 0
-            ? t.aspirant_media.map((m: any) => ({
-                title:     m.title ?? m.media_type ?? m.type ?? 'Media',
+          media: (() => {
+            const mediaSrc = Array.isArray(t.aspirant_media) ? t.aspirant_media : [];
+
+            // Separate media from documents
+            const mediaItems = mediaSrc
+              .filter((m: any) => m.type !== 'document')
+              .map((m: any) => ({
+                title:     m.title ?? m.description ?? (m.type === 'image' ? 'Photo' : 'Video'),
                 duration:  m.duration ?? '',
-                hasPlay:   m.media_type === 'video' || m.type === 'video',
-                url:       m.url ?? m.file_url ?? m.media_url ?? '',
-                mediaType: m.media_type ?? m.type ?? 'image',
-              }))
-            : prev.media,
+                hasPlay:   m.type === 'video',
+                url:       m.url ?? '',
+                mediaType: m.type ?? 'image',
+              }));
+
+            // Documents from aspirant_media where type = 'document'
+            const aspirantDocs = mediaSrc
+              .filter((m: any) => m.type === 'document')
+              .map((m: any) => ({
+                title:     m.title ?? m.description ?? 'Document',
+                duration:  '',
+                hasPlay:   false,
+                url:       m.url ?? '',
+                mediaType: 'document',
+              }));
+
+            // Start with docs from aspirant_media
+            const docItems: { title: string; duration: string; hasPlay: boolean; url: string; mediaType: string }[] = [...aspirantDocs];
+
+            // resume_url fallback — add if not already in aspirantDocs
+            if (t.resume_url && !docItems.some(d => d.url === t.resume_url)) {
+              docItems.push({
+                title:     'Resume / Portfolio',
+                duration:  '',
+                hasPlay:   false,
+                url:       t.resume_url,
+                mediaType: 'document',
+              });
+            }
+
+            // intro video
+            if (t.intro_video_url) {
+              docItems.push({
+                title:     'Introduction Video',
+                duration:  '',
+                hasPlay:   true,
+                url:       t.intro_video_url,
+                mediaType: 'video',
+              });
+            }
+
+            const combined = [...mediaItems, ...docItems];
+            return combined.length > 0 ? combined : prev.media;
+          })(),
           skills:       Array.isArray(t.skills) && t.skills.length > 0
             ? t.skills
             : Array.isArray(t.specializations) && t.specializations.length > 0
@@ -340,15 +528,28 @@ export default function AspirantProfilePage() {
           rating:       t.average_rating ?? prev.rating,
           reviews:      t.total_reviews  ?? prev.reviews,
           views:        String(t.profile_views ?? prev.views),
-          // Credits are stored in social_links.credits by the aspirant
-          credits:      Array.isArray(t.social_links?.credits) && t.social_links.credits.length > 0
-            ? t.social_links.credits.map((c: any) => ({
-                type:  c.type  ?? 'Project',
-                year:  c.year  ? String(c.year) : '',
-                role:  c.role  ?? '',
-                title: c.title ?? '',
-              }))
-            : prev.credits,
+          // Credits — try work_experience first, then social_links.credits fallback
+          credits: (() => {
+            // API confirmed: credits live in social_links.credits
+            // Field names confirmed from API response
+            const mapCredit = (c: any): Credit => ({
+              type:        c.type             ?? 'Project',
+              year:        c.year             ? String(c.year) : '',
+              role:        c.role             ?? '',
+              title:       c.title            ?? '',
+              character:   c.characterName    ?? c.character_name   ?? '',
+              director:    c.director         ?? '',
+              production:  c.productionHouse  ?? c.production_house ?? c.production ?? '',
+              platform:    c.platform         ?? '',
+              language:    c.language         ?? '',
+              description: c.description      ?? '',
+            });
+            if (Array.isArray(t.social_links?.credits) && t.social_links.credits.length > 0)
+              return t.social_links.credits.map(mapCredit);
+            if (Array.isArray(t.work_experience) && t.work_experience.length > 0)
+              return t.work_experience.map(mapCredit);
+            return prev.credits;
+          })(),
           // Education saved in social_links.education by aspirant from settings
           education:    Array.isArray(t.social_links?.education) && t.social_links.education.length > 0
             ? t.social_links.education.map((e: any) => ({
@@ -370,14 +571,14 @@ export default function AspirantProfilePage() {
         }));
       })
       .catch(() => {});
+
+    })(); // end async IIFE
   }, [id]);
 
   // Fetch THIS agency's applications for this aspirant — filtered by agency_id server-side
   useEffect(() => {
     if (!id) return;
-    const u = JSON.parse(localStorage.getItem('ss_user') || '{}');
-    const token = u.token;
-    if (!token) return;
+
 
     const statusColors: Record<string, string> = {
       applied: '#3b82f6', in_review: GOLD, shortlisted: GREEN,
@@ -389,7 +590,7 @@ export default function AspirantProfilePage() {
     };
 
     fetch(`/api/applications?aspirant_id=${id}&limit=100`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: getAuthHeaders(),
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
@@ -430,24 +631,35 @@ export default function AspirantProfilePage() {
 
   const SB_W = sidebarOpen ? 230 : 52;
 
+  // Show minimal loading state to prevent mock profile flash
+  if (isLoading) return (
+    <div style={{ minHeight: '100vh', background: '#050505', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' as const, gap: 16 }}>
+      <div style={{ width: 40, height: 40, border: '3px solid rgba(212,166,74,0.2)', borderTop: '3px solid #D4A64A', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <div style={{ color: 'rgba(255,255,255,0.4)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16 }}>Loading profile...</div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+
   const handleMessage = () => {
-    setMsgSent(true);
-    setTimeout(() => setMsgSent(false), 2500);
+    const name = encodeURIComponent(p.name);
+    const rid  = userId || id; // userId is profiles.id (user_id), fallback to aspirant_profiles.id
+    router.push(`/agency/messages?recipient_id=${rid}&recipient_name=${name}`);
   };
 
   /* donut SVG for profile strength */
   const radius = 40; const circ = 2 * Math.PI * radius;
-  const filled = (p.profileStrength / 100) * circ;
+  const strengthPct = Math.min(p.profileStrength, 100);
+  const filled = (strengthPct / 100) * circ;
 
   /* strength color */
-  const strengthColor = p.profileStrength >= 80 ? GREEN : p.profileStrength >= 60 ? GOLD : RED;
-  const strengthLabel = p.profileStrength >= 80 ? 'Strong Profile' : p.profileStrength >= 60 ? 'Good Profile' : 'Needs Work';
+  const strengthColor = strengthPct >= 80 ? GREEN : strengthPct >= 60 ? GOLD : RED;
+  const strengthLabel = strengthPct >= 80 ? 'Strong Profile' : strengthPct >= 60 ? 'Good Profile' : 'Needs Work';
 
   const TABS = [
     { key: 'overview',  label: 'Overview' },
-    { key: 'media',     label: `Media (${p.media.length})` },
+    { key: 'media',     label: `Media (${p.media.filter(m => m.mediaType !== 'document').length})` },
     { key: 'auditions', label: `Experience (${p.credits.filter(c => c.title || c.role).length})` },
-    { key: 'documents', label: `Documents (${p.media.filter(m => m.mediaType === 'document' || m.mediaType === 'pdf' || (m.title && ['resume','cv','noc','certificate','proof','document','headshot','measurement','contact sheet','portfolio'].some(k => m.title.toLowerCase().includes(k)))).length})` },
+    { key: 'documents', label: `Documents (${p.media.filter(m => m.mediaType === 'document' || m.mediaType === 'pdf' || m.mediaType === 'doc' || (m.mediaType !== 'image' && m.mediaType !== 'video' && m.url) || (m.title && ['resume','cv','noc','certificate','proof','document','headshot','measurement','contact sheet','portfolio'].some(k => m.title.toLowerCase().includes(k)))).length})` },
     { key: 'activity',  label: 'Activity' },
   ] as const;
 
@@ -464,47 +676,51 @@ export default function AspirantProfilePage() {
 
       {/* ══ TOPNAV ══ */}
       <header style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, padding: '0 24px', height: 60, background: BG2, borderBottom: '1px solid rgba(255,255,255,0.06)', zIndex: 100 }}>
-        <SilverScreensLogo size="md" href="/" showTagline={false} />
+        <SilverScreensLogo size="md" href="/agency/dashboard" showTagline={false} />
         <div style={{ flex: 1 }} />
-        <button onClick={() => router.push('/agency/create-casting')} style={{ display: 'flex', alignItems: 'center', gap: 7, background: RED, color: '#fff', border: 'none', borderRadius: 8, padding: '0 18px', height: 36, fontSize: 16, fontWeight: 700, fontFamily: BARLOW, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+        <button onClick={() => { if (!isApproved) return; router.push('/agency/create-casting'); }} title={!isApproved ? 'Available after verification' : undefined} style={{ display: 'flex', alignItems: 'center', gap: 7, background: isApproved ? RED : 'rgba(200,32,42,0.3)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 18px', height: 36, fontSize: 16, fontWeight: 700, fontFamily: BARLOW, cursor: isApproved ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap', opacity: isApproved ? 1 : 0.5 }}>
           Post a Casting <span style={{ fontSize: 16, fontWeight: 400 }}>+</span>
         </button>
         <div onClick={() => router.push('/agency/messages')} style={{ position: 'relative', cursor: 'pointer' }}>
           <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <MessageSquare size={15} color="rgba(255,255,255,0.7)" />
           </div>
-          <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', pointerEvents: 'none' }}>12</div>
+          {msgCount > 0 && <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', pointerEvents: 'none' }}>{msgCount}</div>}
         </div>
         <div onClick={() => router.push('/agency/notifications')} style={{ position: 'relative', cursor: 'pointer' }}>
           <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Bell size={15} color="rgba(255,255,255,0.7)" />
           </div>
-          <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', pointerEvents: 'none' }}>3</div>
+          {notifCount > 0 && <div style={{ position: 'absolute', top: -5, right: -5, background: RED, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', pointerEvents: 'none' }}>{notifCount}</div>}
         </div>
         <div style={{ position: 'relative' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer' }} onClick={() => setProfileOpen(v => !v)}>
             <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#1a1410,#2a1e0e)', border: `2px solid ${GOLD}60`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, color: GOLD, fontFamily: BEBAS }}>{agencyInitials}</div>
             <div>
               <div style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2 }}>{agencyName}</div>
-              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Production House</div>
+              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>{agencyType}</div>
             </div>
             <ChevronDown size={12} color="rgba(255,255,255,0.4)" />
           </div>
           {profileOpen && (
             <>
               <div onClick={() => setProfileOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 150 }} />
-              <div style={{ position: 'absolute', top: 46, right: 0, width: 200, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', zIndex: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
+              <div style={{ position: 'absolute', top: 46, right: 0, width: 220, background: BG3, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', zIndex: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
+                <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>Agency ID</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: GOLD }}>{agencyId}</span>
+                </div>
                 {[
                   { label: 'Reports & Analytics', href: '/agency/reports' },
-                  { label: 'Subscription & Billing', href: '/pricing' },
+                  { label: 'Subscription & Billing', href: '/agency/subscription' },
                   { label: 'Company Profile', href: '/agency-profile' },
                   { label: 'Documents', href: '/agency/documents' },
                   { label: 'Calendar', href: '/agency/calendar' },
                   { label: 'Settings', href: '/agency/settings' },
-                  { label: 'Support', href: '/contact' },
+                  { label: 'Support', href: '/agency/support' },
                   { label: 'Logout', href: '/login' },
                 ].map(({ label, href }) => (
-                  <div key={label} onClick={() => { router.push(href); setProfileOpen(false); }} style={{ padding: '10px 16px', fontSize: 16, cursor: 'pointer', color: label === 'Logout' ? '#ff6b6b' : '#F5F5F5', borderTop: label === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
+                  <div key={label} onClick={() => { if (label === 'Logout') { localStorage.removeItem('ss_user'); window.location.replace('/login'); } else { router.push(href); setProfileOpen(false); } }} style={{ padding: '10px 16px', fontSize: 16, cursor: 'pointer', color: label === 'Logout' ? '#ff6b6b' : '#F5F5F5', borderTop: label === 'Logout' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                   >{label}</div>
@@ -536,7 +752,9 @@ export default function AspirantProfilePage() {
             </div>
           )}
           <nav style={{ flex: 1, padding: sidebarOpen ? '8px 6px' : '8px 4px', overflowY: 'auto', scrollbarWidth: 'none' }}>
-            {NAV_ITEMS.map(({ icon: Icon, label, active, badge, href }) => (
+            {NAV_ITEMS.map(({ icon: Icon, label, active, href }) => {
+                const badge = label === 'Messages' ? (msgCount > 0 ? msgCount : undefined) : label === 'Notifications' ? (notifCount > 0 ? notifCount : undefined) : undefined;
+                return (
               <div key={label} onClick={() => router.push(href)} title={!sidebarOpen ? label : undefined}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'space-between' : 'center', padding: sidebarOpen ? '8px 10px' : '10px 0', marginBottom: 2, borderRadius: 6, cursor: 'pointer', background: active ? 'rgba(200,32,42,0.12)' : 'transparent', borderLeft: sidebarOpen && active ? `3px solid ${RED}` : sidebarOpen ? '3px solid transparent' : 'none', position: 'relative' }}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
@@ -549,16 +767,10 @@ export default function AspirantProfilePage() {
                 {sidebarOpen && badge && <div style={{ background: RED, color: '#fff', borderRadius: 10, fontSize: 14, fontWeight: 700, padding: '1px 6px', minWidth: 18, textAlign: 'center' }}>{badge}</div>}
                 {!sidebarOpen && badge && <div style={{ position: 'absolute', top: 6, right: 4, background: RED, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: '#fff' }}>{badge}</div>}
               </div>
-            ))}
+                );
+              })}
           </nav>
-          {sidebarOpen && (
-            <div style={{ margin: '8px 10px 14px', borderRadius: 12, background: 'linear-gradient(135deg,#1a1205,#2a1e0a)', border: '1px solid rgba(212,166,74,0.25)', padding: '14px 12px', textAlign: 'center', flexShrink: 0 }}>
-              <div style={{ fontSize: 20, marginBottom: 4 }}>👑</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: GOLD, marginBottom: 3 }}>Upgrade to Pro</div>
-              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', marginBottom: 10, lineHeight: 1.5 }}>Unlock advanced talent filters and AI matching.</div>
-              <button onClick={() => router.push('/pricing')} style={{ width: '100%', background: GOLD, color: '#000', border: 'none', borderRadius: 8, padding: '7px 0', fontSize: 14, fontWeight: 700, fontFamily: BARLOW, cursor: 'pointer' }}>Upgrade Now</button>
-            </div>
-          )}
+
         </aside>
 
         {/* ══ MAIN CONTENT ══ */}
@@ -576,12 +788,7 @@ export default function AspirantProfilePage() {
             {/* Photo */}
             <div style={{ position: 'relative', margin: '0 14px 12px' }}>
               <div style={{ width: '100%', aspectRatio: '3/4', borderRadius: 12, overflow: 'hidden', background: p.gradient }}>
-                <img
-                  src={p.photoUrl}
-                  alt={p.name}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                  onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                />
+                <ProtectedMedia type="image" src={p.photoUrl} alt={p.name} width="100%" height="100%" style={{ objectFit: 'cover', display: 'block' }} />
               </div>
               {p.verified && (
                 <div style={{ position: 'absolute', bottom: 10, left: 10, display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(0,0,0,0.75)', borderRadius: 20, padding: '4px 10px', fontSize: 14, fontFamily: BARLOW, fontWeight: 700, color: '#fff', backdropFilter: 'blur(4px)' }}>
@@ -617,10 +824,24 @@ export default function AspirantProfilePage() {
 
             {/* Action buttons */}
             <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <button onClick={handleMessage} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: msgSent ? 'rgba(34,197,94,0.12)' : 'none', border: `1px solid ${msgSent ? GREEN : GOLD}`, borderRadius: 8, padding: '9px 0', color: msgSent ? GREEN : GOLD, fontSize: 15, fontFamily: BARLOW, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', width: '100%' }}>
-                {msgSent ? <><Check size={14} /> Sent!</> : <><MessageSquare size={14} /> Contact Aspirant</>}
+              <button onClick={handleMessage} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'none', border: `1px solid ${GOLD}`, borderRadius: 8, padding: '9px 0', color: GOLD, fontSize: 15, fontFamily: BARLOW, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', width: '100%' }}>
+                <MessageSquare size={14} /> Contact Aspirant
               </button>
-              <button onClick={() => setShortlisted(v => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: shortlisted ? `${GOLD}15` : 'none', border: `1px solid ${shortlisted ? GOLD : 'rgba(255,255,255,0.15)'}`, borderRadius: 8, padding: '9px 0', color: shortlisted ? GOLD : 'rgba(255,255,255,0.7)', fontSize: 15, fontFamily: BARLOW, fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s', width: '100%' }}>
+              <button onClick={async () => {
+                const h = getAuthHeaders();
+                if (shortlisted) {
+                  await fetch(`/api/shortlisted?aspirant_id=${id}`, { method: 'DELETE', headers: h });
+                  setShortlisted(false);
+                } else {
+                  const ccId = new URLSearchParams(window.location.search).get('casting_call_id');
+                  const res = await fetch('/api/shortlisted', {
+                    method: 'POST',
+                    headers: { ...h, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ aspirant_id: id, ...(ccId ? { casting_call_id: ccId } : {}) }),
+                  });
+                  if (res.ok || res.status === 409) setShortlisted(true);
+                }
+              }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: shortlisted ? `${GOLD}15` : 'none', border: `1px solid ${shortlisted ? GOLD : 'rgba(255,255,255,0.15)'}`, borderRadius: 8, padding: '9px 0', color: shortlisted ? GOLD : 'rgba(255,255,255,0.7)', fontSize: 15, fontFamily: BARLOW, fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s', width: '100%' }}>
                 <Bookmark size={14} fill={shortlisted ? GOLD : 'none'} /> {shortlisted ? 'Shortlisted' : 'Add to Shortlist'}
               </button>
               <div style={{ position: 'relative' }}>
@@ -632,11 +853,31 @@ export default function AspirantProfilePage() {
                     <div onClick={() => setMoreOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 50 }} />
                     <div style={{ position: 'absolute', bottom: '110%', left: 0, right: 0, background: BG4, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, overflow: 'hidden', zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
                       {[
-                        { label: 'Invite to Audition',  href: '/agency/auditions' },
-                        { label: 'Save to Talent Pool', href: '/agency/saved-talents' },
-                        { label: 'Report Profile',      href: '#' },
-                      ].map(({ label, href }) => (
-                        <div key={label} onClick={() => { if (href !== '#') router.push(href); setMoreOpen(false); }} style={{ padding: '9px 14px', fontSize: 15, fontFamily: BARLOW, cursor: 'pointer', color: label.includes('Report') ? '#ff6b6b' : '#F5F5F5', borderTop: label.includes('Report') ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
+                        { label: hasAudition ? 'Audition Scheduled ✓' : 'Schedule Audition', action: async () => { if (!hasAudition) router.push(`/agency/auditions/schedule?candidate=${id}&from=talent`); } },
+                        { label: 'Save to Talent Pool', action: async () => {
+                            try {
+                              const h = getAuthHeaders();
+                              const res = await fetch('/api/saved-talents', {
+                                method: 'POST',
+                                headers: { ...h, 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ aspirant_id: id }),
+                              });
+                              const d = await res.json();
+                              if (res.status === 409) { alert('Already in your saved list.'); return; }
+                              if (!res.ok) { alert(d.error ?? 'Failed to save talent'); return; }
+                              router.push('/agency/saved-talents');
+                            } catch { alert('Network error. Please try again.'); }
+                        }},
+                        { label: 'Report Profile', action: async () => {
+                          // Open report form directly — duplicate check happens on submit (POST returns 409)
+                          setReportDone(false);
+                          setReportReason('');
+                          setReportOpen(true);
+                          setMoreOpen(false);
+                        } },
+                      ].map(({ label, action }) => (
+                        <div key={label} onClick={async () => { setMoreOpen(false); await action(); }}
+                          style={{ padding: '9px 14px', fontSize: 15, fontFamily: BARLOW, cursor: 'pointer', color: label.includes('Report') ? '#ff6b6b' : '#F5F5F5', borderTop: label.includes('Report') ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
                           onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
                           onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                         >{label}</div>
@@ -659,7 +900,7 @@ export default function AspirantProfilePage() {
                     strokeLinecap="round"
                     style={{ transition: 'stroke-dasharray 0.6s ease' }}
                   />
-                  <text x={50} y={46} textAnchor="middle" fill="#fff" fontSize={18} fontFamily={BEBAS} letterSpacing={1}>{p.profileStrength}%</text>
+                  <text x={50} y={46} textAnchor="middle" fill="#fff" fontSize={18} fontFamily={BEBAS} letterSpacing={1}>{strengthPct}%</text>
                   <text x={50} y={60} textAnchor="middle" fill={strengthColor} fontSize={9} fontFamily={BARLOW}>{strengthLabel}</text>
                 </svg>
               </div>
@@ -751,15 +992,15 @@ export default function AspirantProfilePage() {
                     </ContentCard>
 
                     {/* Media strip */}
-                    <ContentCard title={`Media (${p.media.length})`} action={{ label: 'View All', onClick: () => setActiveTab('media') }}>
+                    <ContentCard title={`Media (${p.media.filter(m => m.mediaType !== 'document').length})`} action={{ label: 'View All', onClick: () => setActiveTab('media') }}>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
-                        {p.media.map((m, i) => (
+                        {p.media.filter(m => m.mediaType !== 'document').map((m, i) => (
                           <div key={i} style={{ borderRadius: 8, overflow: 'hidden', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.06)' }}>
                             <div style={{ position: 'relative', height: 90 }}>
                               {m.url && m.mediaType === 'video' ? (
-                                <video src={m.url} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} muted playsInline />
+                                <ProtectedMedia type="video" src={m.url} controls={false} muted width="100%" height="100%" style={{ objectFit: 'cover', display: 'block' }} />
                               ) : (
-                                <img src={m.url || MEDIA_IMAGES[i % MEDIA_IMAGES.length]} alt={m.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { (e.currentTarget as HTMLImageElement).src = MEDIA_IMAGES[i % MEDIA_IMAGES.length]; }} />
+                                <ProtectedMedia type="image" src={m.url || MEDIA_IMAGES[i % MEDIA_IMAGES.length]} alt={m.title} width="100%" height="100%" style={{ objectFit: 'cover', display: 'block' }} />
                               )}
                               <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)' }} />
                               {m.hasPlay && (
@@ -778,6 +1019,30 @@ export default function AspirantProfilePage() {
                         ))}
                       </div>
                     </ContentCard>
+
+                    {/* Documents section in Overview */}
+                    {p.media.some(m => m.mediaType === 'document') && (
+                      <ContentCard title={`Documents (${p.media.filter(m => m.mediaType === 'document').length})`} action={{ label: 'View All', onClick: () => setActiveTab('documents') }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+                          {p.media.filter(m => m.mediaType === 'document').map((m, i) => (
+                            <div key={i} onClick={() => m.url && setLightbox({ url: m.url, type: 'document', title: m.title || `Document ${i + 1}` })}
+                              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: BG3, borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', transition: 'border-color 0.15s' }}
+                              onMouseEnter={e => (e.currentTarget.style.borderColor = `${GOLD}50`)}
+                              onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)')}
+                            >
+                              <div style={{ width: 36, height: 36, borderRadius: 8, background: `${GOLD}15`, border: `1px solid ${GOLD}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <BookOpen size={16} color={GOLD} />
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 14, color: '#fff', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{m.title || `Document ${i + 1}`}</div>
+                                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>DOCUMENT · Click to view</div>
+                              </div>
+                              <ChevronRight size={14} color="rgba(255,255,255,0.3)" />
+                            </div>
+                          ))}
+                        </div>
+                      </ContentCard>
+                    )}
 
                     {/* Stats — real values from this agency's interactions with this talent */}
                     <ContentCard title="Stats with Your Agency">
@@ -836,23 +1101,25 @@ export default function AspirantProfilePage() {
 
                 {/* ── MEDIA ── */}
                 {activeTab === 'media' && (
-                  <ContentCard title={`Media Gallery (${p.media.length})`}>
-                    {p.media.length === 0 ? (
+                  <ContentCard title={`Media Gallery (${p.media.filter(m => m.mediaType !== 'document').length})`}>
+                    {p.media.filter(m => m.mediaType !== 'document').length === 0 ? (
                       <div style={{ textAlign: 'center', padding: '40px 0', color: 'rgba(255,255,255,0.3)', fontSize: 15 }}>No media uploaded yet.</div>
                     ) : (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-                        {p.media.map((m, i) => (
-                          <div key={i} style={{ borderRadius: 8, overflow: 'hidden', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.06)', transition: 'border-color 0.15s' }}
+                        {p.media.filter(m => m.mediaType !== 'document').map((m, i) => (
+                          <div key={i}
+                            style={{ borderRadius: 8, overflow: 'hidden', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.06)', transition: 'border-color 0.15s' }}
                             onMouseEnter={e => (e.currentTarget.style.borderColor = `${GOLD}50`)}
                             onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)')}
+                            onClick={() => { if (m.url) setLightbox({ url: m.url, type: m.mediaType ?? 'image', title: m.title && m.title !== 'image' && m.title !== 'video' ? m.title : m.mediaType === 'video' ? 'Video' : `Photo ${i + 1}` }); }}
                           >
                             <div style={{ position: 'relative', height: 110 }}>
                               {m.url && m.mediaType === 'video' ? (
-                                <video src={m.url} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} muted playsInline />
+                                <ProtectedMedia type="video" src={m.url} controls={false} muted width="100%" height="100%" style={{ objectFit: 'cover', display: 'block' }} />
                               ) : (
-                                <img src={m.url || MEDIA_IMAGES[i % MEDIA_IMAGES.length]} alt={m.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { (e.currentTarget as HTMLImageElement).src = MEDIA_IMAGES[i % MEDIA_IMAGES.length]; }} />
+                                <ProtectedMedia type="image" src={m.url || MEDIA_IMAGES[i % MEDIA_IMAGES.length]} alt={m.title} width="100%" height="100%" style={{ objectFit: 'cover', display: 'block' }} />
                               )}
-                              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)' }} />
+                              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.2)' }} />
                               {m.hasPlay && (
                                 <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                   <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -861,10 +1128,15 @@ export default function AspirantProfilePage() {
                                 </div>
                               )}
                               {m.duration && <div style={{ position: 'absolute', bottom: 6, right: 8, background: 'rgba(0,0,0,0.65)', borderRadius: 4, padding: '2px 6px', fontSize: 14, color: '#fff' }}>{m.duration}</div>}
-                              <div style={{ position: 'absolute', top: 6, left: 6, background: 'rgba(0,0,0,0.6)', borderRadius: 4, padding: '1px 6px', fontSize: 12, color: 'rgba(255,255,255,0.7)', textTransform: 'capitalize' }}>{m.mediaType ?? 'image'}</div>
+                              <div style={{ position: 'absolute', top: 6, left: 6, background: 'rgba(0,0,0,0.6)', borderRadius: 4, padding: '1px 6px', fontSize: 12, color: 'rgba(255,255,255,0.7)', textTransform: 'capitalize' as const }}>{m.mediaType === 'image' ? '🖼 Photo' : m.mediaType === 'video' ? '🎬 Video' : m.mediaType ?? 'Photo'}</div>
+                              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.6))', padding: '18px 8px 6px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                                <Eye size={12} color="rgba(255,255,255,0.6)" />
+                              </div>
                             </div>
                             <div style={{ padding: '8px 10px', background: BG3 }}>
-                              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>{m.title}</div>
+                              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                                {m.title && m.title !== 'image' && m.title !== 'video' ? m.title : m.mediaType === 'video' ? 'Video' : `Photo ${i + 1}`}
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -881,20 +1153,52 @@ export default function AspirantProfilePage() {
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                         {p.credits.filter(c => c.title || c.role).map((c, i, arr) => (
-                          <div key={i} style={{ display: 'flex', gap: 16, padding: '14px 0', borderBottom: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
-                            <div style={{ width: 46, height: 46, borderRadius: 8, background: `${GOLD}15`, border: `1px solid ${GOLD}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                              <Film size={18} color={GOLD} />
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 3 }}>
-                                <div style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>{c.title || '—'}</div>
-                                <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>{c.year}</span>
+                          <div key={i} style={{ padding: '18px 0', borderBottom: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.07)' : 'none' }}>
+                            {/* Header row: role type + title + year */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+                              <div>
+                                {c.role && <div style={{ fontSize: 18, fontWeight: 700, color: '#fff', letterSpacing: 0.5, marginBottom: 2 }}>{c.role.toUpperCase()}</div>}
+                                {c.title && <div style={{ fontSize: 15, color: GOLD, fontWeight: 600 }}>{c.title}</div>}
+                                {c.character && <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>as <strong style={{ color: '#fff' }}>{c.character}</strong></div>}
                               </div>
-                              <div style={{ display: 'flex', gap: 8, marginBottom: c.role ? 4 : 0 }}>
-                                {c.type && <span style={{ fontSize: 13, color: GOLD, background: `${GOLD}12`, border: `1px solid ${GOLD}30`, borderRadius: 20, padding: '2px 8px' }}>{c.type}</span>}
-                                {c.role && <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>as <strong style={{ color: '#fff' }}>{c.role}</strong></span>}
+                              <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+                                {c.year && <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>{c.year}</span>}
+                                {c.type && <span style={{ fontSize: 12, color: GOLD, background: `${GOLD}15`, border: `1px solid ${GOLD}30`, borderRadius: 20, padding: '2px 10px' }}>{c.type}</span>}
                               </div>
                             </div>
+                            {/* Detail grid: director, production, platform, language */}
+                            {(c.director || c.production || c.platform || c.language) && (
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 24px', marginBottom: 8 }}>
+                                {c.director && (
+                                  <div style={{ fontSize: 14 }}>
+                                    <span style={{ color: 'rgba(255,255,255,0.4)' }}>Director: </span>
+                                    <strong style={{ color: '#fff' }}>{c.director}</strong>
+                                  </div>
+                                )}
+                                {c.production && (
+                                  <div style={{ fontSize: 14 }}>
+                                    <span style={{ color: 'rgba(255,255,255,0.4)' }}>Production: </span>
+                                    <strong style={{ color: '#fff' }}>{c.production}</strong>
+                                  </div>
+                                )}
+                                {c.platform && (
+                                  <div style={{ fontSize: 14 }}>
+                                    <span style={{ color: 'rgba(255,255,255,0.4)' }}>Platform: </span>
+                                    <strong style={{ color: '#fff' }}>{c.platform}</strong>
+                                  </div>
+                                )}
+                                {c.language && (
+                                  <div style={{ fontSize: 14 }}>
+                                    <span style={{ color: 'rgba(255,255,255,0.4)' }}>Language: </span>
+                                    <strong style={{ color: '#fff' }}>{c.language}</strong>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {/* Description */}
+                            {c.description && (
+                              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6, marginTop: 4 }}>{c.description}</div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -906,7 +1210,13 @@ export default function AspirantProfilePage() {
                 {activeTab === 'documents' && (
                   <ContentCard title="Documents">
                     {(() => {
-                      const docs = p.media.filter(m => m.mediaType === 'document' || m.mediaType === 'pdf' || (m.title && ['resume','cv','noc','certificate','proof','document','headshot','measurement','contact sheet','portfolio'].some(k => m.title.toLowerCase().includes(k))));
+                      const docs = p.media.filter(m =>
+                        m.mediaType === 'document' ||
+                        m.mediaType === 'pdf' ||
+                        m.mediaType === 'doc' ||
+                        (m.mediaType !== 'image' && m.mediaType !== 'video' && m.url) ||
+                        (m.title && ['resume','cv','noc','certificate','proof','document','headshot','measurement','contact sheet','portfolio'].some(k => m.title.toLowerCase().includes(k)))
+                      );
                       if (docs.length === 0) {
                         return (
                           <div style={{ textAlign: 'center', padding: '40px 0', color: 'rgba(255,255,255,0.3)', fontSize: 15 }}>
@@ -985,7 +1295,7 @@ export default function AspirantProfilePage() {
               </RightCard>
 
               {/* Experience */}
-              <RightCard title="Experience" action={<span onClick={() => setActiveTab('auditions')} style={{ fontSize: 14, color: GOLD, cursor: 'pointer' }}>View All</span>}>
+              <RightCard title="Experience" action={<span onClick={() => setActiveTab('auditions')} style={{ fontSize: 14, color: GOLD, cursor: 'pointer', userSelect: 'none' as const }}>View All →</span>}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {p.credits.filter(c => c.title || c.role).length === 0 ? (
                     <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)' }}>No credits added yet.</div>
@@ -1048,6 +1358,126 @@ export default function AspirantProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* ── Lightbox Modal ── */}
+      {lightbox && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 999, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setLightbox(null)}
+        >
+          <button onClick={() => setLightbox(null)}
+            style={{ position: 'absolute', top: 20, right: 24, background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', fontSize: 22, lineHeight: 1 }}>
+            ×
+          </button>
+          <div style={{ position: 'absolute', top: 24, left: '50%', transform: 'translateX(-50%)', fontFamily: BARLOW, fontSize: 16, color: 'rgba(255,255,255,0.7)', fontWeight: 600, whiteSpace: 'nowrap' as const }}>{lightbox.title}</div>
+          <div onClick={e => e.stopPropagation()} style={{ maxWidth: '85vw', maxHeight: '80vh' }}>
+            {lightbox.type === 'video'
+              ? <ProtectedMedia type="video" src={lightbox.url} controls={true} width="100%" style={{ maxHeight: '80vh', borderRadius: 8 }} />
+              : <ProtectedMedia type="image" src={lightbox.url} alt={lightbox.title} style={{ maxWidth: '85vw', maxHeight: '80vh', objectFit: 'contain' as const, borderRadius: 8, display: 'block' }} />
+            }
+          </div>
+          <div style={{ marginTop: 14, fontFamily: BARLOW, fontSize: 13, color: 'rgba(255,255,255,0.3)' }}>Click outside to close</div>
+        </div>
+      )}
+
+      {/* ── Report Profile Modal ── */}
+      {reportOpen && (
+        <>
+          <div onClick={() => { if (!reportSubmitting) { setReportOpen(false); setReportReason(''); setReportDone(false); setReportSuccess(false); } }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 400, backdropFilter: 'blur(4px)' }} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 420, background: BG2, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14, padding: 24, zIndex: 401, boxShadow: '0 24px 60px rgba(0,0,0,0.8)' }}>
+            {reportSuccess ? (
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+                <div style={{ fontFamily: BEBAS, fontSize: 22, letterSpacing: 1, color: GREEN, marginBottom: 8 }}>Report Submitted</div>
+                <div style={{ fontFamily: BARLOW, fontSize: 15, color: 'rgba(255,255,255,0.5)', marginBottom: 20, lineHeight: 1.6 }}>
+                  Your complaint against <strong style={{ color: '#fff' }}>{p.name}</strong> has been submitted. Our team will review it within 24–48 hours.
+                </div>
+                <button onClick={() => { setReportOpen(false); setReportReason(''); setReportSuccess(false); }} style={{ background: GREEN, border: 'none', borderRadius: 8, padding: '10px 28px', color: '#000', fontFamily: BEBAS, fontSize: 17, letterSpacing: 1, cursor: 'pointer' }}>
+                  CLOSE
+                </button>
+              </div>
+            ) : reportDone ? (
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+                <div style={{ fontFamily: BEBAS, fontSize: 22, letterSpacing: 1, color: '#fff', marginBottom: 8 }}>Already Reported</div>
+                <div style={{ fontFamily: BARLOW, fontSize: 15, color: 'rgba(255,255,255,0.5)', marginBottom: 20, lineHeight: 1.6 }}>
+                  You have already raised a complaint against this profile. Our team is reviewing it and will take appropriate action within 24–48 hours.
+                </div>
+                <button onClick={() => { setReportOpen(false); setReportReason(''); setReportDone(false); setReportSuccess(false); }} style={{ background: GOLD, border: 'none', borderRadius: 8, padding: '10px 28px', color: '#000', fontFamily: BEBAS, fontSize: 17, letterSpacing: 1, cursor: 'pointer' }}>
+                  CLOSE
+                </button>
+              </div>
+            ) : (
+              <>
+                <div style={{ fontFamily: BEBAS, fontSize: 22, letterSpacing: 1, color: '#fff', marginBottom: 4 }}>Report Profile</div>
+                <div style={{ fontFamily: BARLOW, fontSize: 14, color: 'rgba(255,255,255,0.45)', marginBottom: 18 }}>Reporting: <strong style={{ color: '#fff' }}>{p.name}</strong></div>
+
+                <div style={{ fontFamily: BARLOW, fontSize: 14, color: 'rgba(255,255,255,0.6)', marginBottom: 8 }}>Reason for reporting</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+                  {['Fake or misleading profile', 'Inappropriate content', 'Spam or scam', 'Harassment or abuse', 'Other'].map(reason => (
+                    <div key={reason} onClick={() => setReportReason(reason)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, border: `1px solid ${reportReason === reason ? RED : 'rgba(255,255,255,0.1)'}`, background: reportReason === reason ? 'rgba(200,32,42,0.1)' : 'transparent', cursor: 'pointer', transition: 'all 0.15s' }}>
+                      <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${reportReason === reason ? RED : 'rgba(255,255,255,0.3)'}`, background: reportReason === reason ? RED : 'transparent', flexShrink: 0 }} />
+                      <span style={{ fontFamily: BARLOW, fontSize: 14, color: reportReason === reason ? '#fff' : 'rgba(255,255,255,0.6)' }}>{reason}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={() => { setReportOpen(false); setReportReason(''); }} disabled={reportSubmitting}
+                    style={{ flex: 1, background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '10px 0', color: 'rgba(255,255,255,0.6)', fontFamily: BARLOW, fontSize: 15, cursor: 'pointer' }}>
+                    Cancel
+                  </button>
+                  <button disabled={!reportReason || reportSubmitting} onClick={async () => {
+                    if (!reportReason) return;
+                    setReportSubmitting(true);
+                    try {
+                      const h = getAuthHeaders();
+                      // Map display reason to API reason value
+                      const reasonMap: Record<string,string> = {
+                        'Fake or misleading profile': 'fake_profile',
+                        'Inappropriate content':      'inappropriate_content',
+                        'Spam or scam':               'scam_casting',
+                        'Harassment or abuse':        'harassment',
+                        'Other':                      'other',
+                      };
+                      const res = await fetch('/api/reports', {
+                        method: 'POST',
+                        headers: { ...h, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          reported_user_id:     userId || id || null,  /* userId = auth UUID, id = aspirant_profiles.id */
+                          reported_entity_type: 'user',
+                          reported_entity_id:   id,
+                          reason:               reasonMap[reportReason] || 'other',
+                          description:          `Reported aspirant profile. Name: ${p.name}. Reason: ${reportReason}.`,
+                        }),
+                      });
+                      const data = await res.json();
+                      if (res.status === 409) {
+                        // Already reported this person before — show info modal
+                        setReportDone(true);
+                        return;
+                      }
+                      if (!res.ok) {
+                        alert(data.error || 'Failed to submit report. Please try again.');
+                        return;
+                      }
+                      setReportSuccess(true); // report submitted successfully
+                    } catch {
+                      alert('Network error. Please try again.');
+                    } finally {
+                      setReportSubmitting(false);
+                    }
+                  }}
+                    style={{ flex: 2, background: reportReason ? RED : 'rgba(200,32,42,0.3)', border: 'none', borderRadius: 8, padding: '10px 0', color: '#fff', fontFamily: BEBAS, fontSize: 17, letterSpacing: 1, cursor: reportReason ? 'pointer' : 'default', transition: 'background 0.15s' }}>
+                    {reportSubmitting ? 'SUBMITTING...' : 'SUBMIT REPORT'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

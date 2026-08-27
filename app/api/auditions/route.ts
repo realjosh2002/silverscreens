@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
 
@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     const token = req.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return errorResponse('Authentication required', 401)
 
-    const { data: { user }, error } = await supabase.auth.getUser(token)
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
     if (error || !user) return errorResponse('Invalid session', 401)
 
     const { searchParams } = new URL(req.url)
@@ -20,13 +20,15 @@ export async function GET(req: NextRequest) {
     const limit  = parseInt(searchParams.get('limit') || '20')
     const skip   = (page - 1) * limit
 
+    // Use Prisma for profile lookup — works reliably with enum types
     const userProfile = await prisma.profiles.findUnique({
       where:  { id: user.id },
       select: { role: true },
     })
     if (!userProfile) return errorResponse('Profile not found', 404)
 
-    let where: Record<string, unknown> = {}
+    let filterCol = ''
+    let filterVal = ''
 
     if (userProfile.role === 'aspirant') {
       const aspirantProfile = await prisma.aspirant_profiles.findUnique({
@@ -34,51 +36,48 @@ export async function GET(req: NextRequest) {
         select: { id: true },
       })
       if (!aspirantProfile) return errorResponse('Aspirant profile not found', 404)
-      where.aspirant_id = aspirantProfile.id
+      filterCol = 'aspirant_id'
+      filterVal = aspirantProfile.id
     } else {
+      // When admin views an agency profile, agency_user_id is passed in query
+      const agencyUserId  = searchParams.get('agency_user_id') || ''
+      const lookupUserId  = agencyUserId || user.id
+
       const agencyProfile = await prisma.agency_profiles.findUnique({
-        where:  { user_id: user.id },
+        where:  { user_id: lookupUserId },
         select: { id: true },
       })
       if (!agencyProfile) return errorResponse('Agency profile not found', 404)
-      where.agency_id = agencyProfile.id
+      filterCol = 'agency_id'
+      filterVal = agencyProfile.id
     }
 
-    if (status) where.status = status
+    let query = supabaseAdmin
+      .from('auditions')
+      .select(`
+        id, scheduled_at, duration_minutes, mode, status, venue_details, notes,
+        aspirant_id, agency_id, casting_call_id, application_id,
+        casting_calls ( id, title, role_name, project_type ),
+        aspirant_profiles ( id, first_name, last_name, profile_image_url, category, gender, city, verification_status, user_id )
+      `, { count: 'exact' })
+      .eq(filterCol, filterVal)
+      .order('scheduled_at', { ascending: false })
+      .range(skip, skip + limit - 1)
 
-    const [auditions, total] = await Promise.all([
-      prisma.auditions.findMany({
-        where,
-        skip,
-        take:    limit,
-        orderBy: { scheduled_at: 'desc' },
-        include: {
-          casting_calls: {
-            select: { id: true, title: true, role_name: true, project_type: true },
-          },
-          aspirant_profiles: {
-            select: {
-              id:                true,
-              first_name:        true,
-              last_name:         true,
-              profile_image_url: true,
-              category:          true,
-              gender:            true,
-              city:              true,
-              verification_status: true,
-            },
-          },
-          applications: {
-            select: { id: true, status: true },
-          },
-        },
-      }),
-      prisma.auditions.count({ where }),
-    ])
+    if (status) query = query.eq('status', status)
+
+    const { data: auditions, count, error: queryError } = await query
+
+    if (queryError) {
+      console.error('[GET AUDITIONS QUERY ERROR]', queryError)
+      return errorResponse(queryError.message, 500)
+    }
+
+    console.log('[GET AUDITIONS] filterCol:', filterCol, 'filterVal:', filterVal, 'count:', count, 'results:', auditions?.length)
 
     return successResponse({
-      auditions,
-      pagination: { page, limit, total, total_pages: Math.ceil(total / limit) },
+      auditions: auditions ?? [],
+      pagination: { page, limit, total: count ?? 0, total_pages: Math.ceil((count ?? 0) / limit) },
     })
   } catch (error: unknown) {
     console.error('[GET AUDITIONS ERROR]', error)
@@ -92,18 +91,18 @@ export async function POST(req: NextRequest) {
     const token = req.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return errorResponse('Authentication required', 401)
 
-    const { data: { user }, error } = await supabase.auth.getUser(token)
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
     if (error || !user) return errorResponse('Invalid session', 401)
 
-    const agencyProfile = await prisma.agency_profiles.findUnique({
-      where:  { user_id: user.id },
-      select: { id: true },
-    })
+    const { data: agencyProfile } = await supabaseAdmin
+      .from('agency_profiles').select('id').eq('user_id', user.id).single()
     if (!agencyProfile) return errorResponse('Agency profile not found', 404)
 
     const body = await req.json()
     const {
       application_id,
+      aspirant_id: directAspirantId,
+      casting_call_id: directCastingCallId,
       scheduled_at,
       duration_minutes = 30,
       mode = 'offline',
@@ -112,55 +111,80 @@ export async function POST(req: NextRequest) {
       notes,
     } = body
 
-    if (!application_id) return errorResponse('Application ID is required', 400)
-    if (!scheduled_at)   return errorResponse('Scheduled date/time is required', 400)
+    if (!scheduled_at) return errorResponse('Scheduled date/time is required', 400)
+    if (!application_id && !directAspirantId) return errorResponse('Either application_id or aspirant_id is required', 400)
 
-    // Fetch application to get casting_call_id and aspirant_id
-    const application = await prisma.applications.findUnique({
-      where:  { id: application_id },
-      select: { id: true, casting_call_id: true, aspirant_id: true, agency_id: true },
-    })
-    if (!application) return errorResponse('Application not found', 404)
-    if (application.agency_id !== agencyProfile.id) {
-      return errorResponse('Unauthorized', 403)
+    let resolvedAspirantId: string
+    let resolvedCastingCallId: string | null = directCastingCallId ?? null
+    let resolvedApplicationId: string | null = application_id ?? null
+
+    if (application_id) {
+      const { data: application } = await supabaseAdmin
+        .from('applications')
+        .select('id, casting_call_id, aspirant_id, agency_id')
+        .eq('id', application_id)
+        .single()
+      if (!application) return errorResponse('Application not found', 404)
+      if (application.agency_id !== agencyProfile.id) return errorResponse('Unauthorized', 403)
+      resolvedAspirantId    = application.aspirant_id
+      resolvedCastingCallId = application.casting_call_id
+    } else {
+      resolvedAspirantId = directAspirantId
     }
 
-    const audition = await prisma.auditions.create({
-      data: {
-        application_id,
-        casting_call_id:  application.casting_call_id,
-        aspirant_id:      application.aspirant_id,
-        agency_id:        agencyProfile.id,
-        scheduled_at:     new Date(scheduled_at),
-        duration_minutes,
-        mode,
-        venue_details,
-        meeting_link,
-        notes,
-        status:           'scheduled',
-      },
-    })
+    const insertData: Record<string, unknown> = {
+      aspirant_id:      resolvedAspirantId,
+      agency_id:        agencyProfile.id,
+      scheduled_at:     new Date(scheduled_at).toISOString(),
+      duration_minutes: Number(duration_minutes) || 30,
+      mode,
+      status:           'scheduled',
+    }
+    if (resolvedApplicationId) insertData.application_id  = resolvedApplicationId
+    if (resolvedCastingCallId) insertData.casting_call_id = resolvedCastingCallId
+    if (venue_details)         insertData.venue_details   = venue_details
+    if (meeting_link)          insertData.meeting_link    = meeting_link
+    if (notes)                 insertData.notes           = notes
+
+    const { data: audition, error: insertError } = await supabaseAdmin
+      .from('auditions')
+      .insert(insertData)
+      .select()
+      .single()
+
+    if (insertError) {
+      console.error('[CREATE AUDITION INSERT ERROR]', insertError)
+      return errorResponse(insertError.message, 500)
+    }
 
     // Notify aspirant
-    const aspirant = await prisma.aspirant_profiles.findUnique({
-      where:  { id: application.aspirant_id },
-      select: { user_id: true },
-    })
-    const castingCall = await prisma.casting_calls.findUnique({
-      where:  { id: application.casting_call_id },
-      select: { title: true },
-    })
+    try {
+      const { data: aspirant } = await supabaseAdmin
+        .from('aspirant_profiles').select('user_id').eq('id', resolvedAspirantId).single()
 
-    if (aspirant && castingCall) {
-      await prisma.notifications.create({
-        data: {
-          user_id:    aspirant.user_id,
-          type:       'audition_scheduled',
-          title:      '🎬 Audition Scheduled!',
-          message:    `Your audition for "${castingCall.title}" has been scheduled.`,
-          action_url: `/applications/${application_id}`,
-        },
-      })
+      let castingCallTitle = ''
+      if (resolvedCastingCallId) {
+        const { data: cc } = await supabaseAdmin
+          .from('casting_calls').select('title').eq('id', resolvedCastingCallId).single()
+        castingCallTitle = cc?.title ?? ''
+      }
+
+      if (aspirant?.user_id) {
+        await prisma.notifications.create({
+          data: {
+            user_id:    aspirant.user_id,
+            type:       'audition_scheduled' as any,
+            title:      '🎬 Audition Scheduled!',
+            message:    castingCallTitle
+              ? `You have been invited to an audition for "${castingCallTitle}". Please check the details.`
+              : 'You have been invited to an audition. Please check the details.',
+            is_read:    false,
+            action_url: '/auditions',
+          },
+        })
+      }
+    } catch (notifErr) {
+      console.error('[AUDITION NOTIFICATION ERROR]', notifErr)
     }
 
     return successResponse({ message: 'Audition scheduled successfully', audition }, 201)

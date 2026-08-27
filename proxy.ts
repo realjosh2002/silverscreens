@@ -3,7 +3,46 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
+  const { pathname } = request.nextUrl
 
+  // ── Always-public paths — return immediately, no auth check ──
+  const alwaysPublic = [
+    '/',
+    '/about',
+    '/contact',
+    '/faq',
+    '/terms',
+    '/privacy',
+    '/privacy-policy',
+    '/cookie-policy',
+    '/explore-talents',
+    '/casting-calls',
+    '/signup',
+    '/login',
+    '/forgot-password',
+    '/reset-password',
+    '/verify-otp',
+    '/pricing',
+    '/verify-email',
+    '/admin/login',
+    '/maintenance',
+  ]
+
+  if (alwaysPublic.some(p => pathname === p || pathname.startsWith(p + '/'))) {
+    return supabaseResponse
+  }
+
+  // ── API routes — return immediately, never redirect ──
+  if (pathname.startsWith('/api/')) {
+    return supabaseResponse
+  }
+
+  // ── Admin routes — return immediately, pages handle their own auth ──
+  if (pathname.startsWith('/admin/')) {
+    return supabaseResponse
+  }
+
+  // ── All other routes need auth — now call supabase ──
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -24,37 +63,22 @@ export async function proxy(request: NextRequest) {
   )
 
   const { data: { user } } = await supabase.auth.getUser()
-  const { pathname } = request.nextUrl
 
-  // ── Always-public paths — no auth or email check needed ──
-  const alwaysPublic = [
-    '/',
-    '/about',
-    '/contact',
-    '/faq',
-    '/terms',
-    '/privacy',
-    '/privacy-policy',
-    '/cookie-policy',
-    '/explore-talents',
-    '/casting-calls',
-    '/signup',
-    '/login',
-    '/forgot-password',
-    '/reset-password',
-    '/verify-otp',
-    '/pricing',
-    '/verify-email',
-    '/admin/login',
-  ]
+  // ── Maintenance mode check — block non-admin users ──
+  try {
+    const { data: maintData } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'maintenance_mode')
+      .single()
 
-  if (alwaysPublic.some(p => pathname === p || pathname.startsWith(p + '/'))) {
-    return supabaseResponse
-  }
-
-  // ── API routes — never redirect, let them handle auth themselves ──
-  if (pathname.startsWith('/api/')) {
-    return supabaseResponse
+    if (maintData?.value === 'true') {
+      // Redirect all non-admin, non-API traffic to maintenance page
+      return NextResponse.redirect(new URL('/maintenance', request.url))
+    }
+  } catch (err) {
+    // If check fails, allow through — never block users due to a DB error
+    console.error('[PROXY MAINTENANCE CHECK ERROR]', err)
   }
 
   // ── Not logged in — redirect to login ──

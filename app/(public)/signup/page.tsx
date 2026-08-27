@@ -134,21 +134,51 @@ export default function SignUpPage() {
     if (!otpComplete) return;
     setLoading(true); setFormError('');
     try {
-      // TODO: uncomment when /api/auth/verify-otp is ready
-      // const res = await fetch('/api/auth/verify-otp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: form.email, otp: otpValues.join('') }) });
-      // const data = await res.json();
-      // if (!res.ok) { setFormError(data.error || data.message || 'Invalid OTP.'); setLoading(false); return; }
+      const res = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: form.email, otp: otpValues.join('') }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setFormError(data.error || data.message || 'Invalid OTP. Please try again.');
+        setLoading(false);
+        return;
+      }
+      const respData = data.data ?? data;
+
+      // OTP verified — now sign in with email+password to get session token
+      const loginRes = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: form.email, password: form.password }),
+      });
+      const loginData = await loginRes.json();
+      const loginRespData = loginData.data ?? loginData;
+      const token        = loginRespData.session?.access_token ?? '';
+      const refreshToken = loginRespData.session?.refresh_token ?? '';
+      const userId       = loginRespData.user?.id ?? registeredData.current?.userId ?? '';
+      const profileNumber = respData.profileNumber ?? registeredData.current?.profileNumber ?? '';
+
       localStorage.removeItem('ss_profile_draft');
       localStorage.setItem('ss_user', JSON.stringify({
-        loggedIn: true, id: registeredData.current?.userId ?? '', profileNumber: registeredData.current?.profileNumber ?? '',
-        token: registeredData.current?.token ?? '', refreshToken: registeredData.current?.refreshToken ?? '',
-        name: form.fullName, email: form.email,
-        userType: userType === 'agency' ? 'agency' : 'aspirant', category: '', departments: [], roles: [],
-        verifiedAt: new Date().toISOString(), subscribed: false, plan: null, profileStatus: 'incomplete',
+        loggedIn:      true,
+        id:            userId,
+        profileNumber,
+        token,
+        refreshToken,
+        name:          form.fullName,
+        email:         form.email,
+        userType:      userType === 'agency' ? 'agency' : 'aspirant',
+        category: '', departments: [], roles: [],
+        verifiedAt:    new Date().toISOString(),
+        subscribed: false, plan: null, profileStatus: 'incomplete',
       }));
       setStep(3);
-    } catch { setFormError('Verification failed. Please try again.'); }
-    finally { setLoading(false); }
+    } catch {
+      setFormError('Network error. Please try again.');
+    }
+    setLoading(false);
   };
 
   const STEPS = [{ num: 1, sub: 'SCENE' }, { num: 2, sub: 'VERIFY' }, { num: 3, sub: 'ACTION' }];

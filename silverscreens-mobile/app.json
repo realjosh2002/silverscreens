@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "silverscreens-mobile",
+    "slug": "silverscreens-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "scheme": "silverscreens",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.silverscreens.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#050505",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.silverscreens.mobile"
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-font",
+      "expo-splash-screen",
+      "expo-status-bar",
+      "expo-asset"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "0ec34d86-edbc-451a-8966-f443f727af8e"
+      }
+    }
+  }
+}
